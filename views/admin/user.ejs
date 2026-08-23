@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title><%= teacher.display_name %> – Admin</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <p><a href="/admin">&larr; Zur Übersicht</a></p>
+    <h1><%= teacher.display_name %></h1>
+    <p class="meta"><%= teacher.username %><% if (teacher.email) { %> · <%= teacher.email %><% } %></p>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+
+    <section class="panel">
+      <h2>Neue Kategorie zuweisen</h2>
+      <form method="post" action="/admin/users/<%= teacher.id %>/categories" class="entry-form">
+        <input type="text" name="title" placeholder="Überschrift, z. B. 1 Ausgleichsstunde Administration Moodle" required>
+        <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
+        <input type="number" step="0.1" min="0" name="faktor" placeholder="Faktor" value="1" required>
+        <button type="submit" class="btn btn-start">Hinzufügen</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Kategorien</h2>
+      <table class="entries-table">
+        <thead>
+          <tr>
+            <th>Titel</th><th>Ausgleichsstunden</th><th>Faktor</th><th>Benötigt</th>
+            <th>Synchronisiert</th><th>Offen (ungemeldet)</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% categories.forEach(cat => { %>
+            <tr class="<%= cat.archived ? 'archived' : '' %>">
+              <td><%= cat.title %></td>
+              <td><%= cat.ausgleichsstunden %></td>
+              <td><%= cat.faktor %></td>
+              <td><%= cat.requiredHours.toFixed(2) %> h</td>
+              <td><%= cat.syncedHours.toFixed(2) %> h</td>
+              <td><%= cat.unsyncedHours.toFixed(2) %> h</td>
+              <td>
+                <form method="post" action="/admin/categories/<%= cat.id %>/archive" class="inline-form">
+                  <button type="submit" class="link-button"><%= cat.archived ? 'Reaktivieren' : 'Archivieren' %></button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% if (categories.length === 0) { %><p class="empty-state">Noch keine Kategorien zugewiesen.</p><% } %>
+    </section>
+  </main>
+</body>
+</html>

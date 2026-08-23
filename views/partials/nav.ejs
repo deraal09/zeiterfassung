@@ -1,0 +1,15 @@
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/">Zeiterfassung</a>
+    <% if (user) { %>
+      <nav class="nav-links">
+        <a href="/">Übersicht</a>
+        <% if (user.isAdmin) { %><a href="/admin">Admin</a><% } %>
+        <span class="nav-user"><%= user.displayName %></span>
+        <form action="/logout" method="post" class="inline-form">
+          <button type="submit" class="link-button">Abmelden</button>
+        </form>
+      </nav>
+    <% } %>
+  </div>
+</header>

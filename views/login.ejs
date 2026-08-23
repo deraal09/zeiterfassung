@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Anmelden – Zeiterfassung</title>
+  <%- include('partials/head') %>
+</head>
+<body class="login-page">
+  <main class="login-box">
+    <h1>Zeiterfassung</h1>
+    <p class="subtitle">Anmeldung mit Schulaccount</p>
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <form method="post" action="/login">
+      <label for="username">Benutzername</label>
+      <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+      <label for="password">Passwort</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+      <button type="submit" class="btn btn-start btn-block">Anmelden</button>
+    </form>
+  </main>
+</body>
+</html>

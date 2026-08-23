@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <h1>Lehrkräfte</h1>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+
+    <section class="panel">
+      <h2>Ausgleichsstunden zuweisen</h2>
+      <p class="hint">LDAP-Benutzer suchen und Kategorie zuweisen.</p>
+      <form method="post" action="/admin/assign" id="assign-form" class="assign-form">
+        <div class="autocomplete">
+          <input type="text" id="ldap-search" placeholder="Name oder Benutzername suchen…" autocomplete="off">
+          <div id="ldap-results" class="autocomplete-results"></div>
+        </div>
+        <input type="hidden" name="username" id="assign-username">
+        <input type="hidden" name="displayName" id="assign-displayName">
+        <input type="hidden" name="email" id="assign-email">
+        <p id="assign-selected" class="selected-user"></p>
+        <input type="text" name="title" placeholder="Überschrift, z. B. 1 Ausgleichsstunde Administration Moodle" required>
+        <div class="row">
+          <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
+          <input type="number" step="0.1" min="0" name="faktor" placeholder="Faktor" value="1" required>
+        </div>
+        <button type="submit" class="btn btn-start">Zuweisen</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Übersicht</h2>
+      <table class="entries-table">
+        <thead><tr><th>Name</th><th>Benutzername</th><th>Kategorien</th><th></th></tr></thead>
+        <tbody>
+          <% users.forEach(u => { %>
+            <tr>
+              <td><%= u.display_name %></td>
+              <td><%= u.username %></td>
+              <td><%= u.category_count %></td>
+              <td><a href="/admin/users/<%= u.id %>">Details</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% if (users.length === 0) { %><p class="empty-state">Noch keine Lehrkräfte erfasst.</p><% } %>
+    </section>
+  </main>
+  <script src="/public/js/admin.js"></script>
+</body>
+</html>

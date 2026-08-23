@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Übersicht – Zeiterfassung</title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <%- include('partials/nav') %>
+  <main class="container">
+    <% if (timer) { %>
+      <div class="timer-banner">
+        <div>
+          <strong>Läuft:</strong> <%= timer.beschreibung %> (<%= timer.category_title %>)
+          <span class="live-timer" data-start="<%= timer.start_time %>">00:00:00</span>
+        </div>
+        <form method="post" action="/entries/<%= timer.id %>/stop">
+          <button type="submit" class="btn btn-stop">Stopp</button>
+        </form>
+      </div>
+    <% } %>
+
+    <div class="page-header">
+      <h1>Meine Ausgleichsstunden</h1>
+      <div class="sync-controls">
+        <form method="post" action="/settings/auto-sync" class="inline-form">
+          <label class="checkbox">
+            <input type="checkbox" name="enabled" onchange="this.form.submit()" <%= user.autoSync ? 'checked' : '' %>>
+            Automatisch synchronisieren
+          </label>
+        </form>
+        <form method="post" action="/sync" class="inline-form">
+          <button type="submit" class="btn"<%= unsyncedCount === 0 ? ' disabled' : '' %>>
+            Jetzt synchronisieren<% if (unsyncedCount > 0) { %> (<%= unsyncedCount %>)<% } %>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <% if (categories.length === 0) { %>
+      <p class="empty-state">Es wurden noch keine Ausgleichsstunden zugewiesen. Bitte an die Schulleitung wenden.</p>
+    <% } %>
+
+    <div class="card-grid">
+      <% categories.forEach(cat => { %>
+        <a class="card" href="/categories/<%= cat.id %>">
+          <h2><%= cat.title %></h2>
+          <p class="meta"><%= cat.ausgleichsstunden %> Ausgleichsstunden × Faktor <%= cat.faktor %></p>
+          <div class="progress">
+            <div class="progress-bar" style="width: <%= Math.min(100, (cat.erfassteStunden / cat.benoetigteStunden) * 100 || 0) %>%"></div>
+          </div>
+          <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> von <%= cat.benoetigteStunden.toFixed(2) %> Zeitstunden erfasst</p>
+        </a>
+      <% }) %>
+    </div>
+  </main>
+  <script src="/public/js/timer.js"></script>
+</body>
+</html>

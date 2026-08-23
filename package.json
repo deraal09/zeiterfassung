@@ -1,0 +1,22 @@
+{
+  "name": "zeiterfassung",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zeiterfassung fuer Ausgleichsstunden mit LDAP-Login",
+  "main": "app.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "ldapts": "^9.0.0",
+    "session-file-store": "^1.5.0"
+  }
+}
