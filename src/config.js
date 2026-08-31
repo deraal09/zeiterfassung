@@ -4,7 +4,13 @@ const path = require('path');
 process.env.TZ = process.env.TZ || 'Europe/Berlin';
 
 module.exports = {
-  port: parseInt(process.env.PORT, 10) || 3000,
+  // Plesk/Passenger uebergibt PORT haeufig als Unix-Socket-Pfad statt als
+  // Zahl. parseInt() wuerde das in NaN -> Fallback-Port verwandeln, wodurch
+  // die App auf dem falschen Endpunkt lauscht und Passenger sie nie
+  // erreicht (Symptom: generische Passenger-Fehlerseite). Der rohe Wert
+  // wird deshalb unveraendert durchgereicht und erst in app.js ausgewertet.
+  portEnv: process.env.PORT || null,
+  fallbackPort: 3000,
   sessionSecret: process.env.SESSION_SECRET || 'change-me-in-production',
   dbPath: process.env.DB_PATH
     ? path.resolve(__dirname, '..', process.env.DB_PATH)

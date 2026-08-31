@@ -47,8 +47,18 @@ app.use((err, req, res, next) => {
   res.status(500).render('error', { message: 'Ein Fehler ist aufgetreten.' });
 });
 
-app.listen(config.port, () => {
-  console.log(`Zeiterfassung laeuft auf Port ${config.port}`);
+// Plesk/Passenger weist der App entweder einen TCP-Port oder einen
+// Unix-Socket-Pfad zu (in PORT). Numerisch -> TCP-Port, sonst -> Socket.
+const isNumericPort = config.portEnv !== null && /^\d+$/.test(config.portEnv);
+const listenOptions = isNumericPort
+  ? { port: Number(config.portEnv) }
+  : config.portEnv
+    ? { path: config.portEnv }
+    : { port: config.fallbackPort };
+
+app.listen(listenOptions, () => {
+  const target = listenOptions.path ? listenOptions.path : `Port ${listenOptions.port}`;
+  console.log(`Zeiterfassung laeuft auf ${target}`);
 });
 
 module.exports = app;
