@@ -2,9 +2,10 @@ const router = require('express').Router();
 const { db } = require('../db');
 const { requireAdmin } = require('../middleware/auth');
 const ldap = require('../ldap');
+const { aktuellesSchuljahr } = require('../util/schuljahr');
 
 const ERROR_MESSAGES = {
-  'ungueltige-eingabe': 'Bitte Titel, Ausgleichsstunden und Faktor gueltig ausfuellen.',
+  'ungueltige-eingabe': 'Bitte Ausgleichsstunden und Faktor gueltig ausfuellen.',
   'kein-benutzer': 'Bitte zuerst eine Lehrkraft aus der LDAP-Suche auswaehlen.',
 };
 
@@ -16,7 +17,7 @@ router.get('/', requireAdmin, (req, res) => {
   const users = db
     .prepare(
       `SELECT u.*,
-        (SELECT COUNT(*) FROM categories c WHERE c.user_id=u.id AND c.archived=0) as category_count
+        (SELECT COUNT(*) FROM zuweisungen z WHERE z.user_id=u.id AND z.category_id IS NULL) as offene_zuweisungen
        FROM users u ORDER BY u.display_name COLLATE NOCASE`
     )
     .all();
@@ -44,6 +45,9 @@ router.get('/users/:id', requireAdmin, (req, res) => {
     .all(teacher.id);
 
   const categories = rawCategories.map((cat) => {
+    const required = db
+      .prepare('SELECT COALESCE(SUM(ausgleichsstunden * faktor),0) as h FROM zuweisungen WHERE category_id=?')
+      .get(cat.id).h;
     const row = db
       .prepare(
         `SELECT
@@ -54,29 +58,42 @@ router.get('/users/:id', requireAdmin, (req, res) => {
       .get(cat.id);
     return {
       ...cat,
-      requiredHours: cat.ausgleichsstunden * cat.faktor,
+      requiredHours: required,
       syncedHours: row.synced_minutes / 60,
       unsyncedHours: row.unsynced_minutes / 60,
     };
   });
 
-  res.render('admin/user', { teacher, categories, error: ERROR_MESSAGES[req.query.error] || null });
+  const zuweisungen = db
+    .prepare(
+      `SELECT z.*, c.title as category_title
+       FROM zuweisungen z LEFT JOIN categories c ON c.id = z.category_id
+       WHERE z.user_id=? ORDER BY z.created_at DESC`
+    )
+    .all(teacher.id);
+
+  res.render('admin/user', {
+    teacher,
+    categories,
+    zuweisungen,
+    aktuellesSchuljahr: aktuellesSchuljahr(),
+    error: ERROR_MESSAGES[req.query.error] || null,
+  });
 });
 
-router.post('/users/:id/categories', requireAdmin, (req, res) => {
+router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   const teacher = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
   if (!teacher) return res.status(404).render('error', { message: 'Lehrkraft nicht gefunden.' });
 
-  const { title, ausgleichsstunden, faktor } = req.body;
-  const h = parseNumber(ausgleichsstunden);
-  const f = parseNumber(faktor);
-  if (!title || !(h > 0) || !(f > 0)) {
+  const h = parseNumber(req.body.ausgleichsstunden);
+  const f = parseNumber(req.body.faktor);
+  if (!(h > 0) || !(f > 0)) {
     return res.redirect(`/admin/users/${teacher.id}?error=ungueltige-eingabe`);
   }
 
-  db.prepare('INSERT INTO categories (user_id, title, ausgleichsstunden, faktor, created_by) VALUES (?,?,?,?,?)').run(
+  db.prepare('INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, faktor, created_by) VALUES (?,?,?,?,?)').run(
     teacher.id,
-    title.trim(),
+    aktuellesSchuljahr(),
     h,
     f,
     req.session.user.username
@@ -93,7 +110,7 @@ router.post('/categories/:id/archive', requireAdmin, (req, res) => {
 });
 
 router.post('/assign', requireAdmin, (req, res) => {
-  const { username, displayName, email, title, ausgleichsstunden, faktor } = req.body;
+  const { username, displayName, email, ausgleichsstunden, faktor } = req.body;
   if (!username) return res.redirect('/admin?error=kein-benutzer');
 
   let user = db.prepare('SELECT * FROM users WHERE username=?').get(username);
@@ -106,13 +123,13 @@ router.post('/assign', requireAdmin, (req, res) => {
 
   const h = parseNumber(ausgleichsstunden);
   const f = parseNumber(faktor);
-  if (!title || !(h > 0) || !(f > 0)) {
+  if (!(h > 0) || !(f > 0)) {
     return res.redirect(`/admin/users/${user.id}?error=ungueltige-eingabe`);
   }
 
-  db.prepare('INSERT INTO categories (user_id, title, ausgleichsstunden, faktor, created_by) VALUES (?,?,?,?,?)').run(
+  db.prepare('INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, faktor, created_by) VALUES (?,?,?,?,?)').run(
     user.id,
-    title.trim(),
+    aktuellesSchuljahr(),
     h,
     f,
     req.session.user.username

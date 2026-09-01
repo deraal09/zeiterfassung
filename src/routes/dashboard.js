@@ -2,6 +2,12 @@ const router = require('express').Router();
 const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { nowLocalString } = require('../util/time');
+const { aktuellesSchuljahr } = require('../util/schuljahr');
+
+const ERROR_MESSAGES = {
+  'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
+  'keine-kategorie': 'Bitte eine Kategorie auswaehlen.',
+};
 
 function activeTimer(userId) {
   return db
@@ -13,23 +19,34 @@ function activeTimer(userId) {
     .get(userId);
 }
 
+function benoetigteStunden(categoryId) {
+  return db
+    .prepare('SELECT COALESCE(SUM(ausgleichsstunden * faktor),0) as h FROM zuweisungen WHERE category_id=?')
+    .get(categoryId).h;
+}
+
 router.get('/', requireAuth, (req, res) => {
   const userId = req.session.user.id;
+  const schuljahr = aktuellesSchuljahr();
+
   const categories = db
-    .prepare('SELECT * FROM categories WHERE user_id = ? AND archived = 0 ORDER BY created_at DESC')
-    .all(userId);
+    .prepare('SELECT * FROM categories WHERE user_id = ? AND schuljahr = ? AND archived = 0 ORDER BY created_at DESC')
+    .all(userId, schuljahr);
 
   const stats = categories.map((cat) => {
     const sumMinutes = db
       .prepare('SELECT COALESCE(SUM(duration_minutes),0) as minutes FROM time_entries WHERE category_id = ? AND end_time IS NOT NULL')
       .get(cat.id).minutes;
-    const benoetigteStunden = cat.ausgleichsstunden * cat.faktor;
     return {
       ...cat,
       erfassteStunden: sumMinutes / 60,
-      benoetigteStunden,
+      benoetigteStunden: benoetigteStunden(cat.id),
     };
   });
+
+  const offeneZuweisungen = db
+    .prepare('SELECT * FROM zuweisungen WHERE user_id=? AND category_id IS NULL ORDER BY created_at DESC')
+    .all(userId);
 
   const unsyncedCount = db
     .prepare('SELECT COUNT(*) as c FROM time_entries WHERE user_id=? AND synced=0 AND end_time IS NOT NULL')
@@ -37,9 +54,49 @@ router.get('/', requireAuth, (req, res) => {
 
   res.render('dashboard', {
     categories: stats,
+    offeneZuweisungen,
+    schuljahr,
     timer: activeTimer(userId),
     unsyncedCount,
+    error: ERROR_MESSAGES[req.query.error] || null,
   });
+});
+
+router.post('/categories', requireAuth, (req, res) => {
+  const title = (req.body.title || '').trim();
+  if (!title) return res.redirect('/?error=titel-fehlt');
+  db.prepare('INSERT INTO categories (user_id, title, schuljahr) VALUES (?,?,?)').run(
+    req.session.user.id,
+    title,
+    aktuellesSchuljahr()
+  );
+  res.redirect('/');
+});
+
+router.post('/zuweisungen/:id/link', requireAuth, (req, res) => {
+  const userId = req.session.user.id;
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, userId);
+  if (!zuweisung || zuweisung.category_id) return res.redirect('/');
+
+  const categoryId = parseInt(req.body.category_id, 10);
+  const category = db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(categoryId, userId);
+  if (!category) return res.redirect('/?error=keine-kategorie');
+
+  db.prepare('UPDATE zuweisungen SET category_id=? WHERE id=?').run(category.id, zuweisung.id);
+  res.redirect('/');
+});
+
+router.post('/zuweisungen/:id/uebernehmen', requireAuth, (req, res) => {
+  const userId = req.session.user.id;
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, userId);
+  if (!zuweisung || zuweisung.category_id) return res.redirect('/');
+
+  const title = (req.body.title || '').trim() || `Ausgleichsstunden ${zuweisung.schuljahr}`;
+  const info = db
+    .prepare('INSERT INTO categories (user_id, title, schuljahr) VALUES (?,?,?)')
+    .run(userId, title, zuweisung.schuljahr);
+  db.prepare('UPDATE zuweisungen SET category_id=? WHERE id=?').run(info.lastInsertRowid, zuweisung.id);
+  res.redirect('/');
 });
 
 router.post('/sync', requireAuth, (req, res) => {

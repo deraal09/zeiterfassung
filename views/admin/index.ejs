@@ -13,7 +13,11 @@
 
     <section class="panel">
       <h2>Ausgleichsstunden zuweisen</h2>
-      <p class="hint">LDAP-Benutzer suchen und Kategorie zuweisen.</p>
+      <p class="hint">
+        LDAP-Benutzer suchen und Ausgleichsstunden für das laufende Schuljahr
+        zuweisen. Die Lehrkraft verknüpft die Zuweisung anschließend selbst
+        mit einer eigenen Kategorie.
+      </p>
       <form method="post" action="/admin/assign" id="assign-form" class="assign-form">
         <div class="autocomplete">
           <input type="text" id="ldap-search" placeholder="Name oder Benutzername suchen…" autocomplete="off">
@@ -23,7 +27,6 @@
         <input type="hidden" name="displayName" id="assign-displayName">
         <input type="hidden" name="email" id="assign-email">
         <p id="assign-selected" class="selected-user"></p>
-        <input type="text" name="title" placeholder="Überschrift, z. B. 1 Ausgleichsstunde Administration Moodle" required>
         <div class="row">
           <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
           <input type="number" step="0.1" min="0" name="faktor" placeholder="Faktor" value="1" required>
@@ -35,13 +38,13 @@
     <section class="panel">
       <h2>Übersicht</h2>
       <table class="entries-table">
-        <thead><tr><th>Name</th><th>Benutzername</th><th>Kategorien</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Benutzername</th><th>Offene Zuweisungen</th><th></th></tr></thead>
         <tbody>
           <% users.forEach(u => { %>
             <tr>
               <td><%= u.display_name %></td>
               <td><%= u.username %></td>
-              <td><%= u.category_count %></td>
+              <td><%= u.offene_zuweisungen %></td>
               <td><a href="/admin/users/<%= u.id %>">Details</a></td>
             </tr>
           <% }) %>

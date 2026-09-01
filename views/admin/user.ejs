@@ -14,13 +14,31 @@
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
 
     <section class="panel">
-      <h2>Neue Kategorie zuweisen</h2>
-      <form method="post" action="/admin/users/<%= teacher.id %>/categories" class="entry-form">
-        <input type="text" name="title" placeholder="Überschrift, z. B. 1 Ausgleichsstunde Administration Moodle" required>
+      <h2>Ausgleichsstunden zuweisen <span class="meta">Schuljahr <%= aktuellesSchuljahr %></span></h2>
+      <form method="post" action="/admin/users/<%= teacher.id %>/zuweisungen" class="entry-form">
         <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
         <input type="number" step="0.1" min="0" name="faktor" placeholder="Faktor" value="1" required>
-        <button type="submit" class="btn btn-start">Hinzufügen</button>
+        <button type="submit" class="btn btn-start">Zuweisen</button>
       </form>
+    </section>
+
+    <section class="panel">
+      <h2>Zuweisungen</h2>
+      <table class="entries-table">
+        <thead><tr><th>Schuljahr</th><th>Ausgleichsstunden</th><th>Faktor</th><th>Zeitstunden</th><th>Kategorie</th></tr></thead>
+        <tbody>
+          <% zuweisungen.forEach(z => { %>
+            <tr>
+              <td><%= z.schuljahr %></td>
+              <td><%= z.ausgleichsstunden %></td>
+              <td><%= z.faktor %></td>
+              <td><%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> h</td>
+              <td><%= z.category_title || 'offen (noch nicht verknüpft)' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% if (zuweisungen.length === 0) { %><p class="empty-state">Noch keine Ausgleichsstunden zugewiesen.</p><% } %>
     </section>
 
     <section class="panel">
@@ -28,7 +46,7 @@
       <table class="entries-table">
         <thead>
           <tr>
-            <th>Titel</th><th>Ausgleichsstunden</th><th>Faktor</th><th>Benötigt</th>
+            <th>Titel</th><th>Schuljahr</th><th>Benötigt</th>
             <th>Synchronisiert</th><th>Offen (ungemeldet)</th><th></th>
           </tr>
         </thead>
@@ -36,8 +54,7 @@
           <% categories.forEach(cat => { %>
             <tr class="<%= cat.archived ? 'archived' : '' %>">
               <td><%= cat.title %></td>
-              <td><%= cat.ausgleichsstunden %></td>
-              <td><%= cat.faktor %></td>
+              <td><%= cat.schuljahr %></td>
               <td><%= cat.requiredHours.toFixed(2) %> h</td>
               <td><%= cat.syncedHours.toFixed(2) %> h</td>
               <td><%= cat.unsyncedHours.toFixed(2) %> h</td>
@@ -50,7 +67,7 @@
           <% }) %>
         </tbody>
       </table>
-      <% if (categories.length === 0) { %><p class="empty-state">Noch keine Kategorien zugewiesen.</p><% } %>
+      <% if (categories.length === 0) { %><p class="empty-state">Diese Lehrkraft hat noch keine Kategorie angelegt.</p><% } %>
     </section>
   </main>
 </body>

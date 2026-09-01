@@ -20,7 +20,7 @@
     <% } %>
 
     <div class="page-header">
-      <h1>Meine Ausgleichsstunden</h1>
+      <h1>Meine Ausgleichsstunden <span class="meta">Schuljahr <%= schuljahr %></span></h1>
       <div class="sync-controls">
         <form method="post" action="/settings/auto-sync" class="inline-form">
           <label class="checkbox">
@@ -36,15 +36,60 @@
       </div>
     </div>
 
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+
+    <% if (offeneZuweisungen.length > 0) { %>
+      <section class="panel">
+        <h2>Neu zugewiesene Ausgleichsstunden</h2>
+        <p class="hint">
+          Die Schulleitung hat dir Ausgleichsstunden zugewiesen. Verknüpfe sie mit
+          einer bestehenden Kategorie oder übernimm sie als neue Kategorie.
+        </p>
+        <% offeneZuweisungen.forEach(z => { %>
+          <div class="zuweisung-item">
+            <p class="zuweisung-meta">
+              <strong><%= z.ausgleichsstunden %></strong> Ausgleichsstunden × Faktor
+              <strong><%= z.faktor %></strong> = <%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> Zeitstunden
+              <span class="meta">(Schuljahr <%= z.schuljahr %>)</span>
+            </p>
+            <div class="zuweisung-actions">
+              <% if (categories.length > 0) { %>
+                <form method="post" action="/zuweisungen/<%= z.id %>/link" class="inline-form">
+                  <select name="category_id" required>
+                    <option value="" disabled selected>Kategorie wählen…</option>
+                    <% categories.forEach(cat => { %>
+                      <option value="<%= cat.id %>"><%= cat.title %></option>
+                    <% }) %>
+                  </select>
+                  <button type="submit" class="btn">Verknüpfen</button>
+                </form>
+              <% } %>
+              <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
+                <input type="text" name="title" placeholder="Titel für neue Kategorie (optional)">
+                <button type="submit" class="btn btn-start">Übernehmen</button>
+              </form>
+            </div>
+          </div>
+        <% }) %>
+      </section>
+    <% } %>
+
+    <section class="panel">
+      <h2>Neue Kategorie anlegen</h2>
+      <form method="post" action="/categories" class="inline-form">
+        <input type="text" name="title" placeholder="z. B. Administration Moodle" required>
+        <button type="submit" class="btn btn-start">Anlegen</button>
+      </form>
+    </section>
+
     <% if (categories.length === 0) { %>
-      <p class="empty-state">Es wurden noch keine Ausgleichsstunden zugewiesen. Bitte an die Schulleitung wenden.</p>
+      <p class="empty-state">Noch keine Kategorien für dieses Schuljahr angelegt.</p>
     <% } %>
 
     <div class="card-grid">
       <% categories.forEach(cat => { %>
         <a class="card" href="/categories/<%= cat.id %>">
           <h2><%= cat.title %></h2>
-          <p class="meta"><%= cat.ausgleichsstunden %> Ausgleichsstunden × Faktor <%= cat.faktor %></p>
           <div class="progress">
             <div class="progress-bar" style="width: <%= Math.min(100, (cat.erfassteStunden / cat.benoetigteStunden) * 100 || 0) %>%"></div>
           </div>

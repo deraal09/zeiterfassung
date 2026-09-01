@@ -6,11 +6,17 @@ const { nowLocalString, diffMinutes } = require('../util/time');
 const ERROR_MESSAGES = {
   'timer-laeuft': 'Es laeuft bereits eine Zeiterfassung. Bitte zuerst stoppen.',
   'felder-fehlen': 'Bitte alle Felder ausfuellen.',
-  'ungueltige-zeit': 'Die Endzeit muss nach der Startzeit liegen.',
+  'ungueltige-stunden': 'Bitte eine gueltige Anzahl Stunden eingeben.',
 };
 
 function getOwnedCategory(id, userId) {
   return db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(id, userId);
+}
+
+function benoetigteStunden(categoryId) {
+  return db
+    .prepare('SELECT COALESCE(SUM(ausgleichsstunden * faktor),0) as h FROM zuweisungen WHERE category_id=?')
+    .get(categoryId).h;
 }
 
 router.get('/categories/:id', requireAuth, (req, res) => {
@@ -27,7 +33,7 @@ router.get('/categories/:id', requireAuth, (req, res) => {
     entries: finished,
     running,
     erfassteStunden: sumMinutes / 60,
-    benoetigteStunden: cat.ausgleichsstunden * cat.faktor,
+    benoetigteStunden: benoetigteStunden(cat.id),
     error: ERROR_MESSAGES[req.query.error] || null,
   });
 });
@@ -74,14 +80,14 @@ router.post('/categories/:id/entries', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, userId);
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
 
-  const { beschreibung, datum, von, bis } = req.body;
-  if (!datum || !von || !bis) return res.redirect(`/categories/${cat.id}?error=felder-fehlen`);
+  const { beschreibung, datum, stunden } = req.body;
+  if (!datum || !stunden) return res.redirect(`/categories/${cat.id}?error=felder-fehlen`);
 
-  const startStr = `${datum} ${von}:00`;
-  const endStr = `${datum} ${bis}:00`;
-  const duration = diffMinutes(startStr, endStr);
-  if (!(duration > 0)) return res.redirect(`/categories/${cat.id}?error=ungueltige-zeit`);
+  const duration = parseFloat(String(stunden).replace(',', '.')) * 60;
+  if (!(duration > 0)) return res.redirect(`/categories/${cat.id}?error=ungueltige-stunden`);
 
+  const startStr = `${datum} 00:00:00`;
+  const endStr = startStr;
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   db.prepare(
     `INSERT INTO time_entries

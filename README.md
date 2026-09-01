@@ -5,21 +5,30 @@ erfasst und an die Schulleitung übermittelt werden können.
 
 ## Funktionen
 
-- **LDAP-Login** – Anmeldung mit dem bestehenden Schulaccount.
-- **Kategorien (Überschriften)** – Admin weist jeder Lehrkraft eine oder mehrere
-  Ausgleichsstunden-Kategorien zu (z. B. "1 Ausgleichsstunde Administration Moodle")
-  mit Anzahl Ausgleichsstunden und einem Faktor.
-- **Umrechnung** – benötigte Zeitstunden = Ausgleichsstunden × Faktor. Fortschritt
-  wird pro Kategorie als Balken angezeigt.
+- **LDAP-Login** – Anmeldung mit dem bestehenden Schulaccount (oder lokal per
+  `/setup` angelegter Admin, siehe unten).
+- **Schuljahr-Bezug** – alle Kategorien und Zuweisungen gehören zu einem
+  Schuljahr (Format `YYYY/YY`, Wechsel jeweils zum 1. August). Mit dem neuen
+  Schuljahr fangen alle wieder bei 0 an.
+- **Admin vergibt Ausgleichsstunden** – die Schulleitung weist einer Lehrkraft
+  eine Anzahl Ausgleichsstunden + einen Faktor zu (kein Titel nötig). Die
+  Lehrkraft wird darüber im Dashboard informiert.
+- **Kategorien legt die Lehrkraft selbst an** – eigener freier Titel
+  (z. B. "Administration Moodle"). Eine neu zugewiesene Ausgleichsstunden-Menge
+  kann entweder mit einer bestehenden Kategorie **verknüpft** oder direkt als
+  neue Kategorie **übernommen** werden.
+- **Umrechnung** – benötigte Zeitstunden einer Kategorie = Summe aller damit
+  verknüpften (Ausgleichsstunden × Faktor). Fortschritt wird als Balken
+  angezeigt.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
   drücken; die Zeit wird automatisch erfasst.
-- **Nachtragen** – vergessene Zeiten können mit Datum/Von/Bis nachgetragen werden
-  und werden korrekt chronologisch einsortiert.
+- **Nachtragen** – vergessene Zeiten werden mit Datum und Anzahl Stunden
+  nachgetragen und korrekt chronologisch einsortiert.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – Lehrkräfte werden per Live-Suche aus dem LDAP gesucht und
-  bekommen Kategorien zugewiesen; Übersicht zeigt synchronisierte und noch offene
-  (ungemeldete) Stunden je Kategorie.
+  bekommen Ausgleichsstunden zugewiesen; Übersicht zeigt je Kategorie
+  synchronisierte und noch offene (ungemeldete) Stunden.
 
 ## Technik
 
