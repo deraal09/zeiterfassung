@@ -15,7 +15,11 @@ function getOwnedCategory(id, userId) {
 
 function benoetigteStunden(categoryId) {
   return db
-    .prepare('SELECT COALESCE(SUM(ausgleichsstunden * faktor),0) as h FROM zuweisungen WHERE category_id=?')
+    .prepare(
+      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.faktor,0)),0) as h
+       FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
+       WHERE z.category_id=?`
+    )
     .get(categoryId).h;
 }
 

@@ -38,20 +38,32 @@ function initDb() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- Zuweisungen: Admin vergibt Ausgleichsstunden + Faktor fuer ein
-    -- Schuljahr an eine Lehrkraft, zunaechst ohne Kategorie (category_id
-    -- NULL = "offen"/noch nicht verknuepft). Die Lehrkraft verknuepft sie
+    -- Zuweisungen: Admin vergibt Ausgleichsstunden fuer ein Schuljahr an
+    -- eine Lehrkraft, zunaechst ohne Kategorie (category_id NULL =
+    -- "offen"/noch nicht verknuepft). Die Lehrkraft verknuepft sie
     -- anschliessend mit einer eigenen Kategorie oder uebernimmt sie direkt
-    -- (was ebenfalls eine Kategorie anlegt und sofort verknuepft).
+    -- (was ebenfalls eine Kategorie anlegt und sofort verknuepft). Der
+    -- Faktor steht NICHT hier, sondern zentral in schuljahr_faktoren -
+    -- einmal pro Schuljahr, gilt fuer alle Zuweisungen dieses Schuljahres.
     CREATE TABLE IF NOT EXISTS zuweisungen (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       schuljahr TEXT NOT NULL,
       ausgleichsstunden REAL NOT NULL,
-      faktor REAL NOT NULL DEFAULT 1,
       category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- Ein Faktor je Schuljahr, zentral vom Admin gepflegt. Aendert sich der
+    -- Wert, wirkt sich das sofort auf alle Zuweisungen dieses Schuljahres
+    -- aus (der Faktor wird bei der Berechnung live nachgeschlagen, nicht
+    -- in der Zuweisung eingefroren).
+    CREATE TABLE IF NOT EXISTS schuljahr_faktoren (
+      schuljahr TEXT PRIMARY KEY,
+      faktor REAL NOT NULL,
+      updated_by TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS time_entries (
@@ -113,6 +125,28 @@ function initDb() {
     db.prepare('UPDATE categories SET schuljahr = ? WHERE schuljahr IS NULL').run(schuljahr);
     db.exec('ALTER TABLE categories DROP COLUMN ausgleichsstunden');
     db.exec('ALTER TABLE categories DROP COLUMN faktor');
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung des zentralen
+  // Schuljahr-Faktors: der Faktor stand bisher direkt in jeder Zuweisung.
+  // Fuer jedes Schuljahr wird der Faktor der jeweils ersten Zuweisung als
+  // Startwert fuer schuljahr_faktoren uebernommen; danach wird die Spalte
+  // aus zuweisungen entfernt.
+  const zuweisungColumns = db.prepare('PRAGMA table_info(zuweisungen)').all().map((c) => c.name);
+  if (zuweisungColumns.includes('faktor')) {
+    const insertFaktor = db.prepare(
+      'INSERT OR IGNORE INTO schuljahr_faktoren (schuljahr, faktor) VALUES (?,?)'
+    );
+    const proSchuljahr = db
+      .prepare(
+        `SELECT schuljahr, faktor FROM zuweisungen
+         WHERE id IN (SELECT MIN(id) FROM zuweisungen GROUP BY schuljahr)`
+      )
+      .all();
+    for (const row of proSchuljahr) {
+      insertFaktor.run(row.schuljahr, row.faktor);
+    }
+    db.exec('ALTER TABLE zuweisungen DROP COLUMN faktor');
   }
 }
 

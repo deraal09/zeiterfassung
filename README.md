@@ -11,15 +11,19 @@ erfasst und an die Schulleitung übermittelt werden können.
   Schuljahr (Format `YYYY/YY`, Wechsel jeweils zum 1. August). Mit dem neuen
   Schuljahr fangen alle wieder bei 0 an.
 - **Admin vergibt Ausgleichsstunden** – die Schulleitung weist einer Lehrkraft
-  eine Anzahl Ausgleichsstunden + einen Faktor zu (kein Titel nötig). Die
-  Lehrkraft wird darüber im Dashboard informiert.
+  eine Anzahl Ausgleichsstunden zu (kein Titel nötig, korrigierbar). Die
+  Lehrkraft wird darüber im Dashboard informiert. Optional kann der Admin die
+  Zuweisung direkt mit einer Kategorie der Lehrkraft verknüpfen.
+- **Faktor gilt zentral pro Schuljahr** – einmal vom Admin festgelegt, für
+  alle Lehrkräfte gleich. Ändert sich der Faktor, wirkt sich das sofort auf
+  alle Zuweisungen dieses Schuljahres aus.
 - **Kategorien legt die Lehrkraft selbst an** – eigener freier Titel
   (z. B. "Administration Moodle"). Eine neu zugewiesene Ausgleichsstunden-Menge
   kann entweder mit einer bestehenden Kategorie **verknüpft** oder direkt als
   neue Kategorie **übernommen** werden.
 - **Umrechnung** – benötigte Zeitstunden einer Kategorie = Summe aller damit
-  verknüpften (Ausgleichsstunden × Faktor). Fortschritt wird als Balken
-  angezeigt.
+  verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird als
+  Balken angezeigt.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
   drücken; die Zeit wird automatisch erfasst.
 - **Nachtragen** – vergessene Zeiten werden mit Datum und Anzahl Stunden

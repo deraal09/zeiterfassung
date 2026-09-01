@@ -12,6 +12,26 @@
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
 
     <section class="panel">
+      <h2>Faktor <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+      <p class="hint">
+        Gilt einheitlich für alle Lehrkräfte in diesem Schuljahr: benötigte
+        Zeitstunden = Ausgleichsstunden × Faktor. Eine Änderung wirkt sich
+        sofort auf alle bereits zugewiesenen Ausgleichsstunden dieses
+        Schuljahres aus.
+      </p>
+      <form method="post" action="/admin/faktor" class="inline-form">
+        <input type="number" step="0.1" min="0" name="faktor" placeholder="Faktor" value="<%= faktor !== null ? faktor : '' %>" required>
+        <button type="submit" class="btn btn-start"><%= faktor !== null ? 'Aktualisieren' : 'Festlegen' %></button>
+      </form>
+      <% if (faktor === null) { %>
+        <p class="alert alert-error" style="margin-top: 12px;">
+          Noch kein Faktor für dieses Schuljahr festgelegt. Ohne Faktor können
+          keine Ausgleichsstunden zugewiesen werden.
+        </p>
+      <% } %>
+    </section>
+
+    <section class="panel">
       <h2>Ausgleichsstunden zuweisen</h2>
       <p class="hint">
         Benutzernamen direkt eintippen oder aus der LDAP-Suche auswählen
@@ -28,10 +48,7 @@
         <input type="hidden" name="displayName" id="assign-displayName">
         <input type="hidden" name="email" id="assign-email">
         <p id="assign-selected" class="selected-user"></p>
-        <div class="row">
-          <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
-          <input type="number" step="0.1" min="0" name="faktor" placeholder="Faktor" value="1" required>
-        </div>
+        <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
         <button type="submit" class="btn btn-start">Zuweisen</button>
       </form>
     </section>

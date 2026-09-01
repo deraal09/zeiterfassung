@@ -21,7 +21,11 @@ function activeTimer(userId) {
 
 function benoetigteStunden(categoryId) {
   return db
-    .prepare('SELECT COALESCE(SUM(ausgleichsstunden * faktor),0) as h FROM zuweisungen WHERE category_id=?')
+    .prepare(
+      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.faktor,0)),0) as h
+       FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
+       WHERE z.category_id=?`
+    )
     .get(categoryId).h;
 }
 
@@ -45,7 +49,11 @@ router.get('/', requireAuth, (req, res) => {
   });
 
   const offeneZuweisungen = db
-    .prepare('SELECT * FROM zuweisungen WHERE user_id=? AND category_id IS NULL ORDER BY created_at DESC')
+    .prepare(
+      `SELECT z.*, COALESCE(sf.faktor,0) as faktor
+       FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
+       WHERE z.user_id=? AND z.category_id IS NULL ORDER BY z.created_at DESC`
+    )
     .all(userId);
 
   const unsyncedCount = db

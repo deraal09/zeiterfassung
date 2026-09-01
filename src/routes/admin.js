@@ -5,13 +5,20 @@ const ldap = require('../ldap');
 const { aktuellesSchuljahr } = require('../util/schuljahr');
 
 const ERROR_MESSAGES = {
-  'ungueltige-eingabe': 'Bitte Ausgleichsstunden und Faktor gueltig ausfuellen.',
+  'ungueltige-eingabe': 'Bitte eine gueltige Anzahl Ausgleichsstunden eingeben.',
   'kein-benutzer': 'Bitte zuerst eine Lehrkraft aus der LDAP-Suche auswaehlen.',
   'keine-kategorie': 'Bitte eine Kategorie dieser Lehrkraft auswaehlen.',
+  'kein-faktor': 'Bitte zuerst den Faktor fuer dieses Schuljahr festlegen.',
+  'ungueltiger-faktor': 'Bitte einen gueltigen Faktor eingeben.',
 };
 
 function parseNumber(value) {
   return parseFloat(String(value).replace(',', '.'));
+}
+
+function faktorFuer(schuljahr) {
+  const row = db.prepare('SELECT faktor FROM schuljahr_faktoren WHERE schuljahr=?').get(schuljahr);
+  return row ? row.faktor : null;
 }
 
 router.get('/', requireAdmin, (req, res) => {
@@ -22,7 +29,26 @@ router.get('/', requireAdmin, (req, res) => {
        FROM users u ORDER BY u.display_name COLLATE NOCASE`
     )
     .all();
-  res.render('admin/index', { users, error: ERROR_MESSAGES[req.query.error] || null });
+  const schuljahr = aktuellesSchuljahr();
+  res.render('admin/index', {
+    users,
+    schuljahr,
+    faktor: faktorFuer(schuljahr),
+    error: ERROR_MESSAGES[req.query.error] || null,
+  });
+});
+
+router.post('/faktor', requireAdmin, (req, res) => {
+  const f = parseNumber(req.body.faktor);
+  if (!(f > 0)) return res.redirect('/admin?error=ungueltiger-faktor');
+
+  db.prepare(
+    `INSERT INTO schuljahr_faktoren (schuljahr, faktor, updated_by, updated_at)
+     VALUES (?,?,?,datetime('now'))
+     ON CONFLICT(schuljahr) DO UPDATE SET faktor=excluded.faktor, updated_by=excluded.updated_by, updated_at=excluded.updated_at`
+  ).run(aktuellesSchuljahr(), f, req.session.user.username);
+
+  res.redirect('/admin');
 });
 
 router.get('/ldap-search', requireAdmin, async (req, res) => {
@@ -47,7 +73,11 @@ router.get('/users/:id', requireAdmin, (req, res) => {
 
   const categories = rawCategories.map((cat) => {
     const required = db
-      .prepare('SELECT COALESCE(SUM(ausgleichsstunden * faktor),0) as h FROM zuweisungen WHERE category_id=?')
+      .prepare(
+        `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.faktor,0)),0) as h
+         FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
+         WHERE z.category_id=?`
+      )
       .get(cat.id).h;
     const row = db
       .prepare(
@@ -67,8 +97,10 @@ router.get('/users/:id', requireAdmin, (req, res) => {
 
   const zuweisungen = db
     .prepare(
-      `SELECT z.*, c.title as category_title
-       FROM zuweisungen z LEFT JOIN categories c ON c.id = z.category_id
+      `SELECT z.*, COALESCE(sf.faktor,0) as faktor, c.title as category_title
+       FROM zuweisungen z
+       LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
+       LEFT JOIN categories c ON c.id = z.category_id
        WHERE z.user_id=? ORDER BY z.created_at DESC`
     )
     .all(teacher.id);
@@ -87,9 +119,11 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   if (!teacher) return res.status(404).render('error', { message: 'Lehrkraft nicht gefunden.' });
 
   const h = parseNumber(req.body.ausgleichsstunden);
-  const f = parseNumber(req.body.faktor);
-  if (!(h > 0) || !(f > 0)) {
-    return res.redirect(`/admin/users/${teacher.id}?error=ungueltige-eingabe`);
+  if (!(h > 0)) return res.redirect(`/admin/users/${teacher.id}?error=ungueltige-eingabe`);
+
+  const schuljahr = aktuellesSchuljahr();
+  if (faktorFuer(schuljahr) === null) {
+    return res.redirect(`/admin/users/${teacher.id}?error=kein-faktor`);
   }
 
   // Verknuepfung mit einer Kategorie der Lehrkraft ist optional - der Admin
@@ -104,10 +138,21 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   }
 
   db.prepare(
-    'INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, faktor, category_id, created_by) VALUES (?,?,?,?,?,?)'
-  ).run(teacher.id, aktuellesSchuljahr(), h, f, categoryId, req.session.user.username);
+    'INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, category_id, created_by) VALUES (?,?,?,?,?)'
+  ).run(teacher.id, schuljahr, h, categoryId, req.session.user.username);
 
   res.redirect(`/admin/users/${teacher.id}`);
+});
+
+router.post('/zuweisungen/:id/edit', requireAdmin, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
+  if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
+
+  const h = parseNumber(req.body.ausgleichsstunden);
+  if (!(h > 0)) return res.redirect(`/admin/users/${zuweisung.user_id}?error=ungueltige-eingabe`);
+
+  db.prepare('UPDATE zuweisungen SET ausgleichsstunden=? WHERE id=?').run(h, zuweisung.id);
+  res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
 
 router.post('/zuweisungen/:id/link', requireAdmin, (req, res) => {
@@ -132,7 +177,7 @@ router.post('/categories/:id/archive', requireAdmin, (req, res) => {
 });
 
 router.post('/assign', requireAdmin, (req, res) => {
-  const { username, displayName, email, ausgleichsstunden, faktor } = req.body;
+  const { username, displayName, email, ausgleichsstunden } = req.body;
   if (!username) return res.redirect('/admin?error=kein-benutzer');
 
   let user = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(username);
@@ -144,16 +189,17 @@ router.post('/assign', requireAdmin, (req, res) => {
   }
 
   const h = parseNumber(ausgleichsstunden);
-  const f = parseNumber(faktor);
-  if (!(h > 0) || !(f > 0)) {
-    return res.redirect(`/admin/users/${user.id}?error=ungueltige-eingabe`);
+  if (!(h > 0)) return res.redirect(`/admin/users/${user.id}?error=ungueltige-eingabe`);
+
+  const schuljahr = aktuellesSchuljahr();
+  if (faktorFuer(schuljahr) === null) {
+    return res.redirect(`/admin/users/${user.id}?error=kein-faktor`);
   }
 
-  db.prepare('INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, faktor, created_by) VALUES (?,?,?,?,?)').run(
+  db.prepare('INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, created_by) VALUES (?,?,?,?)').run(
     user.id,
-    aktuellesSchuljahr(),
+    schuljahr,
     h,
-    f,
     req.session.user.username
   );
 
