@@ -9,7 +9,10 @@
         <form action="/logout" method="post" class="inline-form">
           <button type="submit" class="link-button">Abmelden</button>
         </form>
+        <%- include('theme-toggle') %>
       </nav>
+    <% } else { %>
+      <%- include('theme-toggle') %>
     <% } %>
   </div>
 </header>

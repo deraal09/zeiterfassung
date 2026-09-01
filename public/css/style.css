@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light dark;
   --color-bg: #f4f6f8;
   --color-surface: #ffffff;
   --color-border: #dde2e7;
@@ -8,7 +9,48 @@
   --color-primary-dark: #1d4ed8;
   --color-danger: #dc2626;
   --color-success: #16a34a;
+  --color-timer-bg: #eff6ff;
+  --color-timer-border: #bfdbfe;
+  --color-alert-error-bg: #fef2f2;
+  --color-alert-error-border: #fecaca;
+  --color-btn-text-on-accent: #ffffff;
   --radius: 8px;
+}
+
+/* System-Einstellung folgen, solange kein manuelles Theme gewaehlt wurde */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #14181f;
+    --color-surface: #1c222c;
+    --color-border: #2e3644;
+    --color-text: #e6e9ef;
+    --color-muted: #96a1b3;
+    --color-primary: #5b8def;
+    --color-primary-dark: #7ba3f5;
+    --color-danger: #f87171;
+    --color-success: #4ade80;
+    --color-timer-bg: #1a2740;
+    --color-timer-border: #2c4a75;
+    --color-alert-error-bg: #3a1d1d;
+    --color-alert-error-border: #5c2b2b;
+  }
+}
+
+/* Manuell erzwungenes Dark Theme, unabhaengig von der Systemeinstellung */
+:root[data-theme='dark'] {
+  --color-bg: #14181f;
+  --color-surface: #1c222c;
+  --color-border: #2e3644;
+  --color-text: #e6e9ef;
+  --color-muted: #96a1b3;
+  --color-primary: #5b8def;
+  --color-primary-dark: #7ba3f5;
+  --color-danger: #f87171;
+  --color-success: #4ade80;
+  --color-timer-bg: #1a2740;
+  --color-timer-border: #2c4a75;
+  --color-alert-error-bg: #3a1d1d;
+  --color-alert-error-border: #5c2b2b;
 }
 
 * { box-sizing: border-box; }
@@ -107,8 +149,8 @@ h1 .meta, h2 .meta {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--color-timer-bg);
+  border: 1px solid var(--color-timer-border);
   border-radius: var(--radius);
   padding: 14px 18px;
   margin-bottom: 16px;
@@ -183,9 +225,9 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .empty-state { color: var(--color-muted); font-style: italic; }
 
 .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 16px; }
-.alert-error { background: #fef2f2; border: 1px solid #fecaca; color: var(--color-danger); }
+.alert-error { background: var(--color-alert-error-bg); border: 1px solid var(--color-alert-error-border); color: var(--color-danger); }
 
-.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-page { position: relative; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 .login-box {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -216,3 +258,24 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .autocomplete-item { padding: 8px 12px; cursor: pointer; font-size: 0.9rem; }
 .autocomplete-item:hover { background: var(--color-bg); }
 .selected-user { font-size: 0.85rem; color: var(--color-success); min-height: 1.2em; margin: 0; }
+
+.theme-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.theme-toggle button {
+  background: var(--color-surface);
+  color: var(--color-muted);
+  border: none;
+  border-left: 1px solid var(--color-border);
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.theme-toggle button:first-child { border-left: none; }
+.theme-toggle button:hover { color: var(--color-text); }
+.theme-toggle button.active { background: var(--color-primary); color: #fff; }
+.login-page .theme-toggle { position: absolute; top: 16px; right: 16px; }
