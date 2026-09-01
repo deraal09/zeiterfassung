@@ -8,17 +8,27 @@ const ERROR_MESSAGES = {
   'ungueltige-eingabe': 'Bitte eine gueltige Anzahl Ausgleichsstunden eingeben.',
   'kein-benutzer': 'Bitte zuerst eine Lehrkraft aus der LDAP-Suche auswaehlen.',
   'keine-kategorie': 'Bitte eine Kategorie dieser Lehrkraft auswaehlen.',
-  'kein-faktor': 'Bitte zuerst den Faktor fuer dieses Schuljahr festlegen.',
-  'ungueltiger-faktor': 'Bitte einen gueltigen Faktor eingeben.',
+  'kein-faktor': 'Bitte zuerst Zeitstunden pro Woche und Schulwochen fuer dieses Schuljahr festlegen.',
+  'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
 };
 
 function parseNumber(value) {
   return parseFloat(String(value).replace(',', '.'));
 }
 
-function faktorFuer(schuljahr) {
-  const row = db.prepare('SELECT faktor FROM schuljahr_faktoren WHERE schuljahr=?').get(schuljahr);
-  return row ? row.faktor : null;
+// Der Faktor wird nicht direkt eingegeben, sondern aus Zeitstunden pro
+// Woche x Schulwochen berechnet (z. B. 1,7 x 40 = 68 Zeitstunden je
+// Ausgleichsstunde und Schuljahr).
+function faktorSettingsFuer(schuljahr) {
+  const row = db
+    .prepare('SELECT zeitstunden_pro_woche, schulwochen FROM schuljahr_faktoren WHERE schuljahr=?')
+    .get(schuljahr);
+  if (!row) return null;
+  return {
+    zeitstundenProWoche: row.zeitstunden_pro_woche,
+    schulwochen: row.schulwochen,
+    faktor: row.zeitstunden_pro_woche * row.schulwochen,
+  };
 }
 
 router.get('/', requireAdmin, (req, res) => {
@@ -33,20 +43,27 @@ router.get('/', requireAdmin, (req, res) => {
   res.render('admin/index', {
     users,
     schuljahr,
-    faktor: faktorFuer(schuljahr),
+    faktorSettings: faktorSettingsFuer(schuljahr),
     error: ERROR_MESSAGES[req.query.error] || null,
   });
 });
 
 router.post('/faktor', requireAdmin, (req, res) => {
-  const f = parseNumber(req.body.faktor);
-  if (!(f > 0)) return res.redirect('/admin?error=ungueltiger-faktor');
+  const zeitstunden = parseNumber(req.body.zeitstunden);
+  const schulwochen = parseNumber(req.body.schulwochen);
+  if (!(zeitstunden > 0) || !(schulwochen > 0)) {
+    return res.redirect('/admin?error=ungueltiger-faktor');
+  }
 
   db.prepare(
-    `INSERT INTO schuljahr_faktoren (schuljahr, faktor, updated_by, updated_at)
-     VALUES (?,?,?,datetime('now'))
-     ON CONFLICT(schuljahr) DO UPDATE SET faktor=excluded.faktor, updated_by=excluded.updated_by, updated_at=excluded.updated_at`
-  ).run(aktuellesSchuljahr(), f, req.session.user.username);
+    `INSERT INTO schuljahr_faktoren (schuljahr, zeitstunden_pro_woche, schulwochen, updated_by, updated_at)
+     VALUES (?,?,?,?,datetime('now'))
+     ON CONFLICT(schuljahr) DO UPDATE SET
+       zeitstunden_pro_woche=excluded.zeitstunden_pro_woche,
+       schulwochen=excluded.schulwochen,
+       updated_by=excluded.updated_by,
+       updated_at=excluded.updated_at`
+  ).run(aktuellesSchuljahr(), zeitstunden, schulwochen, req.session.user.username);
 
   res.redirect('/admin');
 });
@@ -74,7 +91,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
   const categories = rawCategories.map((cat) => {
     const required = db
       .prepare(
-        `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.faktor,0)),0) as h
+        `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h
          FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
          WHERE z.category_id=?`
       )
@@ -97,7 +114,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
 
   const zuweisungen = db
     .prepare(
-      `SELECT z.*, COALESCE(sf.faktor,0) as faktor, c.title as category_title
+      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor, c.title as category_title
        FROM zuweisungen z
        LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        LEFT JOIN categories c ON c.id = z.category_id
@@ -122,7 +139,7 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   if (!(h > 0)) return res.redirect(`/admin/users/${teacher.id}?error=ungueltige-eingabe`);
 
   const schuljahr = aktuellesSchuljahr();
-  if (faktorFuer(schuljahr) === null) {
+  if (faktorSettingsFuer(schuljahr) === null) {
     return res.redirect(`/admin/users/${teacher.id}?error=kein-faktor`);
   }
 
@@ -192,7 +209,7 @@ router.post('/assign', requireAdmin, (req, res) => {
   if (!(h > 0)) return res.redirect(`/admin/users/${user.id}?error=ungueltige-eingabe`);
 
   const schuljahr = aktuellesSchuljahr();
-  if (faktorFuer(schuljahr) === null) {
+  if (faktorSettingsFuer(schuljahr) === null) {
     return res.redirect(`/admin/users/${user.id}?error=kein-faktor`);
   }
 

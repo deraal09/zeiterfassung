@@ -22,7 +22,7 @@ function activeTimer(userId) {
 function benoetigteStunden(categoryId) {
   return db
     .prepare(
-      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.faktor,0)),0) as h
+      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h
        FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        WHERE z.category_id=?`
     )
@@ -50,7 +50,7 @@ router.get('/', requireAuth, (req, res) => {
 
   const offeneZuweisungen = db
     .prepare(
-      `SELECT z.*, COALESCE(sf.faktor,0) as faktor
+      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor
        FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        WHERE z.user_id=? AND z.category_id IS NULL ORDER BY z.created_at DESC`
     )

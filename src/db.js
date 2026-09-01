@@ -55,13 +55,16 @@ function initDb() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- Ein Faktor je Schuljahr, zentral vom Admin gepflegt. Aendert sich der
-    -- Wert, wirkt sich das sofort auf alle Zuweisungen dieses Schuljahres
-    -- aus (der Faktor wird bei der Berechnung live nachgeschlagen, nicht
-    -- in der Zuweisung eingefroren).
+    -- Ein Faktor je Schuljahr, zentral vom Admin gepflegt - berechnet aus
+    -- Zeitstunden pro Woche x Schulwochen (z. B. 1,7 x 40 = 68 Zeitstunden
+    -- je Ausgleichsstunde und Schuljahr). Aendert sich einer der beiden
+    -- Werte, wirkt sich das sofort auf alle Zuweisungen dieses Schuljahres
+    -- aus (wird bei der Berechnung live nachgeschlagen, nicht in der
+    -- Zuweisung eingefroren).
     CREATE TABLE IF NOT EXISTS schuljahr_faktoren (
       schuljahr TEXT PRIMARY KEY,
-      faktor REAL NOT NULL,
+      zeitstunden_pro_woche REAL NOT NULL,
+      schulwochen REAL NOT NULL,
       updated_by TEXT,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -147,6 +150,28 @@ function initDb() {
       insertFaktor.run(row.schuljahr, row.faktor);
     }
     db.exec('ALTER TABLE zuweisungen DROP COLUMN faktor');
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung von Zeitstunden/Schulwochen:
+  // schuljahr_faktoren trug bisher einen fertigen Faktor direkt. Um den
+  // bisher berechneten Wert nicht zu veraendern, wird er unveraendert als
+  // zeitstunden_pro_woche uebernommen (Schulwochen = 1) - der Admin kann
+  // ihn anschliessend ueber die neue Eingabe sauber in beide Werte
+  // aufteilen.
+  const faktorColumns = db.prepare('PRAGMA table_info(schuljahr_faktoren)').all().map((c) => c.name);
+  if (faktorColumns.includes('faktor')) {
+    if (!faktorColumns.includes('zeitstunden_pro_woche')) {
+      db.exec('ALTER TABLE schuljahr_faktoren ADD COLUMN zeitstunden_pro_woche REAL');
+    }
+    if (!faktorColumns.includes('schulwochen')) {
+      db.exec('ALTER TABLE schuljahr_faktoren ADD COLUMN schulwochen REAL');
+    }
+    db.exec(
+      `UPDATE schuljahr_faktoren
+       SET zeitstunden_pro_woche = COALESCE(zeitstunden_pro_woche, faktor),
+           schulwochen = COALESCE(schulwochen, 1)`
+    );
+    db.exec('ALTER TABLE schuljahr_faktoren DROP COLUMN faktor');
   }
 }
 

@@ -15,8 +15,10 @@ erfasst und an die Schulleitung übermittelt werden können.
   Lehrkraft wird darüber im Dashboard informiert. Optional kann der Admin die
   Zuweisung direkt mit einer Kategorie der Lehrkraft verknüpfen.
 - **Faktor gilt zentral pro Schuljahr** – einmal vom Admin festgelegt, für
-  alle Lehrkräfte gleich. Ändert sich der Faktor, wirkt sich das sofort auf
-  alle Zuweisungen dieses Schuljahres aus.
+  alle Lehrkräfte gleich, berechnet aus Zeitstunden pro Woche × Schulwochen
+  (z. B. 1,7 × 40 = 68 Zeitstunden je Ausgleichsstunde und Schuljahr).
+  Ändert sich einer der beiden Werte, wirkt sich das sofort auf alle
+  Zuweisungen dieses Schuljahres aus.
 - **Kategorien legt die Lehrkraft selbst an** – eigener freier Titel
   (z. B. "Administration Moodle"). Eine neu zugewiesene Ausgleichsstunden-Menge
   kann entweder mit einer bestehenden Kategorie **verknüpft** oder direkt als

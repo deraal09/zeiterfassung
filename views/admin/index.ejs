@@ -15,18 +15,24 @@
       <h2>Faktor <span class="meta">Schuljahr <%= schuljahr %></span></h2>
       <p class="hint">
         Gilt einheitlich für alle Lehrkräfte in diesem Schuljahr: benötigte
-        Zeitstunden = Ausgleichsstunden × Faktor. Eine Änderung wirkt sich
-        sofort auf alle bereits zugewiesenen Ausgleichsstunden dieses
-        Schuljahres aus.
+        Zeitstunden = Ausgleichsstunden × Zeitstunden pro Woche × Schulwochen.
+        Z. B. 1,7 Zeitstunden pro Woche × 40 Schulwochen = 68 Zeitstunden je
+        Ausgleichsstunde und Schuljahr. Eine Änderung wirkt sich sofort auf
+        alle bereits zugewiesenen Ausgleichsstunden dieses Schuljahres aus.
       </p>
-      <form method="post" action="/admin/faktor" class="inline-form">
-        <input type="number" step="0.1" min="0" name="faktor" placeholder="Faktor" value="<%= faktor !== null ? faktor : '' %>" required>
-        <button type="submit" class="btn btn-start"><%= faktor !== null ? 'Aktualisieren' : 'Festlegen' %></button>
+      <form method="post" action="/admin/faktor" class="entry-form">
+        <input type="number" step="0.1" min="0" name="zeitstunden" placeholder="Zeitstunden pro Woche" value="<%= faktorSettings ? faktorSettings.zeitstundenProWoche : '' %>" required>
+        <input type="number" step="1" min="0" name="schulwochen" placeholder="Schulwochen" value="<%= faktorSettings ? faktorSettings.schulwochen : '' %>" required>
+        <button type="submit" class="btn btn-start"><%= faktorSettings ? 'Aktualisieren' : 'Festlegen' %></button>
       </form>
-      <% if (faktor === null) { %>
+      <% if (faktorSettings) { %>
+        <p class="hint" style="margin-top: 12px; margin-bottom: 0;">
+          = <%= faktorSettings.faktor.toFixed(2) %> Zeitstunden je Ausgleichsstunde und Schuljahr
+        </p>
+      <% } else { %>
         <p class="alert alert-error" style="margin-top: 12px;">
-          Noch kein Faktor für dieses Schuljahr festgelegt. Ohne Faktor können
-          keine Ausgleichsstunden zugewiesen werden.
+          Noch keine Werte für dieses Schuljahr festgelegt. Ohne diese Angabe
+          können keine Ausgleichsstunden zugewiesen werden.
         </p>
       <% } %>
     </section>
