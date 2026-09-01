@@ -1,10 +1,63 @@
 const router = require('express').Router();
+const bcrypt = require('bcryptjs');
 const ldap = require('../ldap');
 const config = require('../config');
 const { db } = require('../db');
 
+const MIN_USER_LEN = 3;
+const MIN_PW_LEN = 8;
+
+function userCount() {
+  return db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+}
+
+// Solange noch kein einziger Nutzer existiert, kann hier ein erster lokaler
+// Admin angelegt werden - unabhaengig davon, ob LDAP schon funktioniert.
+router.get('/setup', (req, res) => {
+  if (userCount() > 0) return res.redirect('/login');
+  res.render('setup', { error: null });
+});
+
+router.post('/setup', (req, res) => {
+  if (userCount() > 0) return res.redirect('/login');
+
+  const username = (req.body.username || '').trim();
+  const displayName = (req.body.displayName || '').trim() || username;
+  const { password, password2 } = req.body;
+
+  if (username.length < MIN_USER_LEN) {
+    return res.render('setup', { error: 'Benutzername muss mindestens 3 Zeichen haben.' });
+  }
+  if (password !== password2) {
+    return res.render('setup', { error: 'Passwoerter stimmen nicht ueberein.' });
+  }
+  if (!password || password.length < MIN_PW_LEN) {
+    return res.render('setup', { error: 'Passwort muss mindestens 8 Zeichen haben.' });
+  }
+
+  const passwordHash = bcrypt.hashSync(password, 12);
+  const info = db
+    .prepare(
+      "INSERT INTO users (username, display_name, is_admin, auth_source, password_hash, last_login) VALUES (?,?,1,'local',?,datetime('now'))"
+    )
+    .run(username, displayName, passwordHash);
+
+  req.session.regenerate((err) => {
+    if (err) return res.render('setup', { error: 'Fehler beim Anlegen. Bitte erneut versuchen.' });
+    req.session.user = {
+      id: info.lastInsertRowid,
+      username,
+      displayName,
+      isAdmin: true,
+      autoSync: false,
+    };
+    res.redirect('/admin');
+  });
+});
+
 router.get('/login', (req, res) => {
   if (req.session.user) return res.redirect('/');
+  if (userCount() === 0) return res.redirect('/setup');
   res.render('login', { error: null });
 });
 
@@ -13,9 +66,32 @@ router.post('/login', async (req, res) => {
   if (!username || !password) {
     return res.render('login', { error: 'Bitte Benutzername und Passwort eingeben.' });
   }
+  const uname = username.trim();
+
+  // Lokaler Account (z. B. per /setup angelegt) geht vor LDAP.
+  const localRow = db
+    .prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE AND auth_source = 'local'")
+    .get(uname);
+  if (localRow) {
+    if (!bcrypt.compareSync(password, localRow.password_hash || '')) {
+      return res.render('login', { error: 'Benutzername oder Passwort ist falsch.' });
+    }
+    db.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").run(localRow.id);
+    return req.session.regenerate((err) => {
+      if (err) return res.render('login', { error: 'Fehler beim Anmelden. Bitte erneut versuchen.' });
+      req.session.user = {
+        id: localRow.id,
+        username: localRow.username,
+        displayName: localRow.display_name,
+        isAdmin: !!localRow.is_admin,
+        autoSync: !!localRow.auto_sync,
+      };
+      res.redirect('/');
+    });
+  }
 
   try {
-    const result = await ldap.authenticate(username.trim(), password);
+    const result = await ldap.authenticate(uname, password);
     if (!result || !result.username) {
       return res.render('login', { error: 'Benutzername oder Passwort ist falsch.' });
     }

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Ersteinrichtung – Zeiterfassung</title>
+  <%- include('partials/head') %>
+</head>
+<body class="login-page">
+  <main class="login-box">
+    <h1>Zeiterfassung</h1>
+    <p class="subtitle">Ersten Admin-Account anlegen</p>
+    <p class="hint">
+      Es existiert noch kein Benutzer. Lege hier einen lokalen Admin-Account
+      an (unabhängig von LDAP), um die Anwendung einzurichten.
+    </p>
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <form method="post" action="/setup">
+      <label for="username">Benutzername</label>
+      <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+      <label for="displayName">Anzeigename</label>
+      <input type="text" id="displayName" name="displayName" autocomplete="name">
+      <label for="password">Passwort</label>
+      <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8">
+      <label for="password2">Passwort wiederholen</label>
+      <input type="password" id="password2" name="password2" autocomplete="new-password" required minlength="8">
+      <button type="submit" class="btn btn-start btn-block">Admin anlegen</button>
+    </form>
+  </main>
+</body>
+</html>

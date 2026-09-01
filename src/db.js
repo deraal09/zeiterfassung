@@ -18,6 +18,8 @@ function initDb() {
       email TEXT,
       is_admin INTEGER NOT NULL DEFAULT 0,
       auto_sync INTEGER NOT NULL DEFAULT 0,
+      auth_source TEXT NOT NULL DEFAULT 'ldap',
+      password_hash TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       last_login TEXT
     );
@@ -51,6 +53,16 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_entries_user ON time_entries(user_id);
     CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_id);
   `);
+
+  // Migration fuer Datenbanken, die vor Einfuehrung des lokalen
+  // Admin-Logins (/setup) angelegt wurden.
+  const columns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!columns.includes('auth_source')) {
+    db.exec("ALTER TABLE users ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'ldap'");
+  }
+  if (!columns.includes('password_hash')) {
+    db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+  }
 }
 
 module.exports = { db, initDb };
