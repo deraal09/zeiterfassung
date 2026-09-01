@@ -7,6 +7,7 @@ const { aktuellesSchuljahr } = require('../util/schuljahr');
 const ERROR_MESSAGES = {
   'ungueltige-eingabe': 'Bitte Ausgleichsstunden und Faktor gueltig ausfuellen.',
   'kein-benutzer': 'Bitte zuerst eine Lehrkraft aus der LDAP-Suche auswaehlen.',
+  'keine-kategorie': 'Bitte eine Kategorie dieser Lehrkraft auswaehlen.',
 };
 
 function parseNumber(value) {
@@ -91,15 +92,36 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
     return res.redirect(`/admin/users/${teacher.id}?error=ungueltige-eingabe`);
   }
 
-  db.prepare('INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, faktor, created_by) VALUES (?,?,?,?,?)').run(
-    teacher.id,
-    aktuellesSchuljahr(),
-    h,
-    f,
-    req.session.user.username
-  );
+  // Verknuepfung mit einer Kategorie der Lehrkraft ist optional - der Admin
+  // kann die Zuweisung direkt zuordnen, muss aber nicht (dann erledigt es
+  // die Lehrkraft selbst im Dashboard ueber "Verknuepfen"/"Uebernehmen").
+  let categoryId = null;
+  if (req.body.category_id) {
+    const category = db
+      .prepare('SELECT id FROM categories WHERE id=? AND user_id=?')
+      .get(req.body.category_id, teacher.id);
+    if (category) categoryId = category.id;
+  }
+
+  db.prepare(
+    'INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, faktor, category_id, created_by) VALUES (?,?,?,?,?,?)'
+  ).run(teacher.id, aktuellesSchuljahr(), h, f, categoryId, req.session.user.username);
 
   res.redirect(`/admin/users/${teacher.id}`);
+});
+
+router.post('/zuweisungen/:id/link', requireAdmin, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
+  if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
+  if (zuweisung.category_id) return res.redirect(`/admin/users/${zuweisung.user_id}`);
+
+  const category = db
+    .prepare('SELECT * FROM categories WHERE id=? AND user_id=?')
+    .get(req.body.category_id, zuweisung.user_id);
+  if (!category) return res.redirect(`/admin/users/${zuweisung.user_id}?error=keine-kategorie`);
+
+  db.prepare('UPDATE zuweisungen SET category_id=? WHERE id=?').run(category.id, zuweisung.id);
+  res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
 
 router.post('/categories/:id/archive', requireAdmin, (req, res) => {
