@@ -113,7 +113,7 @@ router.post('/assign', requireAdmin, (req, res) => {
   const { username, displayName, email, ausgleichsstunden, faktor } = req.body;
   if (!username) return res.redirect('/admin?error=kein-benutzer');
 
-  let user = db.prepare('SELECT * FROM users WHERE username=?').get(username);
+  let user = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(username);
   if (!user) {
     const info = db
       .prepare('INSERT INTO users (username, display_name, email) VALUES (?,?,?)')

@@ -96,8 +96,12 @@ router.post('/login', async (req, res) => {
       return res.render('login', { error: 'Benutzername oder Passwort ist falsch.' });
     }
 
+    // COLLATE NOCASE: Ein vom Admin vorab per Benutzername angelegtes Konto
+    // (z. B. Zuweisung vor dem ersten Login) muss unabhaengig von Gross-/
+    // Kleinschreibung mit dem tatsaechlichen LDAP-Login zusammengefuehrt
+    // werden - AD ist bei sAMAccountName/UPN selbst nicht case-sensitiv.
     const isAdmin = config.adminUsernames.includes(result.username.toLowerCase());
-    let row = db.prepare('SELECT * FROM users WHERE username = ?').get(result.username);
+    let row = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(result.username);
     if (!row) {
       const info = db
         .prepare(

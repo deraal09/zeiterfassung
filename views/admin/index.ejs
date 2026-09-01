@@ -14,16 +14,17 @@
     <section class="panel">
       <h2>Ausgleichsstunden zuweisen</h2>
       <p class="hint">
-        LDAP-Benutzer suchen und Ausgleichsstunden für das laufende Schuljahr
+        Benutzernamen direkt eintippen oder aus der LDAP-Suche auswählen
+        (falls verfügbar) und Ausgleichsstunden für das laufende Schuljahr
         zuweisen. Die Lehrkraft verknüpft die Zuweisung anschließend selbst
         mit einer eigenen Kategorie.
       </p>
       <form method="post" action="/admin/assign" id="assign-form" class="assign-form">
         <div class="autocomplete">
-          <input type="text" id="ldap-search" placeholder="Name oder Benutzername suchen…" autocomplete="off">
+          <label for="assign-username">Benutzername</label>
+          <input type="text" id="assign-username" name="username" placeholder="Benutzername eingeben oder aus Suche wählen…" autocomplete="off" required>
           <div id="ldap-results" class="autocomplete-results"></div>
         </div>
-        <input type="hidden" name="username" id="assign-username">
         <input type="hidden" name="displayName" id="assign-displayName">
         <input type="hidden" name="email" id="assign-email">
         <p id="assign-selected" class="selected-user"></p>

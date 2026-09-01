@@ -85,6 +85,7 @@ async function authenticateDirect(username, password) {
       if (err instanceof InvalidCredentialsError) return null;
       throw err;
     }
+    let canonicalUsername = username;
     let displayName = username;
     let email = null;
     try {
@@ -97,13 +98,17 @@ async function authenticateDirect(username, password) {
       });
       if (searchEntries[0]) {
         const n = normalize(searchEntries[0]);
+        // Kanonische Schreibweise aus dem Verzeichnis uebernehmen, damit
+        // wiederholte Logins (unabhaengig von der eingetippten Gross-/
+        // Kleinschreibung) immer auf denselben Benutzernamen abbilden.
+        canonicalUsername = n.username || username;
         displayName = n.displayName || username;
         email = n.email;
       }
     } catch (err) {
       // Attribut-Suche ist optional - Anmeldung gilt bereits als erfolgreich.
     }
-    return { username, displayName, email };
+    return { username: canonicalUsername, displayName, email };
   } finally {
     await client.unbind().catch(() => {});
   }
