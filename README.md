@@ -43,7 +43,8 @@ Wichtige Variablen:
 | Variable | Bedeutung |
 |---|---|
 | `LDAP_URL` | z. B. `ldaps://ldap.schule.de:636` |
-| `LDAP_BIND_DN` / `LDAP_BIND_PASSWORD` | Service-Account mit Lesezugriff für die Benutzersuche |
+| `LDAP_BIND_DN` / `LDAP_BIND_PASSWORD` | Service-Account mit Lesezugriff für die Benutzersuche (nicht nötig im Direkt-Bind-Modus, siehe unten) |
+| `LDAP_BIND_USER_TEMPLATE` | Direkt-Bind-Modus: Anmeldung ohne Service-Account, z. B. `{{username}}@schule.de` oder `SCHULE\{{username}}` |
 | `LDAP_BASE_DN` | Suchbasis für Lehrkräfte |
 | `LDAP_USER_FILTER` | Filter mit Platzhalter `{{username}}`, z. B. `(uid={{username}})`; bei Active Directory z. B. `(sAMAccountName={{username}})` |
 | `LDAP_USERNAME_ATTR`, `LDAP_DISPLAY_NAME_ATTR`, `LDAP_EMAIL_ATTR` | LDAP-Attributnamen (bei Active Directory: `sAMAccountName`, `displayName`) |
@@ -137,3 +138,14 @@ vertraut. Fix: `LDAP_TLS_CA_PFAD` auf die PEM-Datei der internen CA setzen,
 oder als Notlösung `LDAP_TLS_REJECT_UNAUTHORIZED=false` (siehe
 `.env.example`). Den genauen Fehler zeigt der App-Log (`console.error`
 in `src/routes/auth.js`).
+
+**Service-Account für die LDAP-Suche funktioniert nicht (falscher
+`LDAP_BIND_DN`/`LDAP_BIND_PASSWORD`, oder gar kein Service-Account
+vorhanden):** Statt weiter am Service-Account zu debuggen, kann
+`LDAP_BIND_USER_TEMPLATE` gesetzt werden (Direkt-Bind-Modus) – dann bindet
+jede Anmeldung direkt mit der eigenen Kennung der Lehrkraft, ganz ohne
+Service-Account. `LDAP_BIND_DN`/`LDAP_BIND_PASSWORD` werden dann ignoriert
+(nur noch für die LDAP-Suche im Admin-Bereich beim Zuweisen von Kategorien
+an noch nicht eingeloggte Lehrkräfte relevant – Lehrkräfte, die sich schon
+einmal angemeldet haben, tauchen unabhängig davon in der normalen
+Admin-Übersicht auf).

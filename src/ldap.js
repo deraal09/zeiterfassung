@@ -58,11 +58,55 @@ async function verifyPassword(dn, password) {
 }
 
 async function authenticate(username, password) {
+  if (config.ldap.bindUserTemplate) {
+    return authenticateDirect(username, password);
+  }
   const entry = await findUserEntry(username);
   if (!entry) return null;
   const ok = await verifyPassword(entry.dn, password);
   if (!ok) return null;
   return normalize(entry);
+}
+
+// Direkt-Bind: Der Nutzer meldet sich mit seiner eigenen, aus dem
+// Benutzernamen abgeleiteten Kennung an - kein Service-Account noetig, um
+// ihn vorher im Verzeichnis zu suchen. Attribute (Anzeigename, E-Mail)
+// werden per Best-Effort-Suche ueber dieselbe, bereits authentifizierte
+// Verbindung nachgeladen; schlaegt das fehl (z. B. keine Leserechte),
+// gilt die Anmeldung trotzdem als erfolgreich.
+async function authenticateDirect(username, password) {
+  if (!password) return null;
+  const bindDn = config.ldap.bindUserTemplate.replace('{{username}}', username);
+  const client = createClient();
+  try {
+    try {
+      await client.bind(bindDn, password);
+    } catch (err) {
+      if (err instanceof InvalidCredentialsError) return null;
+      throw err;
+    }
+    let displayName = username;
+    let email = null;
+    try {
+      const filter = config.ldap.userFilter.replace('{{username}}', escapeFilterValue(username));
+      const { searchEntries } = await client.search(config.ldap.baseDn, {
+        filter,
+        scope: 'sub',
+        attributes: [config.ldap.usernameAttr, config.ldap.displayNameAttr, config.ldap.emailAttr],
+        sizeLimit: 1,
+      });
+      if (searchEntries[0]) {
+        const n = normalize(searchEntries[0]);
+        displayName = n.displayName || username;
+        email = n.email;
+      }
+    } catch (err) {
+      // Attribut-Suche ist optional - Anmeldung gilt bereits als erfolgreich.
+    }
+    return { username, displayName, email };
+  } finally {
+    await client.unbind().catch(() => {});
+  }
 }
 
 async function searchUsers(query) {

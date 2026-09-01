@@ -40,6 +40,13 @@ module.exports = {
     // LDAP_TLS_REJECT_UNAUTHORIZED=false: Zertifikatspruefung abschalten
     // (nur als Notloesung in vertrauenswuerdigen Netzen).
     tlsOptions: buildTlsOptions(),
+    // Direkt-Bind-Modus: Statt mit einem Service-Account zu suchen und dann
+    // erneut zu binden, bindet die Anmeldung direkt mit der aus dem
+    // eingegebenen Benutzernamen gebauten Kennung + Passwort. Kein
+    // LDAP_BIND_DN/LDAP_BIND_PASSWORD noetig. Beispiel: "SCHULE\{{username}}"
+    // oder "{{username}}@schule.de" (User Principal Name, oft die simpelste
+    // Wahl bei Active Directory).
+    bindUserTemplate: process.env.LDAP_BIND_USER_TEMPLATE || null,
   },
   adminUsernames: (process.env.ADMIN_USERNAMES || '')
     .split(',')
