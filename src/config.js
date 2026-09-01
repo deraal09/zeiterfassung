@@ -1,7 +1,16 @@
 require('dotenv').config();
+const fs = require('fs');
 const path = require('path');
 
 process.env.TZ = process.env.TZ || 'Europe/Berlin';
+
+function buildTlsOptions() {
+  const tlsOptions = {};
+  const caPath = process.env.LDAP_TLS_CA_PFAD;
+  if (caPath) tlsOptions.ca = fs.readFileSync(caPath);
+  if (process.env.LDAP_TLS_REJECT_UNAUTHORIZED === 'false') tlsOptions.rejectUnauthorized = false;
+  return Object.keys(tlsOptions).length ? tlsOptions : undefined;
+}
 
 module.exports = {
   // Plesk/Passenger uebergibt PORT haeufig als Unix-Socket-Pfad statt als
@@ -24,6 +33,13 @@ module.exports = {
     usernameAttr: process.env.LDAP_USERNAME_ATTR || 'uid',
     displayNameAttr: process.env.LDAP_DISPLAY_NAME_ATTR || 'cn',
     emailAttr: process.env.LDAP_EMAIL_ATTR || 'mail',
+    // ldaps:// gegen ein internes/selbstsigniertes Zertifikat (z. B.
+    // schul-eigenes Active Directory) schlaegt sonst mit einem TLS-Fehler
+    // fehl, noch bevor ueberhaupt ein Bind versucht wird.
+    // LDAP_TLS_CA_PFAD: Pfad zur PEM-Datei der internen CA (empfohlen).
+    // LDAP_TLS_REJECT_UNAUTHORIZED=false: Zertifikatspruefung abschalten
+    // (nur als Notloesung in vertrauenswuerdigen Netzen).
+    tlsOptions: buildTlsOptions(),
   },
   adminUsernames: (process.env.ADMIN_USERNAMES || '')
     .split(',')

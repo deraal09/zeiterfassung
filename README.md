@@ -46,7 +46,9 @@ Wichtige Variablen:
 | `LDAP_BIND_DN` / `LDAP_BIND_PASSWORD` | Service-Account mit Lesezugriff für die Benutzersuche |
 | `LDAP_BASE_DN` | Suchbasis für Lehrkräfte |
 | `LDAP_USER_FILTER` | Filter mit Platzhalter `{{username}}`, z. B. `(uid={{username}})`; bei Active Directory z. B. `(sAMAccountName={{username}})` |
-| `LDAP_USERNAME_ATTR`, `LDAP_DISPLAY_NAME_ATTR`, `LDAP_EMAIL_ATTR` | LDAP-Attributnamen |
+| `LDAP_USERNAME_ATTR`, `LDAP_DISPLAY_NAME_ATTR`, `LDAP_EMAIL_ATTR` | LDAP-Attributnamen (bei Active Directory: `sAMAccountName`, `displayName`) |
+| `LDAP_TLS_CA_PFAD` | Nur bei `ldaps://` mit interner/selbstsignierter CA: Pfad zur PEM-Datei |
+| `LDAP_TLS_REJECT_UNAUTHORIZED=false` | Zertifikatsprüfung abschalten (nur Notlösung, siehe Troubleshooting) |
 | `ADMIN_USERNAMES` | Komma-getrennte Liste von LDAP-Benutzernamen mit Admin-Rechten in der App |
 | `SESSION_SECRET` | zufälliger, geheimer String für die Session-Verschlüsselung |
 | `DB_PATH` | Pfad zur SQLite-Datei (Standard: `./data/zeiterfassung.db`) |
@@ -71,3 +73,67 @@ Wichtige Variablen:
 Bei jedem weiteren Deployment reicht `git pull` im Projektverzeichnis plus
 "NPM Install" (falls sich `package.json` geändert hat) und ein Neustart der App
 über Plesk.
+
+Alternativ zum manuellen Neustart-Klick erkennt Passenger auch die Datei
+`tmp/restart.txt` (Verzeichnis `tmp/` bei Bedarf selbst anlegen, ist
+gitignored): sobald diese Datei neu erstellt/berührt wird, startet Passenger
+die App beim nächsten Request automatisch neu. Praktisch für ein Deploy-Skript:
+
+```bash
+npm install && npm rebuild better-sqlite3 && mkdir -p tmp && touch tmp/restart.txt
+```
+
+`npm rebuild better-sqlite3` fängt automatisch ab, falls sich die in Plesk
+eingestellte Node.js-Version zwischenzeitlich geändert hat (siehe Troubleshooting).
+
+## Troubleshooting
+
+Auf einem Plesk-Server mit mehreren Node.js-Apps im selben Vhost-Baum sind uns
+folgende Fehlerbilder begegnet:
+
+**Passenger-Fehlerseite ("We're sorry, but something went wrong")**
+Sagt für sich allein nichts – im Node.js-Panel unter "Log" bzw. per SSH in
+`~/logs/` (Pfad ist je nach Plesk-Setup unterschiedlich) nach dem eigentlichen
+Absturzgrund suchen, bevor man etwas ändert.
+
+**`Error: The module '.../better_sqlite3.node' was compiled against a
+different Node.js version` (`NODE_MODULE_VERSION` X vs. Y)**
+`better-sqlite3` enthält ein natives Modul, das beim `npm install` gegen die
+gerade aktive Node.js-Version kompiliert wird. Wurde `npm install` unter einer
+anderen Node-Version ausgeführt als der in Plesk für die Domain eingestellten
+(z. B. weil die SSH-Shell einen anderen `node`/`npm` im `PATH` hat als
+Passenger), passt das kompilierte Modul nicht mehr. Fix:
+```bash
+# Plesk-verwalteten Node-Interpreter-Pfad ermitteln:
+ls /opt/plesk/node/
+# damit explizit neu installieren (Pfad anpassen):
+rm -rf node_modules
+/opt/plesk/node/22/bin/npm install --omit=dev
+/opt/plesk/node/22/bin/node -e "console.log(process.version, process.versions.modules)"
+```
+Die letzte Zeile muss die gleiche `NODE_MODULE_VERSION` zeigen, die die
+Fehlermeldung als "requires" nennt.
+
+**Vorsicht bei `export PATH=...`:** `export PATH=/opt/plesk/node/22/bin:PATH`
+(ohne `$` vor dem zweiten `PATH`) überschreibt den PATH komplett statt ihn zu
+erweitern – alle folgenden Befehle in dieser Shell finden dann u. U. gar
+keine Programme mehr bzw. den falschen `node`. Immer `$PATH` (mit Dollarzeichen).
+
+**Mehrere Apps im selben Vhost-Baum teilen sich einen Systembenutzer:**
+Falls (wie hier) mehrere Domains demselben Plesk-Systembenutzer gehören:
+node_modules-Ordner müssen diesem Benutzer gehören, nicht `root` – sonst
+scheitert der nächste `npm install` (auch über den Plesk-UI-Button) mit
+`EACCES`, weil er vorhandene, root-eigene Dateien nicht überschreiben kann.
+Nach einer manuellen Installation als `root` sicherheitshalber:
+```bash
+chown -R <domain-systembenutzer>:<gruppe> node_modules
+```
+
+**LDAP-Login zeigt "Anmeldung derzeit nicht möglich" (nicht "Passwort
+falsch")** → das ist ein technischer Verbindungsfehler, kein falsches
+Passwort. Häufigste Ursache bei einem internen Active-Directory-Server mit
+`ldaps://`: ein selbstsigniertes/internes TLS-Zertifikat, dem Node.js nicht
+vertraut. Fix: `LDAP_TLS_CA_PFAD` auf die PEM-Datei der internen CA setzen,
+oder als Notlösung `LDAP_TLS_REJECT_UNAUTHORIZED=false` (siehe
+`.env.example`). Den genauen Fehler zeigt der App-Log (`console.error`
+in `src/routes/auth.js`).

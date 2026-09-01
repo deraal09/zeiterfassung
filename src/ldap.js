@@ -1,8 +1,13 @@
-const { Client } = require('ldapts');
+const { Client, InvalidCredentialsError } = require('ldapts');
 const config = require('./config');
 
 function createClient() {
-  return new Client({ url: config.ldap.url, timeout: 5000, connectTimeout: 5000 });
+  return new Client({
+    url: config.ldap.url,
+    timeout: 5000,
+    connectTimeout: 5000,
+    ...(config.ldap.tlsOptions ? { tlsOptions: config.ldap.tlsOptions } : {}),
+  });
 }
 
 function escapeFilterValue(value) {
@@ -45,7 +50,8 @@ async function verifyPassword(dn, password) {
     await client.bind(dn, password);
     return true;
   } catch (err) {
-    return false;
+    if (err instanceof InvalidCredentialsError) return false;
+    throw err;
   } finally {
     await client.unbind().catch(() => {});
   }
