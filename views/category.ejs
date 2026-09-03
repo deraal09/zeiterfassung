@@ -15,6 +15,18 @@
     </div>
     <p class="progress-label"><%= erfassteStunden.toFixed(2) %> von <%= benoetigteStunden.toFixed(2) %> Zeitstunden erfasst</p>
 
+    <form method="post" action="/categories/<%= category.id %>/sichtbarkeit" class="inline-form">
+      <label class="checkbox">
+        <input type="checkbox" name="sichtbar" onchange="this.form.submit()" <%= category.visible_for_admin || hatZuweisung ? 'checked' : '' %> <%= hatZuweisung ? 'disabled' : '' %>>
+        Für Admin sichtbar machen
+      </label>
+    </form>
+    <% if (hatZuweisung) { %>
+      <p class="hint" style="margin-top: 4px;">
+        Diese Kategorie ist bereits mit zugewiesenen Ausgleichsstunden verknüpft und dadurch automatisch für den Admin sichtbar.
+      </p>
+    <% } %>
+
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
     <% if (importInfo) { %>
       <p class="alert alert-success">

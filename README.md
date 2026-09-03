@@ -23,6 +23,10 @@ erfasst und an die Schulleitung übermittelt werden können.
   (z. B. "Administration Moodle"). Eine neu zugewiesene Ausgleichsstunden-Menge
   kann entweder mit einer bestehenden Kategorie **verknüpft** oder direkt als
   neue Kategorie **übernommen** werden.
+- **Kategorien sind privat, bis sie freigegeben werden** – der Admin sieht
+  eine Kategorie erst, wenn die Lehrkraft eine Zuweisung damit verknüpft
+  (dann ist sie automatisch "offiziell") oder sie über einen Haken auf der
+  Kategorie-Seite explizit für den Admin sichtbar macht.
 - **Umrechnung** – benötigte Zeitstunden einer Kategorie = Summe aller damit
   verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird als
   Balken angezeigt.

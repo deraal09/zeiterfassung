@@ -84,9 +84,25 @@ router.get('/users/:id', requireAdmin, (req, res) => {
   const teacher = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
   if (!teacher) return res.status(404).render('error', { message: 'Lehrkraft nicht gefunden.' });
 
+  // Kategorien sind Privatsache der Lehrkraft, solange sie weder explizit
+  // freigegeben (visible_for_admin) noch mit einer Zuweisung verknuepft
+  // sind (letzteres macht sie automatisch "offiziell").
   const rawCategories = db
-    .prepare('SELECT * FROM categories WHERE user_id=? ORDER BY archived ASC, created_at DESC')
+    .prepare(
+      `SELECT * FROM categories
+       WHERE user_id=?
+         AND (visible_for_admin=1 OR EXISTS(SELECT 1 FROM zuweisungen z WHERE z.category_id = categories.id))
+       ORDER BY archived ASC, created_at DESC`
+    )
     .all(teacher.id);
+
+  const hiddenCategoryCount = db
+    .prepare(
+      `SELECT COUNT(*) as c FROM categories
+       WHERE user_id=? AND visible_for_admin=0
+         AND NOT EXISTS(SELECT 1 FROM zuweisungen z WHERE z.category_id = categories.id)`
+    )
+    .get(teacher.id).c;
 
   const categories = rawCategories.map((cat) => {
     const required = db
@@ -125,6 +141,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
   res.render('admin/user', {
     teacher,
     categories,
+    hiddenCategoryCount,
     zuweisungen,
     aktuellesSchuljahr: aktuellesSchuljahr(),
     error: ERROR_MESSAGES[req.query.error] || null,

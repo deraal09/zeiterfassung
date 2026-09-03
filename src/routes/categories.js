@@ -67,12 +67,17 @@ router.get('/categories/:id', requireAuth, (req, res) => {
   const importiert = parseInt(req.query.importiert, 10);
   const uebersprungen = parseInt(req.query.uebersprungen, 10);
 
+  const hatZuweisung = !!db
+    .prepare('SELECT 1 FROM zuweisungen WHERE category_id=? LIMIT 1')
+    .get(cat.id);
+
   res.render('category', {
     category: cat,
     entries: finished,
     running,
     erfassteStunden: sumMinutes / 60,
     benoetigteStunden: benoetigteStunden(cat.id),
+    hatZuweisung,
     error: ERROR_MESSAGES[req.query.error] || null,
     importInfo: Number.isInteger(importiert) ? { importiert, uebersprungen: uebersprungen || 0 } : null,
   });
@@ -164,6 +169,15 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), (r
   importieren(rows);
 
   res.redirect(`/categories/${cat.id}?importiert=${importiert}&uebersprungen=${uebersprungen}`);
+});
+
+router.post('/categories/:id/sichtbarkeit', requireAuth, (req, res) => {
+  const cat = getOwnedCategory(req.params.id, req.session.user.id);
+  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+
+  const sichtbar = req.body.sichtbar === 'on' ? 1 : 0;
+  db.prepare('UPDATE categories SET visible_for_admin=? WHERE id=?').run(sichtbar, cat.id);
+  res.redirect(`/categories/${cat.id}`);
 });
 
 module.exports = router;

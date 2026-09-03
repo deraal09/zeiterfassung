@@ -29,12 +29,19 @@ function initDb() {
     -- z. B. "Administration Moodle"). Wie viele Zeitstunden dafuer noetig
     -- sind, ergibt sich aus den verknuepften Zuweisungen (siehe unten), nicht
     -- aus einem eigenen Ausgleichsstunden/Faktor-Feld.
+    --
+    -- Kategorien sind fuer den Admin standardmaessig NICHT sichtbar (Privat-
+    -- sphaere der Lehrkraft). Sichtbar wird eine Kategorie erst, wenn die
+    -- Lehrkraft visible_for_admin explizit setzt ODER eine Zuweisung mit ihr
+    -- verknuepft ist (dynamisch geprueft, siehe admin.js) - dann handelt es
+    -- sich ja bereits um vom Admin vergebene, offizielle Stunden.
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       title TEXT NOT NULL,
       schuljahr TEXT NOT NULL,
       archived INTEGER NOT NULL DEFAULT 0,
+      visible_for_admin INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -89,6 +96,15 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_zuweisungen_user ON zuweisungen(user_id);
     CREATE INDEX IF NOT EXISTS idx_zuweisungen_category ON zuweisungen(category_id);
   `);
+
+  // Migration fuer Datenbanken vor Einfuehrung der Admin-Sichtbarkeit:
+  // bestehende Kategorien starten unsichtbar (0) - Kategorien mit bereits
+  // verknuepfter Zuweisung sind ueber die dynamische Pruefung in admin.js
+  // trotzdem sofort sichtbar, ohne dass hier etwas nachgezogen werden muss.
+  const categoryColumnsFuerSichtbarkeit = db.prepare('PRAGMA table_info(categories)').all().map((c) => c.name);
+  if (!categoryColumnsFuerSichtbarkeit.includes('visible_for_admin')) {
+    db.exec('ALTER TABLE categories ADD COLUMN visible_for_admin INTEGER NOT NULL DEFAULT 0');
+  }
 
   // Migration fuer Datenbanken, die vor Einfuehrung des lokalen
   // Admin-Logins (/setup) angelegt wurden.

@@ -96,7 +96,13 @@
           <% }) %>
         </tbody>
       </table>
-      <% if (categories.length === 0) { %><p class="empty-state">Diese Lehrkraft hat noch keine Kategorie angelegt.</p><% } %>
+      <% if (categories.length === 0) { %><p class="empty-state">Diese Lehrkraft hat noch keine (für dich sichtbare) Kategorie angelegt.</p><% } %>
+      <% if (hiddenCategoryCount > 0) { %>
+        <p class="hint" style="margin-top: 12px; margin-bottom: 0;">
+          <%= hiddenCategoryCount %> weitere private Kategorie<%= hiddenCategoryCount === 1 ? '' : 'n' %> dieser Lehrkraft
+          <%= hiddenCategoryCount === 1 ? 'ist' : 'sind' %> noch nicht freigegeben oder mit einer Zuweisung verknüpft.
+        </p>
+      <% } %>
     </section>
   </main>
   <script src="/public/js/theme.js"></script>
