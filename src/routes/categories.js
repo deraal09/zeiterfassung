@@ -12,20 +12,33 @@ const ERROR_MESSAGES = {
   'felder-fehlen': 'Bitte alle Felder ausfuellen.',
   'ungueltige-zeit': 'Die Endzeit muss nach der Startzeit liegen.',
   'keine-datei': 'Bitte eine CSV-Datei auswaehlen.',
+  'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
 };
 
 function getOwnedCategory(id, userId) {
   return db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(id, userId);
 }
 
-function benoetigteStunden(categoryId) {
-  return db
+function kategorieHatZuweisung(categoryId) {
+  return !!db.prepare('SELECT 1 FROM zuweisungen WHERE category_id=? LIMIT 1').get(categoryId);
+}
+
+// Solange keine Zuweisung verknuepft ist, gilt das von der Lehrkraft selbst
+// eingetragene ziel_zeitstunden als vorlaeufiges Ziel. Sobald mindestens
+// eine Zuweisung verknuepft ist, zaehlt nur noch die offizielle Berechnung
+// (Ausgleichsstunden x Schuljahr-Faktor, summiert) - das eigene Ziel wird
+// dann ignoriert (aber weiterhin angezeigt, siehe category.ejs).
+function benoetigteStunden(category) {
+  const summe = db
     .prepare(
-      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h
+      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h,
+              COUNT(*) as anzahl
        FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        WHERE z.category_id=?`
     )
-    .get(categoryId).h;
+    .get(category.id);
+  if (summe.anzahl > 0) return summe.h;
+  return category.ziel_zeitstunden || 0;
 }
 
 // Legt einen manuellen Zeiteintrag an (Datum + Von + Bis, Dauer wird daraus
@@ -67,16 +80,14 @@ router.get('/categories/:id', requireAuth, (req, res) => {
   const importiert = parseInt(req.query.importiert, 10);
   const uebersprungen = parseInt(req.query.uebersprungen, 10);
 
-  const hatZuweisung = !!db
-    .prepare('SELECT 1 FROM zuweisungen WHERE category_id=? LIMIT 1')
-    .get(cat.id);
+  const hatZuweisung = kategorieHatZuweisung(cat.id);
 
   res.render('category', {
     category: cat,
     entries: finished,
     running,
     erfassteStunden: sumMinutes / 60,
-    benoetigteStunden: benoetigteStunden(cat.id),
+    benoetigteStunden: benoetigteStunden(cat),
     hatZuweisung,
     error: ERROR_MESSAGES[req.query.error] || null,
     importInfo: Number.isInteger(importiert) ? { importiert, uebersprungen: uebersprungen || 0 } : null,
@@ -118,6 +129,51 @@ router.post('/entries/:id/stop', requireAuth, (req, res) => {
   );
 
   res.redirect(`/categories/${entry.category_id}`);
+});
+
+// Korrektur eines bereits abgeschlossenen Eintrags (z. B. Verschreiber bei
+// Datum/Uhrzeit). Ein noch laufender Timer wird hier nicht bearbeitet -
+// dafuer gibt es Stopp. War der Eintrag schon synchronisiert, gilt er nach
+// der Korrektur wieder als Entwurf (ausser bei aktivem Auto-Sync), damit dem
+// Admin nicht stillschweigend ein veralteter Wert stehen bleibt.
+router.post('/entries/:id/edit', requireAuth, (req, res) => {
+  const userId = req.session.user.id;
+  const entry = db.prepare('SELECT * FROM time_entries WHERE id=? AND user_id=?').get(req.params.id, userId);
+  if (!entry) return res.status(404).render('error', { message: 'Eintrag nicht gefunden.' });
+  if (!entry.end_time) return res.redirect(`/categories/${entry.category_id}`);
+
+  const { beschreibung, datum, von, bis } = req.body;
+  if (!datum || !von || !bis) return res.redirect(`/categories/${entry.category_id}?error=felder-fehlen`);
+
+  const startStr = `${datum} ${von}:00`;
+  const endStr = `${datum} ${bis}:00`;
+  const duration = diffMinutes(startStr, endStr);
+  if (!(duration > 0)) return res.redirect(`/categories/${entry.category_id}?error=ungueltige-zeit`);
+
+  const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
+  db.prepare(
+    'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, synced=?, synced_at=? WHERE id=?'
+  ).run(
+    (beschreibung || '').trim() || 'Taetigkeit',
+    startStr,
+    endStr,
+    duration,
+    user.auto_sync ? 1 : 0,
+    user.auto_sync ? nowLocalString() : null,
+    entry.id
+  );
+
+  res.redirect(`/categories/${entry.category_id}`);
+});
+
+router.post('/entries/:id/delete', requireAuth, (req, res) => {
+  const userId = req.session.user.id;
+  const entry = db.prepare('SELECT * FROM time_entries WHERE id=? AND user_id=?').get(req.params.id, userId);
+  if (!entry) return res.status(404).render('error', { message: 'Eintrag nicht gefunden.' });
+
+  const categoryId = entry.category_id;
+  db.prepare('DELETE FROM time_entries WHERE id=?').run(entry.id);
+  res.redirect(`/categories/${categoryId}`);
 });
 
 router.post('/categories/:id/entries', requireAuth, (req, res) => {
@@ -169,6 +225,21 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), (r
   importieren(rows);
 
   res.redirect(`/categories/${cat.id}?importiert=${importiert}&uebersprungen=${uebersprungen}`);
+});
+
+// Eigenes vorlaeufiges Zeitstunden-Ziel, solange noch keine Zuweisung
+// verknuepft ist. Danach gesperrt (der Request wird einfach ignoriert),
+// weil die offizielle Berechnung dann massgeblich ist.
+router.post('/categories/:id/ziel', requireAuth, (req, res) => {
+  const cat = getOwnedCategory(req.params.id, req.session.user.id);
+  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (kategorieHatZuweisung(cat.id)) return res.redirect(`/categories/${cat.id}`);
+
+  const wert = parseFloat(String(req.body.ziel_zeitstunden || '').replace(',', '.'));
+  if (!(wert > 0)) return res.redirect(`/categories/${cat.id}?error=ungueltiges-ziel`);
+
+  db.prepare('UPDATE categories SET ziel_zeitstunden=? WHERE id=?').run(wert, cat.id);
+  res.redirect(`/categories/${cat.id}`);
 });
 
 router.post('/categories/:id/sichtbarkeit', requireAuth, (req, res) => {

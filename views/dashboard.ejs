@@ -38,14 +38,16 @@
 
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
 
-    <% if (offeneZuweisungen.length > 0) { %>
+    <% if (zuweisungen.length > 0) { %>
       <section class="panel">
-        <h2>Neu zugewiesene Ausgleichsstunden</h2>
+        <h2>Meine Ausgleichsstunden-Zuweisungen</h2>
         <p class="hint">
-          Die Schulleitung hat dir Ausgleichsstunden zugewiesen. Verknüpfe sie mit
-          einer bestehenden Kategorie oder übernimm sie als neue Kategorie.
+          Von der Schulleitung zugewiesene Ausgleichsstunden. Verknüpfe sie mit
+          einer eigenen Kategorie oder übernimm sie als neue Kategorie – die
+          Verknüpfung lässt sich jederzeit wieder ändern oder aufheben, falls
+          etwas falsch zugeordnet wurde.
         </p>
-        <% offeneZuweisungen.forEach(z => { %>
+        <% zuweisungen.forEach(z => { %>
           <div class="zuweisung-item">
             <p class="zuweisung-meta">
               <strong><%= z.ausgleichsstunden %></strong> Ausgleichsstunden × Faktor
@@ -53,21 +55,21 @@
               <span class="meta">(Schuljahr <%= z.schuljahr %>)</span>
             </p>
             <div class="zuweisung-actions">
-              <% if (categories.length > 0) { %>
-                <form method="post" action="/zuweisungen/<%= z.id %>/link" class="inline-form">
-                  <select name="category_id" required>
-                    <option value="" disabled selected>Kategorie wählen…</option>
-                    <% categories.forEach(cat => { %>
-                      <option value="<%= cat.id %>"><%= cat.title %></option>
-                    <% }) %>
-                  </select>
-                  <button type="submit" class="btn">Verknüpfen</button>
+              <form method="post" action="/zuweisungen/<%= z.id %>/link" class="inline-form">
+                <select name="category_id">
+                  <option value="">– keine Verknüpfung –</option>
+                  <% categories.forEach(cat => { %>
+                    <option value="<%= cat.id %>" <%= z.category_id === cat.id ? 'selected' : '' %>><%= cat.title %></option>
+                  <% }) %>
+                </select>
+                <button type="submit" class="btn"><%= z.category_id ? 'Ändern' : 'Verknüpfen' %></button>
+              </form>
+              <% if (!z.category_id) { %>
+                <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
+                  <input type="text" name="title" placeholder="Titel für neue Kategorie (optional)">
+                  <button type="submit" class="btn btn-start">Übernehmen</button>
                 </form>
               <% } %>
-              <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
-                <input type="text" name="title" placeholder="Titel für neue Kategorie (optional)">
-                <button type="submit" class="btn btn-start">Übernehmen</button>
-              </form>
             </div>
           </div>
         <% }) %>
@@ -78,6 +80,7 @@
       <h2>Neue Kategorie anlegen</h2>
       <form method="post" action="/categories" class="inline-form">
         <input type="text" name="title" placeholder="z. B. Administration Moodle" required>
+        <input type="number" name="ziel_zeitstunden" placeholder="Ziel-Zeitstunden (optional)" step="0.25" min="0.25">
         <button type="submit" class="btn btn-start">Anlegen</button>
       </form>
     </section>

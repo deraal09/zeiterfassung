@@ -26,9 +26,14 @@ erfasst und an die Schulleitung übermittelt werden können.
   Ändert sich einer der beiden Werte, wirkt sich das sofort auf alle
   Zuweisungen dieses Schuljahres aus.
 - **Kategorien legt die Lehrkraft selbst an** – eigener freier Titel
-  (z. B. "Administration Moodle"). Eine neu zugewiesene Ausgleichsstunden-Menge
-  kann entweder mit einer bestehenden Kategorie **verknüpft** oder direkt als
-  neue Kategorie **übernommen** werden.
+  (z. B. "Administration Moodle"), optional mit einem eigenen vorläufigen
+  Zeitstunden-Ziel (analog zur Admin-Eingabe). Eine neu zugewiesene
+  Ausgleichsstunden-Menge kann entweder mit einer bestehenden Kategorie
+  **verknüpft** oder direkt als neue Kategorie **übernommen** werden – die
+  Verknüpfung lässt sich jederzeit ändern oder wieder aufheben, nicht nur
+  einmalig. Sobald eine Zuweisung verknüpft ist, ersetzt deren offizielle
+  Berechnung das eigene Ziel (das dann nicht mehr änderbar ist, aber zur
+  Erinnerung sichtbar bleibt).
 - **Kategorien sind privat, bis sie freigegeben werden** – der Admin sieht
   eine Kategorie erst, wenn die Lehrkraft eine Zuweisung damit verknüpft
   (dann ist sie automatisch "offiziell") oder sie über einen Haken auf der
@@ -40,7 +45,10 @@ erfasst und an die Schulleitung übermittelt werden können.
   drücken; die Zeit wird automatisch erfasst.
 - **Nachtragen** – vergessene Zeiten werden mit Datum, Von- und Bis-Uhrzeit
   nachgetragen (Dauer wird daraus berechnet) und korrekt chronologisch
-  einsortiert.
+  einsortiert. Bereits erfasste Einträge lassen sich jederzeit korrigieren
+  (Werte anpassen und speichern) oder löschen – ein bereits synchronisierter
+  Eintrag gilt nach einer Korrektur wieder als Entwurf, damit dem Admin kein
+  veralteter Wert stehen bleibt.
 - **CSV-Import** – mehrere nachzutragende Zeiten auf einmal per CSV-Datei
   hochladen (Spalten: Datum, Von, Bis, Beschreibung). Komma, Semikolon,
   Tabulator und Pipe werden automatisch als Trennzeichen erkannt; Datum als

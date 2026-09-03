@@ -27,8 +27,11 @@ function initDb() {
 
     -- Kategorien werden von der Lehrkraft selbst angelegt (freier Titel,
     -- z. B. "Administration Moodle"). Wie viele Zeitstunden dafuer noetig
-    -- sind, ergibt sich aus den verknuepften Zuweisungen (siehe unten), nicht
-    -- aus einem eigenen Ausgleichsstunden/Faktor-Feld.
+    -- sind, ergibt sich normalerweise aus den verknuepften Zuweisungen
+    -- (siehe unten). Solange noch keine Zuweisung verknuepft ist, kann die
+    -- Lehrkraft mit ziel_zeitstunden selbst ein vorlaeufiges Ziel eintragen
+    -- (analog zur Admin-Eingabe) - sobald verknuepft wird, ist dieses Feld
+    -- gesperrt (die offizielle Berechnung uebernimmt), bleibt aber sichtbar.
     --
     -- Kategorien sind fuer den Admin standardmaessig NICHT sichtbar (Privat-
     -- sphaere der Lehrkraft). Sichtbar wird eine Kategorie erst, wenn die
@@ -42,6 +45,7 @@ function initDb() {
       schuljahr TEXT NOT NULL,
       archived INTEGER NOT NULL DEFAULT 0,
       visible_for_admin INTEGER NOT NULL DEFAULT 0,
+      ziel_zeitstunden REAL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -115,6 +119,9 @@ function initDb() {
   const categoryColumnsFuerSichtbarkeit = db.prepare('PRAGMA table_info(categories)').all().map((c) => c.name);
   if (!categoryColumnsFuerSichtbarkeit.includes('visible_for_admin')) {
     db.exec('ALTER TABLE categories ADD COLUMN visible_for_admin INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!categoryColumnsFuerSichtbarkeit.includes('ziel_zeitstunden')) {
+    db.exec('ALTER TABLE categories ADD COLUMN ziel_zeitstunden REAL');
   }
 
   // Migration fuer Datenbanken, die vor Einfuehrung des lokalen

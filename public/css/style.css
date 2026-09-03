@@ -190,6 +190,11 @@ h1 .meta, h2 .meta {
   font-size: 0.9rem;
 }
 .link-button:hover { text-decoration: underline; }
+.link-button-danger { color: var(--color-danger); }
+.entries-row-actions { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.entries-table input[type=text],
+.entries-table input[type=date],
+.entries-table input[type=time] { padding: 5px 8px; font-size: 0.85rem; }
 
 .inline-form { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
 .entry-form { display: flex; flex-wrap: wrap; gap: 8px; }

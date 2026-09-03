@@ -7,6 +7,7 @@ const { aktuellesSchuljahr } = require('../util/schuljahr');
 const ERROR_MESSAGES = {
   'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
   'keine-kategorie': 'Bitte eine Kategorie auswaehlen.',
+  'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
 };
 
 function activeTimer(userId) {
@@ -19,14 +20,21 @@ function activeTimer(userId) {
     .get(userId);
 }
 
-function benoetigteStunden(categoryId) {
-  return db
+// Solange keine Zuweisung mit der Kategorie verknuepft ist, gilt das von der
+// Lehrkraft selbst eingetragene ziel_zeitstunden als vorlaeufiges Ziel.
+// Sobald mindestens eine Zuweisung verknuepft ist, zaehlt nur noch die
+// offizielle Berechnung (Ausgleichsstunden x Schuljahr-Faktor, summiert).
+function benoetigteStunden(category) {
+  const summe = db
     .prepare(
-      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h
+      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h,
+              COUNT(*) as anzahl
        FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        WHERE z.category_id=?`
     )
-    .get(categoryId).h;
+    .get(category.id);
+  if (summe.anzahl > 0) return summe.h;
+  return category.ziel_zeitstunden || 0;
 }
 
 router.get('/', requireAuth, (req, res) => {
@@ -44,15 +52,20 @@ router.get('/', requireAuth, (req, res) => {
     return {
       ...cat,
       erfassteStunden: sumMinutes / 60,
-      benoetigteStunden: benoetigteStunden(cat.id),
+      benoetigteStunden: benoetigteStunden(cat),
     };
   });
 
-  const offeneZuweisungen = db
+  // Alle Zuweisungen der Lehrkraft (offen und bereits verknuepft) - die
+  // Verknuepfung laesst sich hier jederzeit setzen, aendern oder aufheben,
+  // nicht nur einmalig beim ersten Verknuepfen.
+  const zuweisungen = db
     .prepare(
-      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor
-       FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
-       WHERE z.user_id=? AND z.category_id IS NULL ORDER BY z.created_at DESC`
+      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor, c.title as category_title
+       FROM zuweisungen z
+       LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
+       LEFT JOIN categories c ON c.id = z.category_id
+       WHERE z.user_id=? ORDER BY z.created_at DESC`
     )
     .all(userId);
 
@@ -62,7 +75,7 @@ router.get('/', requireAuth, (req, res) => {
 
   res.render('dashboard', {
     categories: stats,
-    offeneZuweisungen,
+    zuweisungen,
     schuljahr,
     timer: activeTimer(userId),
     unsyncedCount,
@@ -73,21 +86,38 @@ router.get('/', requireAuth, (req, res) => {
 router.post('/categories', requireAuth, (req, res) => {
   const title = (req.body.title || '').trim();
   if (!title) return res.redirect('/?error=titel-fehlt');
-  db.prepare('INSERT INTO categories (user_id, title, schuljahr) VALUES (?,?,?)').run(
+
+  const zielRoh = req.body.ziel_zeitstunden;
+  let ziel = null;
+  if (zielRoh) {
+    const wert = parseFloat(String(zielRoh).replace(',', '.'));
+    if (wert > 0) ziel = wert;
+  }
+
+  db.prepare('INSERT INTO categories (user_id, title, schuljahr, ziel_zeitstunden) VALUES (?,?,?,?)').run(
     req.session.user.id,
     title,
-    aktuellesSchuljahr()
+    aktuellesSchuljahr(),
+    ziel
   );
   res.redirect('/');
 });
 
+// Verknuepfung setzen, aendern oder aufheben (leere category_id = trennen).
+// Nicht mehr nur beim ersten Verknuepfen moeglich - falls sich jemand
+// verschrieben oder die falsche Kategorie gewaehlt hat, laesst sich das
+// jederzeit korrigieren.
 router.post('/zuweisungen/:id/link', requireAuth, (req, res) => {
   const userId = req.session.user.id;
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, userId);
-  if (!zuweisung || zuweisung.category_id) return res.redirect('/');
+  if (!zuweisung) return res.redirect('/');
 
-  const categoryId = parseInt(req.body.category_id, 10);
-  const category = db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(categoryId, userId);
+  if (!req.body.category_id) {
+    db.prepare('UPDATE zuweisungen SET category_id=NULL WHERE id=?').run(zuweisung.id);
+    return res.redirect('/');
+  }
+
+  const category = db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(req.body.category_id, userId);
   if (!category) return res.redirect('/?error=keine-kategorie');
 
   db.prepare('UPDATE zuweisungen SET category_id=? WHERE id=?').run(category.id, zuweisung.id);

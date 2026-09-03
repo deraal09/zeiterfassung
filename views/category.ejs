@@ -27,6 +27,21 @@
       </p>
     <% } %>
 
+    <% if (!hatZuweisung) { %>
+      <form method="post" action="/categories/<%= category.id %>/ziel" class="inline-form" style="margin-top: 8px;">
+        <label for="ziel_zeitstunden" class="hint" style="margin: 0;">Eigenes Ziel (Zeitstunden):</label>
+        <input type="number" id="ziel_zeitstunden" name="ziel_zeitstunden" step="0.25" min="0.25" value="<%= category.ziel_zeitstunden || '' %>" placeholder="z. B. 10">
+        <button type="submit" class="btn">Speichern</button>
+      </form>
+      <p class="hint" style="margin-top: 4px;">
+        Gilt nur, solange keine Ausgleichsstunden-Zuweisung verknüpft ist. Danach zählt die offizielle Berechnung.
+      </p>
+    <% } else if (category.ziel_zeitstunden) { %>
+      <p class="hint" style="margin-top: 4px;">
+        Eigenes Ziel war <%= category.ziel_zeitstunden %> Zeitstunden (nicht mehr änderbar, da bereits verknüpft).
+      </p>
+    <% } %>
+
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
     <% if (importInfo) { %>
       <p class="alert alert-success">
@@ -81,19 +96,29 @@
 
     <section class="panel">
       <h2>Erfasste Tätigkeiten</h2>
+      <p class="hint">Falls sich jemand verschrieben hat: Werte anpassen und "Speichern" klicken.</p>
+      <% entries.forEach(e => { %>
+        <form id="entry-edit-<%= e.id %>" method="post" action="/entries/<%= e.id %>/edit"></form>
+      <% }) %>
       <table class="entries-table">
         <thead>
-          <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Dauer</th><th>Beschreibung</th><th>Status</th></tr>
+          <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Dauer</th><th>Beschreibung</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           <% entries.forEach(e => { %>
             <tr>
-              <td><%= e.start_time.slice(0,10) %></td>
-              <td><%= e.start_time.slice(11,16) %></td>
-              <td><%= e.end_time.slice(11,16) %></td>
+              <td><input type="date" name="datum" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(0,10) %>" required></td>
+              <td><input type="time" name="von" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(11,16) %>" required></td>
+              <td><input type="time" name="bis" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(11,16) %>" required></td>
               <td><%= (e.duration_minutes/60).toFixed(2) %> h</td>
-              <td><%= e.beschreibung %></td>
+              <td><input type="text" name="beschreibung" form="entry-edit-<%= e.id %>" value="<%= e.beschreibung %>" required></td>
               <td><%= e.synced ? 'Synchronisiert' : 'Entwurf' %></td>
+              <td class="entries-row-actions">
+                <button type="submit" form="entry-edit-<%= e.id %>" class="link-button">Speichern</button>
+                <form method="post" action="/entries/<%= e.id %>/delete" class="inline-form">
+                  <button type="submit" class="link-button link-button-danger">Löschen</button>
+                </form>
+              </td>
             </tr>
           <% }) %>
         </tbody>

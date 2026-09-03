@@ -105,13 +105,17 @@ router.get('/users/:id', requireAdmin, (req, res) => {
     .get(teacher.id).c;
 
   const categories = rawCategories.map((cat) => {
-    const required = db
+    // Solange keine Zuweisung verknuepft ist, zeigt auch der Admin das von
+    // der Lehrkraft selbst eingetragene vorlaeufige Ziel (ziel_zeitstunden).
+    const summe = db
       .prepare(
-        `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h
+        `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h,
+                COUNT(*) as anzahl
          FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
          WHERE z.category_id=?`
       )
-      .get(cat.id).h;
+      .get(cat.id);
+    const required = summe.anzahl > 0 ? summe.h : cat.ziel_zeitstunden || 0;
     const row = db
       .prepare(
         `SELECT
