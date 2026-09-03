@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const ldap = require('../ldap');
 const config = require('../config');
 const { db } = require('../db');
+const { pruefeSperre, vermerkeFehlversuch, setzeZurueck } = require('../auth/login-ratelimit');
 
 const MIN_USER_LEN = 3;
 const MIN_PW_LEN = 8;
@@ -68,14 +69,24 @@ router.post('/login', async (req, res) => {
   }
   const uname = username.trim();
 
+  const sperre = pruefeSperre(uname);
+  if (sperre.gesperrt) {
+    const einheit = sperre.restSekunden === 1 ? 'Sekunde' : 'Sekunden';
+    return res.render('login', {
+      error: `Zu viele Fehlversuche. Bitte in ${sperre.restSekunden} ${einheit} erneut versuchen.`,
+    });
+  }
+
   // Lokaler Account (z. B. per /setup angelegt) geht vor LDAP.
   const localRow = db
     .prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE AND auth_source = 'local'")
     .get(uname);
   if (localRow) {
     if (!bcrypt.compareSync(password, localRow.password_hash || '')) {
+      vermerkeFehlversuch(uname);
       return res.render('login', { error: 'Benutzername oder Passwort ist falsch.' });
     }
+    setzeZurueck(uname);
     db.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").run(localRow.id);
     return req.session.regenerate((err) => {
       if (err) return res.render('login', { error: 'Fehler beim Anmelden. Bitte erneut versuchen.' });
@@ -93,8 +104,10 @@ router.post('/login', async (req, res) => {
   try {
     const result = await ldap.authenticate(uname, password);
     if (!result || !result.username) {
+      vermerkeFehlversuch(uname);
       return res.render('login', { error: 'Benutzername oder Passwort ist falsch.' });
     }
+    setzeZurueck(uname);
 
     // COLLATE NOCASE: Ein vom Admin vorab per Benutzername angelegtes Konto
     // (z. B. Zuweisung vor dem ersten Login) muss unabhaengig von Gross-/

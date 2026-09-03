@@ -7,6 +7,12 @@ erfasst und an die Schulleitung übermittelt werden können.
 
 - **LDAP-Login** – Anmeldung mit dem bestehenden Schulaccount (oder lokal per
   `/setup` angelegter Admin, siehe unten).
+- **Ratelimit gegen Brute-Force-Logins** – ab dem 3. Fehlversuch in Folge für
+  einen Benutzernamen wird die Anmeldung für 30 Sekunden gesperrt (auch mit
+  danach korrektem Passwort); jeder weitere Fehlversuch nach Ablauf der
+  vorherigen Sperre verdoppelt deren Dauer. Eine erfolgreiche Anmeldung setzt
+  den Zähler zurück, technische Fehler (z. B. LDAP nicht erreichbar) zählen
+  nicht als Fehlversuch. Siehe `src/auth/login-ratelimit.js`.
 - **Schuljahr-Bezug** – alle Kategorien und Zuweisungen gehören zu einem
   Schuljahr (Format `YYYY/YY`, Wechsel jeweils zum 1. August). Mit dem neuen
   Schuljahr fangen alle wieder bei 0 an.

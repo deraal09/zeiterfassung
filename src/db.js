@@ -95,6 +95,17 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_categories_user ON categories(user_id);
     CREATE INDEX IF NOT EXISTS idx_zuweisungen_user ON zuweisungen(user_id);
     CREATE INDEX IF NOT EXISTS idx_zuweisungen_category ON zuweisungen(category_id);
+
+    -- Ratelimit fuer Login-Versuche (src/auth/login-ratelimit.js): ab dem 3.
+    -- Fehlversuch in Folge fuer einen Benutzernamen wird die Anmeldung fuer
+    -- eine Weile gesperrt, jeder weitere Fehlversuch danach verdoppelt die
+    -- Sperrdauer (exponentieller Backoff gegen automatisiertes
+    -- Durchprobieren von Passwoertern).
+    CREATE TABLE IF NOT EXISTS login_ratelimit (
+      schluessel TEXT PRIMARY KEY,
+      fehlversuche INTEGER NOT NULL DEFAULT 0,
+      gesperrt_bis INTEGER
+    );
   `);
 
   // Migration fuer Datenbanken vor Einfuehrung der Admin-Sichtbarkeit:
