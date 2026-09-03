@@ -16,6 +16,11 @@
     <p class="progress-label"><%= erfassteStunden.toFixed(2) %> von <%= benoetigteStunden.toFixed(2) %> Zeitstunden erfasst</p>
 
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <% if (importInfo) { %>
+      <p class="alert alert-success">
+        CSV-Import: <%= importInfo.importiert %> <%= importInfo.importiert === 1 ? 'Eintrag' : 'Einträge' %> übernommen<% if (importInfo.uebersprungen > 0) { %>, <%= importInfo.uebersprungen %> <%= importInfo.uebersprungen === 1 ? 'Zeile' : 'Zeilen' %> übersprungen (ungültiges Datum/Uhrzeit oder Bis vor Von)<% } %>.
+      </p>
+    <% } %>
 
     <section class="panel">
       <% if (running) { %>
@@ -41,8 +46,24 @@
       <form method="post" action="/categories/<%= category.id %>/entries" class="entry-form">
         <input type="text" name="beschreibung" placeholder="Tätigkeitsbeschreibung" required>
         <input type="date" name="datum" required>
-        <input type="number" name="stunden" placeholder="Stunden" step="0.25" min="0.25" required>
+        <input type="time" name="von" required>
+        <input type="time" name="bis" required>
         <button type="submit" class="btn">Eintragen</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Zeiten per CSV importieren</h2>
+      <p class="hint">
+        Spalten (Kopfzeile erforderlich): <code>Datum</code>, <code>Von</code>,
+        <code>Bis</code>, <code>Beschreibung</code>. Datum als
+        <code>YYYY-MM-DD</code> oder <code>DD.MM.YYYY</code>, Uhrzeiten als
+        <code>HH:MM</code>. Komma, Semikolon, Tabulator und Pipe (<code>|</code>)
+        werden automatisch als Trennzeichen erkannt.
+      </p>
+      <form method="post" action="/categories/<%= category.id %>/import" enctype="multipart/form-data" class="inline-form">
+        <input type="file" name="csv_file" accept=".csv,text/csv" required>
+        <button type="submit" class="btn">Importieren</button>
       </form>
     </section>
 
@@ -50,12 +71,14 @@
       <h2>Erfasste Tätigkeiten</h2>
       <table class="entries-table">
         <thead>
-          <tr><th>Datum</th><th>Dauer</th><th>Beschreibung</th><th>Status</th></tr>
+          <tr><th>Datum</th><th>Von</th><th>Bis</th><th>Dauer</th><th>Beschreibung</th><th>Status</th></tr>
         </thead>
         <tbody>
           <% entries.forEach(e => { %>
             <tr>
               <td><%= e.start_time.slice(0,10) %></td>
+              <td><%= e.start_time.slice(11,16) %></td>
+              <td><%= e.end_time.slice(11,16) %></td>
               <td><%= (e.duration_minutes/60).toFixed(2) %> h</td>
               <td><%= e.beschreibung %></td>
               <td><%= e.synced ? 'Synchronisiert' : 'Entwurf' %></td>

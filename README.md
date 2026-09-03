@@ -28,8 +28,14 @@ erfasst und an die Schulleitung übermittelt werden können.
   Balken angezeigt.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
   drücken; die Zeit wird automatisch erfasst.
-- **Nachtragen** – vergessene Zeiten werden mit Datum und Anzahl Stunden
-  nachgetragen und korrekt chronologisch einsortiert.
+- **Nachtragen** – vergessene Zeiten werden mit Datum, Von- und Bis-Uhrzeit
+  nachgetragen (Dauer wird daraus berechnet) und korrekt chronologisch
+  einsortiert.
+- **CSV-Import** – mehrere nachzutragende Zeiten auf einmal per CSV-Datei
+  hochladen (Spalten: Datum, Von, Bis, Beschreibung). Komma, Semikolon,
+  Tabulator und Pipe werden automatisch als Trennzeichen erkannt; Datum als
+  `YYYY-MM-DD` oder `DD.MM.YYYY`. Ungültige Zeilen werden übersprungen und
+  gezählt, gültige trotzdem importiert.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – Lehrkräfte werden per Live-Suche aus dem LDAP gesucht und

@@ -13,6 +13,8 @@
   --color-timer-border: #bfdbfe;
   --color-alert-error-bg: #fef2f2;
   --color-alert-error-border: #fecaca;
+  --color-alert-success-bg: #f0fdf4;
+  --color-alert-success-border: #bbf7d0;
   --color-btn-text-on-accent: #ffffff;
   --radius: 8px;
 }
@@ -33,6 +35,8 @@
     --color-timer-border: #2c4a75;
     --color-alert-error-bg: #3a1d1d;
     --color-alert-error-border: #5c2b2b;
+    --color-alert-success-bg: #16321f;
+    --color-alert-success-border: #245530;
   }
 }
 
@@ -51,6 +55,8 @@
   --color-timer-border: #2c4a75;
   --color-alert-error-bg: #3a1d1d;
   --color-alert-error-border: #5c2b2b;
+  --color-alert-success-bg: #16321f;
+  --color-alert-success-border: #245530;
 }
 
 * { box-sizing: border-box; }
@@ -226,6 +232,7 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 
 .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 16px; }
 .alert-error { background: var(--color-alert-error-bg); border: 1px solid var(--color-alert-error-border); color: var(--color-danger); }
+.alert-success { background: var(--color-alert-success-bg); border: 1px solid var(--color-alert-success-border); color: var(--color-success); }
 
 .login-page { position: relative; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
 .login-box {
