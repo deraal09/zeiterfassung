@@ -42,7 +42,9 @@ erfasst und an die Schulleitung übermittelt werden können.
   verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird als
   Balken angezeigt.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
-  drücken; die Zeit wird automatisch erfasst.
+  drücken; die Zeit wird automatisch erfasst. Auf der Kategorie-Seite ist das
+  die standardmäßig sichtbare Ansicht (Reiter "Erfassen"); "Zeit nachtragen"
+  und "CSV-Import" sind eigene Reiter, die nur bei Bedarf geöffnet werden.
 - **Nachtragen** – vergessene Zeiten werden mit Datum, Von- und Bis-Uhrzeit
   nachgetragen (Dauer wird daraus berechnet) und korrekt chronologisch
   einsortiert. Bereits erfasste Einträge lassen sich jederzeit korrigieren
@@ -54,6 +56,10 @@ erfasst und an die Schulleitung übermittelt werden können.
   Tabulator und Pipe werden automatisch als Trennzeichen erkannt; Datum als
   `YYYY-MM-DD` oder `DD.MM.YYYY`. Ungültige Zeilen werden übersprungen und
   gezählt, gültige trotzdem importiert.
+- **Sortierung und Filter der erfassten Tätigkeiten** – die Tabelle lässt sich
+  per Klick auf die Spalte "Datum" nach ältestem oder neuestem Datum zuerst
+  sortieren; zusätzlich kann nach einem Datumsbereich (von/bis) und/oder einem
+  Suchbegriff in der Beschreibung gefiltert werden.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – Lehrkräfte werden per Live-Suche aus dem LDAP gesucht und

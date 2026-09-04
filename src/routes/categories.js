@@ -72,23 +72,63 @@ router.get('/categories/:id', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, req.session.user.id);
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
 
-  const entries = db.prepare('SELECT * FROM time_entries WHERE category_id=? ORDER BY start_time DESC').all(cat.id);
-  const finished = entries.filter((e) => e.end_time);
-  const sumMinutes = finished.reduce((a, e) => a + e.duration_minutes, 0);
-  const running = entries.find((e) => !e.end_time) || null;
+  const laufender = db
+    .prepare('SELECT * FROM time_entries WHERE category_id=? AND end_time IS NULL')
+    .get(cat.id);
+
+  // Erfasste Zeitstunden (Fortschrittsbalken) beziehen sich immer auf ALLE
+  // abgeschlossenen Eintraege, unabhaengig von Sortierung/Filter der Tabelle
+  // darunter - sonst wuerde ein aktiver Filter den Fortschritt verfaelschen.
+  const sumMinutes = db
+    .prepare('SELECT COALESCE(SUM(duration_minutes),0) as m FROM time_entries WHERE category_id=? AND end_time IS NOT NULL')
+    .get(cat.id).m;
+
+  const sort = req.query.sort === 'asc' ? 'ASC' : 'DESC';
+  const von = (req.query.von || '').trim();
+  const bis = (req.query.bis || '').trim();
+  const suche = (req.query.suche || '').trim();
+
+  const bedingungen = ['category_id = ?', 'end_time IS NOT NULL'];
+  const params = [cat.id];
+  if (von) {
+    bedingungen.push('date(start_time) >= date(?)');
+    params.push(von);
+  }
+  if (bis) {
+    bedingungen.push('date(start_time) <= date(?)');
+    params.push(bis);
+  }
+  if (suche) {
+    bedingungen.push('beschreibung LIKE ? ESCAPE \'\\\'');
+    params.push(`%${suche.replace(/[\\%_]/g, '\\$&')}%`);
+  }
+
+  const entries = db
+    .prepare(
+      `SELECT * FROM time_entries WHERE ${bedingungen.join(' AND ')} ORDER BY start_time ${sort}`
+    )
+    .all(...params);
 
   const importiert = parseInt(req.query.importiert, 10);
   const uebersprungen = parseInt(req.query.uebersprungen, 10);
 
   const hatZuweisung = kategorieHatZuweisung(cat.id);
 
+  // Standardmaessig ist nur die Erfassen-Ansicht (Beschreibung + Start/Stopp)
+  // sichtbar. Nach dem Absenden von "Zeit nachtragen" oder "CSV importieren"
+  // bleibt die jeweilige Ansicht aktiv, damit Fehler/Ergebnis im Kontext
+  // sichtbar bleiben.
+  const activeTab = ['nachtragen', 'import'].includes(req.query.formular) ? req.query.formular : 'erfassen';
+
   res.render('category', {
     category: cat,
-    entries: finished,
-    running,
+    entries,
+    running: laufender,
     erfassteStunden: sumMinutes / 60,
     benoetigteStunden: benoetigteStunden(cat),
     hatZuweisung,
+    activeTab,
+    filter: { sort: sort === 'ASC' ? 'asc' : 'desc', von, bis, suche },
     error: ERROR_MESSAGES[req.query.error] || null,
     importInfo: Number.isInteger(importiert) ? { importiert, uebersprungen: uebersprungen || 0 } : null,
   });
@@ -182,20 +222,20 @@ router.post('/categories/:id/entries', requireAuth, (req, res) => {
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
 
   const { beschreibung, datum, von, bis } = req.body;
-  if (!datum || !von || !bis) return res.redirect(`/categories/${cat.id}?error=felder-fehlen`);
+  if (!datum || !von || !bis) return res.redirect(`/categories/${cat.id}?error=felder-fehlen&formular=nachtragen`);
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   const duration = insertManualEntry(cat, userId, { beschreibung, datum, von, bis }, !!user.auto_sync);
-  if (duration === null) return res.redirect(`/categories/${cat.id}?error=ungueltige-zeit`);
+  if (duration === null) return res.redirect(`/categories/${cat.id}?error=ungueltige-zeit&formular=nachtragen`);
 
-  res.redirect(`/categories/${cat.id}`);
+  res.redirect(`/categories/${cat.id}?formular=nachtragen`);
 });
 
 router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), (req, res) => {
   const userId = req.session.user.id;
   const cat = getOwnedCategory(req.params.id, userId);
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
-  if (!req.file) return res.redirect(`/categories/${cat.id}?error=keine-datei`);
+  if (!req.file) return res.redirect(`/categories/${cat.id}?error=keine-datei&formular=import`);
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   const rows = parseCsv(req.file.buffer.toString('utf8'));
@@ -224,7 +264,7 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), (r
   });
   importieren(rows);
 
-  res.redirect(`/categories/${cat.id}?importiert=${importiert}&uebersprungen=${uebersprungen}`);
+  res.redirect(`/categories/${cat.id}?importiert=${importiert}&uebersprungen=${uebersprungen}&formular=import`);
 });
 
 // Eigenes vorlaeufiges Zeitstunden-Ziel, solange noch keine Zuweisung
