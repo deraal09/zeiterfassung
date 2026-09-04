@@ -13,6 +13,7 @@ const ERROR_MESSAGES = {
   'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Lehrkraft vor.',
+  'vorschlag-ungueltig': 'Die vorgeschlagene Kategorie existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
   'nicht-loeschbar': 'Fuer diese Zuweisung sind bereits Zeiten erfasst - sie kann nicht mehr geloescht werden. Bitte die Lehrkraft bitten, die Zeiten auf eine andere Kategorie zu uebertragen oder die Verknuepfung zu loesen.',
 };
 
@@ -224,8 +225,9 @@ router.post('/zuweisungen/:id/link', requireAdmin, (req, res) => {
     categoryId = category.id;
   }
 
-  if (!vorschlagen(zuweisung, 'admin', categoryId)) {
-    return res.redirect(`/admin/users/${zuweisung.user_id}?error=gesperrt`);
+  const ergebnis = vorschlagen(zuweisung, 'admin', categoryId);
+  if (!ergebnis.ok) {
+    return res.redirect(`/admin/users/${zuweisung.user_id}?error=${ergebnis.fehler}`);
   }
   res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
@@ -234,7 +236,8 @@ router.post('/zuweisungen/:id/link', requireAdmin, (req, res) => {
 router.post('/zuweisungen/:id/annehmen', requireAdmin, (req, res) => {
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
   if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
-  if (!annehmen(zuweisung, 'admin')) return res.redirect(`/admin/users/${zuweisung.user_id}?error=kein-vorschlag`);
+  const ergebnis = annehmen(zuweisung, 'admin');
+  if (!ergebnis.ok) return res.redirect(`/admin/users/${zuweisung.user_id}?error=${ergebnis.fehler}`);
   res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
 
@@ -243,7 +246,8 @@ router.post('/zuweisungen/:id/annehmen', requireAdmin, (req, res) => {
 router.post('/zuweisungen/:id/ablehnen', requireAdmin, (req, res) => {
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
   if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
-  if (!ablehnen(zuweisung, 'admin')) return res.redirect(`/admin/users/${zuweisung.user_id}?error=kein-vorschlag`);
+  const ergebnis = ablehnen(zuweisung, 'admin');
+  if (!ergebnis.ok) return res.redirect(`/admin/users/${zuweisung.user_id}?error=${ergebnis.fehler}`);
   res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
 

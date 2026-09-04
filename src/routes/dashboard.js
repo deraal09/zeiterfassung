@@ -12,6 +12,7 @@ const ERROR_MESSAGES = {
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Schulleitung vor.',
+  'vorschlag-ungueltig': 'Die vorgeschlagene Kategorie existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
 };
 
 function activeTimer(userId) {
@@ -130,9 +131,8 @@ router.post('/zuweisungen/:id/link', requireAuth, (req, res) => {
     categoryId = category.id;
   }
 
-  if (!vorschlagen(zuweisung, 'lehrkraft', categoryId)) {
-    return res.redirect('/?error=gesperrt');
-  }
+  const ergebnis = vorschlagen(zuweisung, 'lehrkraft', categoryId);
+  if (!ergebnis.ok) return res.redirect(`/?error=${ergebnis.fehler}`);
   res.redirect('/');
 });
 
@@ -140,7 +140,8 @@ router.post('/zuweisungen/:id/link', requireAuth, (req, res) => {
 router.post('/zuweisungen/:id/annehmen', requireAuth, (req, res) => {
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
   if (!zuweisung) return res.redirect('/');
-  if (!annehmen(zuweisung, 'lehrkraft')) return res.redirect('/?error=kein-vorschlag');
+  const ergebnis = annehmen(zuweisung, 'lehrkraft');
+  if (!ergebnis.ok) return res.redirect(`/?error=${ergebnis.fehler}`);
   res.redirect('/');
 });
 
@@ -149,7 +150,8 @@ router.post('/zuweisungen/:id/annehmen', requireAuth, (req, res) => {
 router.post('/zuweisungen/:id/ablehnen', requireAuth, (req, res) => {
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
   if (!zuweisung) return res.redirect('/');
-  if (!ablehnen(zuweisung, 'lehrkraft')) return res.redirect('/?error=kein-vorschlag');
+  const ergebnis = ablehnen(zuweisung, 'lehrkraft');
+  if (!ergebnis.ok) return res.redirect(`/?error=${ergebnis.fehler}`);
   res.redirect('/');
 });
 
@@ -166,7 +168,15 @@ router.post('/zuweisungen/:id/uebernehmen', requireAuth, (req, res) => {
   const info = db
     .prepare('INSERT INTO categories (user_id, title, schuljahr) VALUES (?,?,?)')
     .run(userId, title, zuweisung.schuljahr);
-  vorschlagen(zuweisung, 'lehrkraft', info.lastInsertRowid);
+
+  // Scheitert der Vorschlag doch noch (z. B. weil parallel schon einer
+  // eingegangen ist), darf die gerade angelegte Kategorie nicht verwaist
+  // stehen bleiben - sie war nur Mittel zum Zweck dieses Vorschlags.
+  const ergebnis = vorschlagen(zuweisung, 'lehrkraft', info.lastInsertRowid);
+  if (!ergebnis.ok) {
+    db.prepare('DELETE FROM categories WHERE id=?').run(info.lastInsertRowid);
+    return res.redirect(`/?error=${ergebnis.fehler}`);
+  }
   res.redirect('/');
 });
 
