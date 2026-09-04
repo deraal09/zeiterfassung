@@ -159,64 +159,16 @@ function initDb() {
     db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
   }
 
-  // Migration fuer Datenbanken vor Einfuehrung von Zuweisungen: Kategorien
-  // trugen bisher ausgleichsstunden/faktor direkt. Jede bestehende Kategorie
-  // wird 1:1 zu einer verknuepften Zuweisung mit dem aktuellen Schuljahr.
-  const categoryColumns = db.prepare('PRAGMA table_info(categories)').all().map((c) => c.name);
-  if (categoryColumns.includes('ausgleichsstunden')) {
-    const schuljahr = aktuellesSchuljahr();
-    const alteKategorien = db.prepare('SELECT * FROM categories').all();
-    const insertZuweisung = db.prepare(
-      `INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, faktor, category_id, created_by, created_at)
-       VALUES (?,?,?,?,?,?,?)`
-    );
-    for (const cat of alteKategorien) {
-      insertZuweisung.run(
-        cat.user_id,
-        schuljahr,
-        cat.ausgleichsstunden,
-        cat.faktor,
-        cat.id,
-        cat.created_by || null,
-        cat.created_at
-      );
-    }
-    if (!categoryColumns.includes('schuljahr')) {
-      db.exec('ALTER TABLE categories ADD COLUMN schuljahr TEXT');
-    }
-    db.prepare('UPDATE categories SET schuljahr = ? WHERE schuljahr IS NULL').run(schuljahr);
-    db.exec('ALTER TABLE categories DROP COLUMN ausgleichsstunden');
-    db.exec('ALTER TABLE categories DROP COLUMN faktor');
-  }
-
-  // Migration fuer Datenbanken vor Einfuehrung des zentralen
-  // Schuljahr-Faktors: der Faktor stand bisher direkt in jeder Zuweisung.
-  // Fuer jedes Schuljahr wird der Faktor der jeweils ersten Zuweisung als
-  // Startwert fuer schuljahr_faktoren uebernommen; danach wird die Spalte
-  // aus zuweisungen entfernt.
-  const zuweisungColumns = db.prepare('PRAGMA table_info(zuweisungen)').all().map((c) => c.name);
-  if (zuweisungColumns.includes('faktor')) {
-    const insertFaktor = db.prepare(
-      'INSERT OR IGNORE INTO schuljahr_faktoren (schuljahr, faktor) VALUES (?,?)'
-    );
-    const proSchuljahr = db
-      .prepare(
-        `SELECT schuljahr, faktor FROM zuweisungen
-         WHERE id IN (SELECT MIN(id) FROM zuweisungen GROUP BY schuljahr)`
-      )
-      .all();
-    for (const row of proSchuljahr) {
-      insertFaktor.run(row.schuljahr, row.faktor);
-    }
-    db.exec('ALTER TABLE zuweisungen DROP COLUMN faktor');
-  }
-
   // Migration fuer Datenbanken vor Einfuehrung von Zeitstunden/Schulwochen:
   // schuljahr_faktoren trug bisher einen fertigen Faktor direkt. Um den
   // bisher berechneten Wert nicht zu veraendern, wird er unveraendert als
   // zeitstunden_pro_woche uebernommen (Schulwochen = 1) - der Admin kann
   // ihn anschliessend ueber die neue Eingabe sauber in beide Werte
   // aufteilen.
+  //
+  // Dieser Schritt laeuft BEWUSST vor den beiden Faktor-Migrationen weiter
+  // unten: die schreiben ihrerseits in schuljahr_faktoren und muessen die
+  // Tabelle deshalb schon im Zielschema vorfinden.
   const faktorColumns = db.prepare('PRAGMA table_info(schuljahr_faktoren)').all().map((c) => c.name);
   if (faktorColumns.includes('faktor')) {
     if (!faktorColumns.includes('zeitstunden_pro_woche')) {
@@ -231,6 +183,93 @@ function initDb() {
            schulwochen = COALESCE(schulwochen, 1)`
     );
     db.exec('ALTER TABLE schuljahr_faktoren DROP COLUMN faktor');
+  }
+
+  // Uebernimmt einen alten, bereits fertig gerechneten Faktor als zentralen
+  // Schuljahr-Faktor (zeitstunden_pro_woche = Faktor, schulwochen = 1), damit
+  // sich der bisher angezeigte Wert durch die Migration nicht veraendert.
+  // Je Schuljahr gewinnt der erste Wert - der Faktor ist seit dem Umbau
+  // zentral, ein Schuljahr kann also nur noch genau einen tragen.
+  function uebernehmeAltenFaktor(schuljahr, faktor) {
+    if (!(faktor > 0)) return;
+    db.prepare(
+      `INSERT OR IGNORE INTO schuljahr_faktoren (schuljahr, zeitstunden_pro_woche, schulwochen)
+       VALUES (?,?,1)`
+    ).run(schuljahr, faktor);
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung von Zuweisungen: Kategorien
+  // trugen bisher ausgleichsstunden/faktor direkt. Jede bestehende Kategorie
+  // wird 1:1 zu einer verknuepften Zuweisung mit dem aktuellen Schuljahr.
+  // Der Faktor wandert dabei nicht in die Zuweisung (dort gibt es ihn seit
+  // dem Umbau nicht mehr), sondern direkt in den zentralen Schuljahr-Faktor.
+  const categoryColumns = db.prepare('PRAGMA table_info(categories)').all().map((c) => c.name);
+  if (categoryColumns.includes('ausgleichsstunden')) {
+    const schuljahr = aktuellesSchuljahr();
+    const alteKategorien = db.prepare('SELECT * FROM categories').all();
+    const insertZuweisung = db.prepare(
+      // COALESCE beim Zeitstempel: zuweisungen.created_at ist NOT NULL, eine
+      // alte Kategorie kann aber ohne created_at in der Datenbank stehen -
+      // daran darf die Migration nicht scheitern.
+      `INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, category_id, created_by, created_at)
+       VALUES (?,?,?,?,?,COALESCE(?, datetime('now')))`
+    );
+    const migriereKategorien = db.transaction((kategorien) => {
+      for (const cat of kategorien) {
+        insertZuweisung.run(
+          cat.user_id,
+          schuljahr,
+          cat.ausgleichsstunden,
+          cat.id,
+          cat.created_by || null,
+          cat.created_at
+        );
+        uebernehmeAltenFaktor(schuljahr, cat.faktor);
+      }
+      if (!categoryColumns.includes('schuljahr')) {
+        db.exec('ALTER TABLE categories ADD COLUMN schuljahr TEXT');
+      }
+      db.prepare('UPDATE categories SET schuljahr = ? WHERE schuljahr IS NULL').run(schuljahr);
+    });
+    migriereKategorien(alteKategorien);
+
+    // Der Faktor war frueher pro Kategorie frei waehlbar, ist jetzt aber pro
+    // Schuljahr zentral. Gab es abweichende Werte, geht dabei zwangslaeufig
+    // einer verloren - das darf nicht stillschweigend passieren, sonst stehen
+    // hinterher falsche Stundenziele in der Oberflaeche.
+    const abweichendeFaktoren = [...new Set(alteKategorien.map((c) => c.faktor).filter((f) => f > 0))];
+    if (abweichendeFaktoren.length > 1) {
+      console.warn(
+        `Migration: Die Kategorien trugen unterschiedliche Faktoren (${abweichendeFaktoren.join(', ')}). ` +
+          `Uebernommen wurde ${abweichendeFaktoren[0]} als zentraler Faktor fuer ${schuljahr}. ` +
+          'Bitte im Admin-Bereich pruefen und korrigieren.'
+      );
+    }
+
+    db.exec('ALTER TABLE categories DROP COLUMN ausgleichsstunden');
+    db.exec('ALTER TABLE categories DROP COLUMN faktor');
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung des zentralen
+  // Schuljahr-Faktors: der Faktor stand bisher direkt in jeder Zuweisung.
+  // Fuer jedes Schuljahr wird der Faktor der jeweils ersten Zuweisung als
+  // Startwert fuer schuljahr_faktoren uebernommen; danach wird die Spalte
+  // aus zuweisungen entfernt.
+  const zuweisungColumns = db.prepare('PRAGMA table_info(zuweisungen)').all().map((c) => c.name);
+  if (zuweisungColumns.includes('faktor')) {
+    const proSchuljahr = db
+      .prepare(
+        `SELECT schuljahr, faktor FROM zuweisungen
+         WHERE id IN (SELECT MIN(id) FROM zuweisungen GROUP BY schuljahr)`
+      )
+      .all();
+    const migriereFaktoren = db.transaction((zeilen) => {
+      for (const row of zeilen) {
+        uebernehmeAltenFaktor(row.schuljahr, row.faktor);
+      }
+    });
+    migriereFaktoren(proSchuljahr);
+    db.exec('ALTER TABLE zuweisungen DROP COLUMN faktor');
   }
 
   // Migration fuer Datenbanken vor Einfuehrung des Vorschlag/Bestaetigen-
