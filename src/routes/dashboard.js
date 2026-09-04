@@ -6,6 +6,7 @@ const { aktuellesSchuljahr } = require('../util/schuljahr');
 const { decrypt } = require('../util/crypto');
 const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
+const { interneZielseite } = require('../util/redirect');
 
 const ERROR_MESSAGES = {
   'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
@@ -171,7 +172,7 @@ router.post('/sync', requireAuth, (req, res) => {
     nowLocalString(),
     req.session.user.id
   );
-  res.redirect(req.get('referer') || '/');
+  res.redirect(interneZielseite(req.get('referer')));
 });
 
 router.post('/settings/auto-sync', requireAuth, (req, res) => {
