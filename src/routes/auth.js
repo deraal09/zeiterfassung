@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const ldap = require('../ldap');
 const config = require('../config');
 const { db } = require('../db');
-const { pruefeSperre, vermerkeFehlversuch, setzeZurueck } = require('../auth/login-ratelimit');
+const { pruefeSperre, vermerkeFehlversuch, setzeZurueck, raeumeAuf } = require('../auth/login-ratelimit');
 
 const MIN_USER_LEN = 3;
 const MIN_PW_LEN = 8;
@@ -68,8 +68,11 @@ router.post('/login', async (req, res) => {
     return res.render('login', { error: 'Bitte Benutzername und Passwort eingeben.' });
   }
   const uname = username.trim();
+  // Hinter req.ip steckt bei Betrieb hinter Plesk/Passenger die per
+  // 'trust proxy' ausgewertete Client-Adresse (siehe app.js).
+  const adresse = req.ip;
 
-  const sperre = pruefeSperre(uname);
+  const sperre = pruefeSperre(uname, adresse);
   if (sperre.gesperrt) {
     const einheit = sperre.restSekunden === 1 ? 'Sekunde' : 'Sekunden';
     return res.render('login', {
@@ -83,10 +86,11 @@ router.post('/login', async (req, res) => {
     .get(uname);
   if (localRow) {
     if (!bcrypt.compareSync(password, localRow.password_hash || '')) {
-      vermerkeFehlversuch(uname);
+      vermerkeFehlversuch(uname, adresse);
       return res.render('login', { error: 'Benutzername oder Passwort ist falsch.' });
     }
-    setzeZurueck(uname);
+    setzeZurueck(uname, adresse);
+    raeumeAuf();
     db.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").run(localRow.id);
     return req.session.regenerate((err) => {
       if (err) return res.render('login', { error: 'Fehler beim Anmelden. Bitte erneut versuchen.' });
@@ -104,10 +108,11 @@ router.post('/login', async (req, res) => {
   try {
     const result = await ldap.authenticate(uname, password);
     if (!result || !result.username) {
-      vermerkeFehlversuch(uname);
+      vermerkeFehlversuch(uname, adresse);
       return res.render('login', { error: 'Benutzername oder Passwort ist falsch.' });
     }
-    setzeZurueck(uname);
+    setzeZurueck(uname, adresse);
+    raeumeAuf();
 
     // COLLATE NOCASE: Ein vom Admin vorab per Benutzername angelegtes Konto
     // (z. B. Zuweisung vor dem ersten Login) muss unabhaengig von Gross-/

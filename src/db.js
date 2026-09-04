@@ -134,7 +134,8 @@ function initDb() {
     CREATE TABLE IF NOT EXISTS login_ratelimit (
       schluessel TEXT PRIMARY KEY,
       fehlversuche INTEGER NOT NULL DEFAULT 0,
-      gesperrt_bis INTEGER
+      gesperrt_bis INTEGER,
+      letzter_versuch INTEGER
     );
   `);
 
@@ -291,6 +292,16 @@ function initDb() {
   const timeEntryColumns = db.prepare('PRAGMA table_info(time_entries)').all().map((c) => c.name);
   if (!timeEntryColumns.includes('unterprojekt_id')) {
     db.exec('ALTER TABLE time_entries ADD COLUMN unterprojekt_id INTEGER REFERENCES unterprojekte(id) ON DELETE SET NULL');
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung des Zaehlerverfalls beim
+  // Login-Ratelimit: ohne den Zeitpunkt des letzten Fehlversuchs liesse sich
+  // nicht entscheiden, ob eine Zaehlung noch zusammenhaengt (siehe
+  // auth/login-ratelimit.js). Bestehende Zeilen starten ohne Wert und
+  // beginnen damit beim naechsten Fehlversuch neu zu zaehlen.
+  const ratelimitColumns = db.prepare('PRAGMA table_info(login_ratelimit)').all().map((c) => c.name);
+  if (!ratelimitColumns.includes('letzter_versuch')) {
+    db.exec('ALTER TABLE login_ratelimit ADD COLUMN letzter_versuch INTEGER');
   }
 
   // Reparatur von Zeitstempeln, die vor der Eingabepruefung entstanden sind:
