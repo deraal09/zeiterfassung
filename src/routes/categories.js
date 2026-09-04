@@ -4,6 +4,7 @@ const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { nowLocalString, diffMinutes, parseDatumEingabe, parseZeitEingabe } = require('../util/time');
 const { parseCsv } = require('../util/csv');
+const { encrypt, decrypt } = require('../util/crypto');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
 
@@ -58,7 +59,7 @@ function insertManualEntry(cat, userId, { beschreibung, datum, von, bis }, autoS
   ).run(
     cat.id,
     userId,
-    (beschreibung || '').trim() || 'Taetigkeit',
+    encrypt((beschreibung || '').trim() || 'Taetigkeit'),
     startStr,
     endStr,
     duration,
@@ -75,6 +76,7 @@ router.get('/categories/:id', requireAuth, (req, res) => {
   const laufender = db
     .prepare('SELECT * FROM time_entries WHERE category_id=? AND end_time IS NULL')
     .get(cat.id);
+  if (laufender) laufender.beschreibung = decrypt(laufender.beschreibung);
 
   // Erfasste Zeitstunden (Fortschrittsbalken) beziehen sich immer auf ALLE
   // abgeschlossenen Eintraege, unabhaengig von Sortierung/Filter der Tabelle
@@ -98,16 +100,21 @@ router.get('/categories/:id', requireAuth, (req, res) => {
     bedingungen.push('date(start_time) <= date(?)');
     params.push(bis);
   }
-  if (suche) {
-    bedingungen.push('beschreibung LIKE ? ESCAPE \'\\\'');
-    params.push(`%${suche.replace(/[\\%_]/g, '\\$&')}%`);
-  }
 
-  const entries = db
+  // beschreibung liegt verschluesselt in der DB und kann daher nicht per SQL
+  // LIKE gefiltert werden - Datum/Sortierung laufen weiterhin ueber SQL,
+  // die Beschreibungssuche wird erst nach dem Entschluesseln in JS
+  // angewendet (bei den Datenmengen einer Schule unproblematisch).
+  let entries = db
     .prepare(
       `SELECT * FROM time_entries WHERE ${bedingungen.join(' AND ')} ORDER BY start_time ${sort}`
     )
     .all(...params);
+  entries.forEach((e) => { e.beschreibung = decrypt(e.beschreibung); });
+  if (suche) {
+    const nadel = suche.toLowerCase();
+    entries = entries.filter((e) => e.beschreibung.toLowerCase().includes(nadel));
+  }
 
   const importiert = parseInt(req.query.importiert, 10);
   const uebersprungen = parseInt(req.query.uebersprungen, 10);
@@ -145,7 +152,7 @@ router.post('/categories/:id/start', requireAuth, (req, res) => {
   const beschreibung = (req.body.beschreibung || '').trim() || 'Taetigkeit';
   db.prepare(
     "INSERT INTO time_entries (category_id, user_id, beschreibung, start_time, source) VALUES (?,?,?,?,'timer')"
-  ).run(cat.id, userId, beschreibung, nowLocalString());
+  ).run(cat.id, userId, encrypt(beschreibung), nowLocalString());
 
   res.redirect(`/categories/${cat.id}`);
 });
@@ -194,7 +201,7 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
   db.prepare(
     'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, synced=?, synced_at=? WHERE id=?'
   ).run(
-    (beschreibung || '').trim() || 'Taetigkeit',
+    encrypt((beschreibung || '').trim() || 'Taetigkeit'),
     startStr,
     endStr,
     duration,

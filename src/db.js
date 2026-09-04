@@ -3,6 +3,7 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const config = require('./config');
 const { aktuellesSchuljahr } = require('./util/schuljahr');
+const { encrypt, isEncrypted } = require('./util/crypto');
 
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
@@ -206,6 +207,28 @@ function initDb() {
            schulwochen = COALESCE(schulwochen, 1)`
     );
     db.exec('ALTER TABLE schuljahr_faktoren DROP COLUMN faktor');
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung der Feldverschluesselung:
+  // beschreibung wird serverseitig mit ENCRYPTION_KEY verschluesselt
+  // gespeichert (siehe util/crypto.js), damit die Tätigkeitsbeschreibungen
+  // selbst bei einem Server-/Hosterwechsel oder einem Zugriff auf die reine
+  // DB-Datei ohne den separat aufbewahrten Schluessel nicht lesbar sind.
+  // Laeuft bei jedem Start, ist aber idempotent (isEncrypted ueberspringt
+  // bereits verschluesselte Zeilen) und daher auch bei grossem Bestand
+  // unkritisch.
+  const unverschluesselt = db
+    .prepare('SELECT id, beschreibung FROM time_entries')
+    .all()
+    .filter((row) => !isEncrypted(row.beschreibung));
+  if (unverschluesselt.length > 0) {
+    const updateBeschreibung = db.prepare('UPDATE time_entries SET beschreibung=? WHERE id=?');
+    const verschluesseln = db.transaction((rows) => {
+      for (const row of rows) {
+        updateBeschreibung.run(encrypt(row.beschreibung), row.id);
+      }
+    });
+    verschluesseln(unverschluesselt);
   }
 }
 

@@ -3,6 +3,7 @@ const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { nowLocalString } = require('../util/time');
 const { aktuellesSchuljahr } = require('../util/schuljahr');
+const { decrypt } = require('../util/crypto');
 
 const ERROR_MESSAGES = {
   'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
@@ -11,13 +12,15 @@ const ERROR_MESSAGES = {
 };
 
 function activeTimer(userId) {
-  return db
+  const timer = db
     .prepare(
       `SELECT te.*, c.title as category_title FROM time_entries te
        JOIN categories c ON c.id = te.category_id
        WHERE te.user_id = ? AND te.end_time IS NULL`
     )
     .get(userId);
+  if (timer) timer.beschreibung = decrypt(timer.beschreibung);
+  return timer;
 }
 
 // Solange keine Zuweisung mit der Kategorie verknuepft ist, gilt das von der

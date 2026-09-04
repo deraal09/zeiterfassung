@@ -65,6 +65,14 @@ erfasst und an die Schulleitung übermittelt werden können.
 - **Admin-Bereich** – Lehrkräfte werden per Live-Suche aus dem LDAP gesucht und
   bekommen Ausgleichsstunden zugewiesen; Übersicht zeigt je Kategorie
   synchronisierte und noch offene (ungemeldete) Stunden.
+- **Verschlüsselung der Tätigkeitsbeschreibungen** – die Beschreibungstexte in
+  `time_entries` werden serverseitig mit AES-256-GCM verschlüsselt gespeichert
+  (Schlüssel `ENCRYPTION_KEY`, siehe Konfiguration unten). Der Schutz gilt für
+  die gespeicherten Daten selbst (DB-Datei, Backups) – unabhängig davon, wo
+  oder bei welchem Hoster die App läuft, und bleibt auch bei einem
+  Server-/Hosterwechsel bestehen, solange der Schlüssel separat mitgenommen
+  wird. Bestehende, noch unverschlüsselte Einträge werden beim ersten Start
+  nach dem Update automatisch verschlüsselt (Migration in `src/db.js`).
 
 ## Technik
 
@@ -98,6 +106,15 @@ Wichtige Variablen:
 | `ADMIN_USERNAMES` | Komma-getrennte Liste von LDAP-Benutzernamen mit Admin-Rechten in der App |
 | `SESSION_SECRET` | zufälliger, geheimer String für die Session-Verschlüsselung |
 | `DB_PATH` | Pfad zur SQLite-Datei (Standard: `./data/zeiterfassung.db`) |
+| `ENCRYPTION_KEY` | **Pflicht.** 32-Byte-Schlüssel (64 Hex-Zeichen) zur Verschlüsselung der Tätigkeitsbeschreibungen. Erzeugen mit `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Ohne gesetzten Schlüssel startet die App nicht (bewusst, damit Daten nie unverschlüsselt landen). |
+
+**Wichtig zu `ENCRYPTION_KEY`:** Der Schlüssel gehört nicht in die `.env`-Datei
+im Backup der Datenbank, sondern separat aufbewahrt (Passwort-Tresor der
+Schule). Bei einem Serverumzug beides mitnehmen: die `.db`-Datei *und* den
+Schlüssel. Geht der Schlüssel verloren, sind die verschlüsselten Beschreibungen
+unwiederbringlich verloren – es gibt bewusst keine Wiederherstellung ohne ihn.
+Wird der Schlüssel nachträglich geändert, lassen sich bereits verschlüsselte
+Altdaten nicht mehr entschlüsseln.
 
 ## Deployment auf Plesk (Node.js 22)
 
