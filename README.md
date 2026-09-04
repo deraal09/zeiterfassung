@@ -113,6 +113,21 @@ erfasst und an die Schulleitung übermittelt werden können.
 - LDAP-Anbindung über `ldapts` (Bind als Service-Account zur Benutzersuche,
   anschließend Bind mit den eingegebenen Zugangsdaten zur Passwortprüfung)
 
+### Tests
+
+`npm test` führt die Testsuite aus (Node-eigener Test-Runner, keine
+zusätzlichen Abhängigkeiten). Abgedeckt sind vor allem die Stellen, an denen
+ein Fehler stillschweigend Daten kostet:
+
+- **Migrationen** – für jede Schema-Stufe wird ein Altbestand nachgebaut und
+  geprüft, dass der Start durchläuft und die Werte rechnerisch unverändert
+  bleiben. Wichtig, weil die `CREATE TABLE`-Anweisungen immer das *aktuelle*
+  Schema tragen: eine Migration, die in eine zwischenzeitlich entfernte Spalte
+  schreibt, bricht den Start jeder älteren Installation ab.
+- **Verschlüsselung** – Roundtrip sowie das Verhalten bei unlesbaren Werten.
+- **Zuweisung ↔ Kategorie** – der Vorschlag/Bestätigen-Ablauf und die Sperre,
+  sobald für eine Kategorie Zeiten erfasst wurden.
+
 ## Konfiguration
 
 Alle Einstellungen erfolgen über Umgebungsvariablen, siehe `.env.example`.
@@ -133,7 +148,7 @@ Wichtige Variablen:
 | `LDAP_TLS_CA_PFAD` | Nur bei `ldaps://` mit interner/selbstsignierter CA: Pfad zur PEM-Datei |
 | `LDAP_TLS_REJECT_UNAUTHORIZED=false` | Zertifikatsprüfung abschalten (nur Notlösung, siehe Troubleshooting) |
 | `ADMIN_USERNAMES` | Komma-getrennte Liste von LDAP-Benutzernamen mit Admin-Rechten in der App |
-| `SESSION_SECRET` | zufälliger, geheimer String für die Session-Verschlüsselung |
+| `SESSION_SECRET` | **Pflicht.** Zufälliger, geheimer String zum Signieren der Session-Cookies. Erzeugen mit `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Ohne gesetzten Wert startet die App nicht (bewusst – mit einem bekannten Vorgabewert ließen sich fremde Sessions fälschen, auch die des Admins). |
 | `DB_PATH` | Pfad zur SQLite-Datei (Standard: `./data/zeiterfassung.db`) |
 | `ENCRYPTION_KEY` | **Pflicht.** 32-Byte-Schlüssel (64 Hex-Zeichen) zur Verschlüsselung der Tätigkeitsbeschreibungen. Erzeugen mit `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Ohne gesetzten Schlüssel startet die App nicht (bewusst, damit Daten nie unverschlüsselt landen). |
 

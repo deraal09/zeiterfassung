@@ -4,6 +4,28 @@ const path = require('path');
 
 process.env.TZ = process.env.TZ || 'Europe/Berlin';
 
+// Ohne eigenes Session-Secret liessen sich Session-Cookies faelschen - wer
+// den Vorgabewert kennt, meldet sich als beliebiger Benutzer an, auch als
+// Admin. Ein Fallback waere hier also kein Komfort, sondern eine offene Tuer,
+// deshalb verweigert die App den Start (analog zu ENCRYPTION_KEY).
+const UNSICHERE_SECRETS = ['change-me-in-production', 'bitte-aendern-in-produktion'];
+const MIN_SECRET_LENGTH = 16;
+
+function ladeSessionSecret() {
+  const secret = (process.env.SESSION_SECRET || '').trim();
+  if (!secret || UNSICHERE_SECRETS.includes(secret.toLowerCase())) {
+    throw new Error(
+      'SESSION_SECRET ist nicht gesetzt (oder steht noch auf dem Beispielwert). Bitte einen zufaelligen, ' +
+        'geheimen String in der .env hinterlegen, z. B. erzeugt mit: ' +
+        'node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+    );
+  }
+  if (secret.length < MIN_SECRET_LENGTH) {
+    throw new Error(`SESSION_SECRET muss mindestens ${MIN_SECRET_LENGTH} Zeichen lang sein.`);
+  }
+  return secret;
+}
+
 function buildTlsOptions() {
   const tlsOptions = {};
   const caPath = process.env.LDAP_TLS_CA_PFAD;
@@ -20,7 +42,7 @@ module.exports = {
   // wird deshalb unveraendert durchgereicht und erst in app.js ausgewertet.
   portEnv: process.env.PORT || null,
   fallbackPort: 3000,
-  sessionSecret: process.env.SESSION_SECRET || 'change-me-in-production',
+  sessionSecret: ladeSessionSecret(),
   dbPath: process.env.DB_PATH
     ? path.resolve(__dirname, '..', process.env.DB_PATH)
     : path.join(__dirname, '..', 'data', 'zeiterfassung.db'),
