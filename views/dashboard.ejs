@@ -51,10 +51,19 @@
         <% zuweisungen.forEach(z => { %>
           <div class="zuweisung-item">
             <p class="zuweisung-meta">
-              <strong><%= z.ausgleichsstunden %></strong> Ausgleichsstunden × Faktor
-              <strong><%= z.faktor %></strong> = <%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> Zeitstunden
+              <strong><%= z.ausgleichsstunden %></strong> Ausgleichsstunden
+              <% if (z.faktor) { %>
+                × Faktor <strong><%= z.faktor %></strong> = <%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> Zeitstunden
+              <% } %>
               <span class="meta">(Schuljahr <%= z.schuljahr %>)</span>
             </p>
+            <% if (!z.faktor) { %>
+              <p class="hint">
+                Wie viele Zeitstunden das sind, steht noch nicht fest – für das Schuljahr
+                <%= z.schuljahr %> hat die Schulleitung Zeitstunden pro Woche und Schulwochen
+                noch nicht festgelegt.
+              </p>
+            <% } %>
 
             <% if (z.category_title) { %>
               <p class="zuweisung-meta">
@@ -120,10 +129,17 @@
       <% categories.forEach(cat => { %>
         <a class="card" href="/categories/<%= cat.id %>">
           <h2><%= cat.title %></h2>
-          <div class="progress">
-            <div class="progress-bar" style="width: <%= Math.min(100, (cat.erfassteStunden / cat.benoetigteStunden) * 100 || 0) %>%"></div>
-          </div>
-          <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> von <%= cat.benoetigteStunden.toFixed(2) %> Zeitstunden erfasst</p>
+          <% if (cat.ziel.stunden !== null) { %>
+            <div class="progress">
+              <div class="progress-bar" style="width: <%= cat.fortschritt %>%"></div>
+            </div>
+            <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> von <%= cat.ziel.stunden.toFixed(2) %> Zeitstunden erfasst</p>
+          <% } else { %>
+            <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> Zeitstunden erfasst</p>
+            <p class="hint" style="margin: 0;">
+              <%= cat.ziel.quelle === 'kein-faktor' ? 'Ziel noch offen (Faktor fehlt)' : 'Noch kein Ziel hinterlegt' %>
+            </p>
+          <% } %>
         </a>
       <% }) %>
     </div>

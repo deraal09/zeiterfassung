@@ -5,6 +5,7 @@ const { nowLocalString } = require('../util/time');
 const { aktuellesSchuljahr } = require('../util/schuljahr');
 const { decrypt } = require('../util/crypto');
 const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
+const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 
 const ERROR_MESSAGES = {
   'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
@@ -27,23 +28,6 @@ function activeTimer(userId) {
   return timer;
 }
 
-// Solange keine Zuweisung mit der Kategorie verknuepft ist, gilt das von der
-// Lehrkraft selbst eingetragene ziel_zeitstunden als vorlaeufiges Ziel.
-// Sobald mindestens eine Zuweisung verknuepft ist, zaehlt nur noch die
-// offizielle Berechnung (Ausgleichsstunden x Schuljahr-Faktor, summiert).
-function benoetigteStunden(category) {
-  const summe = db
-    .prepare(
-      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h,
-              COUNT(*) as anzahl
-       FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
-       WHERE z.category_id=?`
-    )
-    .get(category.id);
-  if (summe.anzahl > 0) return summe.h;
-  return category.ziel_zeitstunden || 0;
-}
-
 router.get('/', requireAuth, (req, res) => {
   const userId = req.session.user.id;
   const schuljahr = aktuellesSchuljahr();
@@ -56,10 +40,12 @@ router.get('/', requireAuth, (req, res) => {
     const sumMinutes = db
       .prepare('SELECT COALESCE(SUM(duration_minutes),0) as minutes FROM time_entries WHERE category_id = ? AND end_time IS NOT NULL')
       .get(cat.id).minutes;
+    const ziel = zielZeitstunden(cat);
     return {
       ...cat,
       erfassteStunden: sumMinutes / 60,
-      benoetigteStunden: benoetigteStunden(cat),
+      ziel,
+      fortschritt: fortschrittProzent(sumMinutes / 60, ziel.stunden),
     };
   });
 
@@ -69,7 +55,7 @@ router.get('/', requireAuth, (req, res) => {
   // aufheben (siehe util/zuweisungen.js).
   const zuweisungen = db
     .prepare(
-      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor,
+      `SELECT z.*, sf.zeitstunden_pro_woche * sf.schulwochen as faktor,
               c.title as category_title, vc.title as vorschlag_category_title,
               EXISTS(SELECT 1 FROM time_entries te WHERE te.category_id = z.category_id) as gesperrt
        FROM zuweisungen z

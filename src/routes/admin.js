@@ -4,6 +4,7 @@ const { requireAdmin } = require('../middleware/auth');
 const ldap = require('../ldap');
 const { aktuellesSchuljahr } = require('../util/schuljahr');
 const { vorschlagen, annehmen, ablehnen, istGesperrt } = require('../util/zuweisungen');
+const { zielZeitstunden } = require('../util/stunden');
 
 const ERROR_MESSAGES = {
   'ungueltige-eingabe': 'Bitte eine gueltige Anzahl Ausgleichsstunden eingeben.',
@@ -118,15 +119,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
   const categories = rawCategories.map((cat) => {
     // Solange keine Zuweisung verknuepft ist, zeigt auch der Admin das von
     // der Lehrkraft selbst eingetragene vorlaeufige Ziel (ziel_zeitstunden).
-    const summe = db
-      .prepare(
-        `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h,
-                COUNT(*) as anzahl
-         FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
-         WHERE z.category_id=?`
-      )
-      .get(cat.id);
-    const required = summe.anzahl > 0 ? summe.h : cat.ziel_zeitstunden || 0;
+    const ziel = zielZeitstunden(cat);
     const row = db
       .prepare(
         `SELECT
@@ -137,7 +130,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
       .get(cat.id);
     return {
       ...cat,
-      requiredHours: required,
+      ziel,
       syncedHours: row.synced_minutes / 60,
       unsyncedHours: row.unsynced_minutes / 60,
     };
@@ -145,7 +138,7 @@ router.get('/users/:id', requireAdmin, (req, res) => {
 
   const zuweisungen = db
     .prepare(
-      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor,
+      `SELECT z.*, sf.zeitstunden_pro_woche * sf.schulwochen as faktor,
               c.title as category_title, vc.title as vorschlag_category_title,
               EXISTS(SELECT 1 FROM time_entries te WHERE te.category_id = z.category_id) as gesperrt
        FROM zuweisungen z
