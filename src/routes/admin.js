@@ -3,6 +3,7 @@ const { db } = require('../db');
 const { requireAdmin } = require('../middleware/auth');
 const ldap = require('../ldap');
 const { aktuellesSchuljahr } = require('../util/schuljahr');
+const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
 
 const ERROR_MESSAGES = {
   'ungueltige-eingabe': 'Bitte eine gueltige Anzahl Ausgleichsstunden eingeben.',
@@ -10,6 +11,8 @@ const ERROR_MESSAGES = {
   'keine-kategorie': 'Bitte eine Kategorie dieser Lehrkraft auswaehlen.',
   'kein-faktor': 'Bitte zuerst Zeitstunden pro Woche und Schulwochen fuer dieses Schuljahr festlegen.',
   'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
+  'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
+  'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Lehrkraft vor.',
 };
 
 function parseNumber(value) {
@@ -86,12 +89,17 @@ router.get('/users/:id', requireAdmin, (req, res) => {
 
   // Kategorien sind Privatsache der Lehrkraft, solange sie weder explizit
   // freigegeben (visible_for_admin) noch mit einer Zuweisung verknuepft
-  // sind (letzteres macht sie automatisch "offiziell").
+  // sind (letzteres macht sie automatisch "offiziell") - und werden
+  // zusaetzlich sichtbar, sobald die Lehrkraft sie als Verknuepfung
+  // vorschlaegt (der Admin muss den Titel ja sehen koennen, um den
+  // Vorschlag zu beurteilen).
   const rawCategories = db
     .prepare(
       `SELECT * FROM categories
        WHERE user_id=?
-         AND (visible_for_admin=1 OR EXISTS(SELECT 1 FROM zuweisungen z WHERE z.category_id = categories.id))
+         AND (visible_for_admin=1
+              OR EXISTS(SELECT 1 FROM zuweisungen z WHERE z.category_id = categories.id)
+              OR EXISTS(SELECT 1 FROM zuweisungen z WHERE z.vorschlag_category_id = categories.id AND z.vorschlag_von='lehrkraft'))
        ORDER BY archived ASC, created_at DESC`
     )
     .all(teacher.id);
@@ -100,7 +108,8 @@ router.get('/users/:id', requireAdmin, (req, res) => {
     .prepare(
       `SELECT COUNT(*) as c FROM categories
        WHERE user_id=? AND visible_for_admin=0
-         AND NOT EXISTS(SELECT 1 FROM zuweisungen z WHERE z.category_id = categories.id)`
+         AND NOT EXISTS(SELECT 1 FROM zuweisungen z WHERE z.category_id = categories.id)
+         AND NOT EXISTS(SELECT 1 FROM zuweisungen z WHERE z.vorschlag_category_id = categories.id AND z.vorschlag_von='lehrkraft')`
     )
     .get(teacher.id).c;
 
@@ -134,10 +143,13 @@ router.get('/users/:id', requireAdmin, (req, res) => {
 
   const zuweisungen = db
     .prepare(
-      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor, c.title as category_title
+      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor,
+              c.title as category_title, vc.title as vorschlag_category_title,
+              EXISTS(SELECT 1 FROM time_entries te WHERE te.category_id = z.category_id) as gesperrt
        FROM zuweisungen z
        LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        LEFT JOIN categories c ON c.id = z.category_id
+       LEFT JOIN categories vc ON vc.id = z.vorschlag_category_id
        WHERE z.user_id=? ORDER BY z.created_at DESC`
     )
     .all(teacher.id);
@@ -165,19 +177,21 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   }
 
   // Verknuepfung mit einer Kategorie der Lehrkraft ist optional - der Admin
-  // kann die Zuweisung direkt zuordnen, muss aber nicht (dann erledigt es
-  // die Lehrkraft selbst im Dashboard ueber "Verknuepfen"/"Uebernehmen").
-  let categoryId = null;
+  // kann direkt eine Kategorie vorschlagen, muss aber nicht (dann erledigt
+  // es die Lehrkraft selbst im Dashboard). Auch ein direkt bei der
+  // Zuweisung angegebener Vorschlag muss von der Lehrkraft noch bestaetigt
+  // werden, bevor er wirksam wird (category_id).
+  let vorschlagCategoryId = null;
   if (req.body.category_id) {
     const category = db
       .prepare('SELECT id FROM categories WHERE id=? AND user_id=?')
       .get(req.body.category_id, teacher.id);
-    if (category) categoryId = category.id;
+    if (category) vorschlagCategoryId = category.id;
   }
 
   db.prepare(
-    'INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, category_id, created_by) VALUES (?,?,?,?,?)'
-  ).run(teacher.id, schuljahr, h, categoryId, req.session.user.username);
+    'INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, vorschlag_category_id, vorschlag_von, created_by) VALUES (?,?,?,?,?,?)'
+  ).run(teacher.id, schuljahr, h, vorschlagCategoryId, vorschlagCategoryId ? 'admin' : null, req.session.user.username);
 
   res.redirect(`/admin/users/${teacher.id}`);
 });
@@ -193,17 +207,42 @@ router.post('/zuweisungen/:id/edit', requireAdmin, (req, res) => {
   res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
 
+// Schlaegt eine (neue oder geaenderte) Verknuepfung vor - wird erst wirksam,
+// wenn die Lehrkraft sie annimmt (siehe /zuweisungen/:id/annehmen). Leere
+// category_id = Aufhebung der Verknuepfung vorschlagen.
 router.post('/zuweisungen/:id/link', requireAdmin, (req, res) => {
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
   if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
-  if (zuweisung.category_id) return res.redirect(`/admin/users/${zuweisung.user_id}`);
 
-  const category = db
-    .prepare('SELECT * FROM categories WHERE id=? AND user_id=?')
-    .get(req.body.category_id, zuweisung.user_id);
-  if (!category) return res.redirect(`/admin/users/${zuweisung.user_id}?error=keine-kategorie`);
+  let categoryId = null;
+  if (req.body.category_id) {
+    const category = db
+      .prepare('SELECT id FROM categories WHERE id=? AND user_id=?')
+      .get(req.body.category_id, zuweisung.user_id);
+    if (!category) return res.redirect(`/admin/users/${zuweisung.user_id}?error=keine-kategorie`);
+    categoryId = category.id;
+  }
 
-  db.prepare('UPDATE zuweisungen SET category_id=? WHERE id=?').run(category.id, zuweisung.id);
+  if (!vorschlagen(zuweisung, 'admin', categoryId)) {
+    return res.redirect(`/admin/users/${zuweisung.user_id}?error=gesperrt`);
+  }
+  res.redirect(`/admin/users/${zuweisung.user_id}`);
+});
+
+// Nimmt einen offenen Verknuepfungsvorschlag der Lehrkraft an.
+router.post('/zuweisungen/:id/annehmen', requireAdmin, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
+  if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
+  if (!annehmen(zuweisung, 'admin')) return res.redirect(`/admin/users/${zuweisung.user_id}?error=kein-vorschlag`);
+  res.redirect(`/admin/users/${zuweisung.user_id}`);
+});
+
+// Lehnt einen offenen Verknuepfungsvorschlag der Lehrkraft ab - die
+// Lehrkraft kann anschliessend einen anderen Vorschlag machen.
+router.post('/zuweisungen/:id/ablehnen', requireAdmin, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
+  if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
+  if (!ablehnen(zuweisung, 'admin')) return res.redirect(`/admin/users/${zuweisung.user_id}?error=kein-vorschlag`);
   res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
 

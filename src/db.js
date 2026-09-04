@@ -52,17 +52,25 @@ function initDb() {
 
     -- Zuweisungen: Admin vergibt Ausgleichsstunden fuer ein Schuljahr an
     -- eine Lehrkraft, zunaechst ohne Kategorie (category_id NULL =
-    -- "offen"/noch nicht verknuepft). Die Lehrkraft verknuepft sie
-    -- anschliessend mit einer eigenen Kategorie oder uebernimmt sie direkt
-    -- (was ebenfalls eine Kategorie anlegt und sofort verknuepft). Der
-    -- Faktor steht NICHT hier, sondern zentral in schuljahr_faktoren -
-    -- einmal pro Schuljahr, gilt fuer alle Zuweisungen dieses Schuljahres.
+    -- "offen"/noch nicht verknuepft). Der Faktor steht NICHT hier, sondern
+    -- zentral in schuljahr_faktoren - einmal pro Schuljahr, gilt fuer alle
+    -- Zuweisungen dieses Schuljahres.
+    --
+    -- Die Verknuepfung mit einer Kategorie laeuft ueber Vorschlag +
+    -- Bestaetigung (siehe util/zuweisungen.js): category_id ist die
+    -- BESTAETIGTE Verknuepfung, vorschlag_category_id/vorschlag_von ein noch
+    -- offener Vorschlag der jeweils anderen Seite ('admin' oder
+    -- 'lehrkraft'), der erst durch die Gegenseite wirksam wird. Solange die
+    -- bestaetigte Kategorie noch keine Zeiten hat, kann die Verknuepfung
+    -- noch per neuem Vorschlag geaendert werden - danach ist sie fest.
     CREATE TABLE IF NOT EXISTS zuweisungen (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       schuljahr TEXT NOT NULL,
       ausgleichsstunden REAL NOT NULL,
       category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      vorschlag_category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+      vorschlag_von TEXT,
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -207,6 +215,18 @@ function initDb() {
            schulwochen = COALESCE(schulwochen, 1)`
     );
     db.exec('ALTER TABLE schuljahr_faktoren DROP COLUMN faktor');
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung des Vorschlag/Bestaetigen-
+  // Workflows fuer die Zuweisung<->Kategorie-Verknuepfung (siehe Kommentar
+  // an der zuweisungen-Tabelle oben sowie util/zuweisungen.js). Bestehende,
+  // bereits verknuepfte Zuweisungen bleiben unveraendert bestaetigt.
+  const zuweisungColumnsFuerVorschlag = db.prepare('PRAGMA table_info(zuweisungen)').all().map((c) => c.name);
+  if (!zuweisungColumnsFuerVorschlag.includes('vorschlag_category_id')) {
+    db.exec('ALTER TABLE zuweisungen ADD COLUMN vorschlag_category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL');
+  }
+  if (!zuweisungColumnsFuerVorschlag.includes('vorschlag_von')) {
+    db.exec('ALTER TABLE zuweisungen ADD COLUMN vorschlag_von TEXT');
   }
 
   // Migration fuer Datenbanken vor Einfuehrung der Feldverschluesselung:

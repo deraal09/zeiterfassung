@@ -4,11 +4,14 @@ const { requireAuth } = require('../middleware/auth');
 const { nowLocalString } = require('../util/time');
 const { aktuellesSchuljahr } = require('../util/schuljahr');
 const { decrypt } = require('../util/crypto');
+const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
 
 const ERROR_MESSAGES = {
   'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
   'keine-kategorie': 'Bitte eine Kategorie auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
+  'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
+  'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Schulleitung vor.',
 };
 
 function activeTimer(userId) {
@@ -59,15 +62,19 @@ router.get('/', requireAuth, (req, res) => {
     };
   });
 
-  // Alle Zuweisungen der Lehrkraft (offen und bereits verknuepft) - die
-  // Verknuepfung laesst sich hier jederzeit setzen, aendern oder aufheben,
-  // nicht nur einmalig beim ersten Verknuepfen.
+  // Alle Zuweisungen der Lehrkraft (offen und bereits verknuepft). Solange
+  // die bestaetigte Kategorie noch keine Zeiten hat (gesperrt=0), laesst
+  // sich die Verknuepfung per Vorschlag/Bestaetigung noch aendern oder
+  // aufheben (siehe util/zuweisungen.js).
   const zuweisungen = db
     .prepare(
-      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor, c.title as category_title
+      `SELECT z.*, COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0) as faktor,
+              c.title as category_title, vc.title as vorschlag_category_title,
+              EXISTS(SELECT 1 FROM time_entries te WHERE te.category_id = z.category_id) as gesperrt
        FROM zuweisungen z
        LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        LEFT JOIN categories c ON c.id = z.category_id
+       LEFT JOIN categories vc ON vc.id = z.vorschlag_category_id
        WHERE z.user_id=? ORDER BY z.created_at DESC`
     )
     .all(userId);
@@ -106,37 +113,60 @@ router.post('/categories', requireAuth, (req, res) => {
   res.redirect('/');
 });
 
-// Verknuepfung setzen, aendern oder aufheben (leere category_id = trennen).
-// Nicht mehr nur beim ersten Verknuepfen moeglich - falls sich jemand
-// verschrieben oder die falsche Kategorie gewaehlt hat, laesst sich das
-// jederzeit korrigieren.
+// Schlaegt eine (neue oder geaenderte) Verknuepfung vor (leere category_id =
+// Aufhebung vorschlagen) - wird erst wirksam, wenn der Admin sie annimmt
+// (siehe /zuweisungen/:id/annehmen). Nicht mehr moeglich, sobald die
+// Zuweisung gesperrt ist (bereits Zeiten erfasst) oder der Admin gerade
+// selbst einen offenen Vorschlag hat.
 router.post('/zuweisungen/:id/link', requireAuth, (req, res) => {
   const userId = req.session.user.id;
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, userId);
   if (!zuweisung) return res.redirect('/');
 
-  if (!req.body.category_id) {
-    db.prepare('UPDATE zuweisungen SET category_id=NULL WHERE id=?').run(zuweisung.id);
-    return res.redirect('/');
+  let categoryId = null;
+  if (req.body.category_id) {
+    const category = db.prepare('SELECT id FROM categories WHERE id=? AND user_id=?').get(req.body.category_id, userId);
+    if (!category) return res.redirect('/?error=keine-kategorie');
+    categoryId = category.id;
   }
 
-  const category = db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(req.body.category_id, userId);
-  if (!category) return res.redirect('/?error=keine-kategorie');
-
-  db.prepare('UPDATE zuweisungen SET category_id=? WHERE id=?').run(category.id, zuweisung.id);
+  if (!vorschlagen(zuweisung, 'lehrkraft', categoryId)) {
+    return res.redirect('/?error=gesperrt');
+  }
   res.redirect('/');
 });
 
+// Nimmt einen offenen Verknuepfungsvorschlag der Schulleitung an.
+router.post('/zuweisungen/:id/annehmen', requireAuth, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
+  if (!zuweisung) return res.redirect('/');
+  if (!annehmen(zuweisung, 'lehrkraft')) return res.redirect('/?error=kein-vorschlag');
+  res.redirect('/');
+});
+
+// Lehnt einen offenen Verknuepfungsvorschlag der Schulleitung ab - danach
+// kann selbst ein anderer Vorschlag gemacht werden.
+router.post('/zuweisungen/:id/ablehnen', requireAuth, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
+  if (!zuweisung) return res.redirect('/');
+  if (!ablehnen(zuweisung, 'lehrkraft')) return res.redirect('/?error=kein-vorschlag');
+  res.redirect('/');
+});
+
+// Legt direkt eine neue, eigene Kategorie an und schlaegt sie sofort als
+// Verknuepfung fuer diese Zuweisung vor (muss vom Admin noch bestaetigt
+// werden). Nur moeglich, solange weder eine bestaetigte Kategorie noch ein
+// offener Vorschlag vorliegt.
 router.post('/zuweisungen/:id/uebernehmen', requireAuth, (req, res) => {
   const userId = req.session.user.id;
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, userId);
-  if (!zuweisung || zuweisung.category_id) return res.redirect('/');
+  if (!zuweisung || zuweisung.category_id || zuweisung.vorschlag_von) return res.redirect('/');
 
   const title = (req.body.title || '').trim() || `Ausgleichsstunden ${zuweisung.schuljahr}`;
   const info = db
     .prepare('INSERT INTO categories (user_id, title, schuljahr) VALUES (?,?,?)')
     .run(userId, title, zuweisung.schuljahr);
-  db.prepare('UPDATE zuweisungen SET category_id=? WHERE id=?').run(info.lastInsertRowid, zuweisung.id);
+  vorschlagen(zuweisung, 'lehrkraft', info.lastInsertRowid);
   res.redirect('/');
 });
 

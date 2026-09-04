@@ -25,6 +25,9 @@
               <option value="<%= cat.id %>"><%= cat.title %></option>
             <% }) %>
           </select>
+          <p class="hint" style="width: 100%; margin: 0;">
+            Bei direkter Auswahl muss die Verknüpfung noch von der Lehrkraft bestätigt werden.
+          </p>
         <% } %>
         <button type="submit" class="btn btn-start">Zuweisen</button>
       </form>
@@ -32,6 +35,11 @@
 
     <section class="panel">
       <h2>Zuweisungen</h2>
+      <p class="hint">
+        Eine Verknüpfung mit einer Kategorie ist nur ein Vorschlag, bis die
+        Lehrkraft ihn annimmt. Solange dafür noch keine Zeiten erfasst
+        wurden, lässt sich die Verknüpfung noch per neuem Vorschlag ändern.
+      </p>
       <table class="entries-table">
         <thead><tr><th>Schuljahr</th><th>Ausgleichsstunden</th><th>Faktor</th><th>Zeitstunden</th><th>Kategorie</th></tr></thead>
         <tbody>
@@ -48,19 +56,38 @@
               <td><%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> h</td>
               <td>
                 <% if (z.category_title) { %>
-                  <%= z.category_title %>
-                <% } else if (categories.filter(c => !c.archived).length > 0) { %>
-                  <form method="post" action="/admin/zuweisungen/<%= z.id %>/link" class="inline-form">
-                    <select name="category_id" required>
-                      <option value="" disabled selected>Kategorie wählen…</option>
+                  <strong><%= z.category_title %></strong>
+                  <% if (z.gesperrt) { %><p class="hint" style="margin: 4px 0 0;">fest, da bereits Zeiten erfasst</p><% } %>
+                <% } else { %>
+                  <span class="meta">noch nicht verknüpft</span>
+                <% } %>
+
+                <% if (z.vorschlag_von === 'lehrkraft') { %>
+                  <p class="hint" style="margin: 6px 0 4px;">
+                    Vorschlag der Lehrkraft: <strong><%= z.vorschlag_category_title || '– Verknüpfung aufheben –' %></strong>
+                  </p>
+                  <div class="zuweisung-actions">
+                    <form method="post" action="/admin/zuweisungen/<%= z.id %>/annehmen" class="inline-form">
+                      <button type="submit" class="link-button">Annehmen</button>
+                    </form>
+                    <form method="post" action="/admin/zuweisungen/<%= z.id %>/ablehnen" class="inline-form">
+                      <button type="submit" class="link-button link-button-danger">Ablehnen</button>
+                    </form>
+                  </div>
+                <% } else if (z.vorschlag_von === 'admin') { %>
+                  <p class="hint" style="margin: 6px 0 0;">
+                    Dein Vorschlag (<%= z.vorschlag_category_title || '– Verknüpfung aufheben –' %>) wartet auf Bestätigung durch die Lehrkraft.
+                  </p>
+                <% } else if (!z.gesperrt && categories.filter(c => !c.archived).length > 0) { %>
+                  <form method="post" action="/admin/zuweisungen/<%= z.id %>/link" class="inline-form" style="margin-top: 6px;">
+                    <select name="category_id">
+                      <option value="">– keine Verknüpfung –</option>
                       <% categories.filter(c => !c.archived).forEach(cat => { %>
-                        <option value="<%= cat.id %>"><%= cat.title %></option>
+                        <option value="<%= cat.id %>" <%= z.category_id === cat.id ? 'selected' : '' %>><%= cat.title %></option>
                       <% }) %>
                     </select>
-                    <button type="submit" class="link-button">Verknüpfen</button>
+                    <button type="submit" class="link-button"><%= z.category_title ? 'Änderung vorschlagen' : 'Vorschlagen' %></button>
                   </form>
-                <% } else { %>
-                  offen (noch nicht verknüpft)
                 <% } %>
               </td>
             </tr>

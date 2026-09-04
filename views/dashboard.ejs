@@ -43,9 +43,10 @@
         <h2>Meine Ausgleichsstunden-Zuweisungen</h2>
         <p class="hint">
           Von der Schulleitung zugewiesene Ausgleichsstunden. Verknüpfe sie mit
-          einer eigenen Kategorie oder übernimm sie als neue Kategorie – die
-          Verknüpfung lässt sich jederzeit wieder ändern oder aufheben, falls
-          etwas falsch zugeordnet wurde.
+          einer eigenen Kategorie oder übernimm sie als neue Kategorie – ein
+          Vorschlag muss immer von der Schulleitung bestätigt werden, bevor er
+          gilt. Solange für die Kategorie noch keine Zeiten erfasst wurden,
+          lässt sich die Verknüpfung noch per neuem Vorschlag ändern.
         </p>
         <% zuweisungen.forEach(z => { %>
           <div class="zuweisung-item">
@@ -54,23 +55,49 @@
               <strong><%= z.faktor %></strong> = <%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> Zeitstunden
               <span class="meta">(Schuljahr <%= z.schuljahr %>)</span>
             </p>
-            <div class="zuweisung-actions">
-              <form method="post" action="/zuweisungen/<%= z.id %>/link" class="inline-form">
-                <select name="category_id">
-                  <option value="">– keine Verknüpfung –</option>
-                  <% categories.forEach(cat => { %>
-                    <option value="<%= cat.id %>" <%= z.category_id === cat.id ? 'selected' : '' %>><%= cat.title %></option>
-                  <% }) %>
-                </select>
-                <button type="submit" class="btn"><%= z.category_id ? 'Ändern' : 'Verknüpfen' %></button>
-              </form>
-              <% if (!z.category_id) { %>
-                <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
-                  <input type="text" name="title" placeholder="Titel für neue Kategorie (optional)">
-                  <button type="submit" class="btn btn-start">Übernehmen</button>
+
+            <% if (z.category_title) { %>
+              <p class="zuweisung-meta">
+                Verknüpft mit: <strong><%= z.category_title %></strong>
+                <% if (z.gesperrt) { %><span class="hint">(fest, da bereits Zeiten erfasst)</span><% } %>
+              </p>
+            <% } %>
+
+            <% if (z.vorschlag_von === 'admin') { %>
+              <p class="hint">
+                Vorschlag der Schulleitung: <strong><%= z.vorschlag_category_title || '– Verknüpfung aufheben –' %></strong>
+              </p>
+              <div class="zuweisung-actions">
+                <form method="post" action="/zuweisungen/<%= z.id %>/annehmen" class="inline-form">
+                  <button type="submit" class="btn btn-start">Annehmen</button>
                 </form>
-              <% } %>
-            </div>
+                <form method="post" action="/zuweisungen/<%= z.id %>/ablehnen" class="inline-form">
+                  <button type="submit" class="link-button link-button-danger">Ablehnen</button>
+                </form>
+              </div>
+            <% } else if (z.vorschlag_von === 'lehrkraft') { %>
+              <p class="hint">
+                Dein Vorschlag (<%= z.vorschlag_category_title || '– Verknüpfung aufheben –' %>) wartet auf Bestätigung durch die Schulleitung.
+              </p>
+            <% } else if (!z.gesperrt) { %>
+              <div class="zuweisung-actions">
+                <form method="post" action="/zuweisungen/<%= z.id %>/link" class="inline-form">
+                  <select name="category_id">
+                    <option value="">– keine Verknüpfung –</option>
+                    <% categories.forEach(cat => { %>
+                      <option value="<%= cat.id %>" <%= z.category_id === cat.id ? 'selected' : '' %>><%= cat.title %></option>
+                    <% }) %>
+                  </select>
+                  <button type="submit" class="btn"><%= z.category_id ? 'Änderung vorschlagen' : 'Vorschlagen' %></button>
+                </form>
+                <% if (!z.category_id) { %>
+                  <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
+                    <input type="text" name="title" placeholder="Titel für neue Kategorie (optional)">
+                    <button type="submit" class="btn btn-start">Übernehmen</button>
+                  </form>
+                <% } %>
+              </div>
+            <% } %>
           </div>
         <% }) %>
       </section>

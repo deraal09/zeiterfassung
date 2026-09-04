@@ -18,8 +18,18 @@ erfasst und an die Schulleitung übermittelt werden können.
   Schuljahr fangen alle wieder bei 0 an.
 - **Admin vergibt Ausgleichsstunden** – die Schulleitung weist einer Lehrkraft
   eine Anzahl Ausgleichsstunden zu (kein Titel nötig, korrigierbar). Die
-  Lehrkraft wird darüber im Dashboard informiert. Optional kann der Admin die
-  Zuweisung direkt mit einer Kategorie der Lehrkraft verknüpfen.
+  Lehrkraft wird darüber im Dashboard informiert. Optional kann der Admin
+  direkt eine Kategorie der Lehrkraft zur Verknüpfung vorschlagen.
+- **Verknüpfung per Vorschlag und Bestätigung** – eine Zuweisung mit einer
+  Kategorie zu verknüpfen ist immer ein zweiseitiger Vorgang: schlägt der
+  Admin eine Kategorie vor, muss die Lehrkraft sie annehmen oder ablehnen
+  (und stattdessen eine andere vorschlagen); schlägt die Lehrkraft eine
+  Kategorie vor, muss der Admin bestätigen. Solange für die (bestätigte)
+  Kategorie noch keine Zeiten erfasst wurden, lässt sich die Verknüpfung noch
+  per neuem Vorschlag ändern oder aufheben – sobald Zeiten erfasst sind, ist
+  sie fest, damit niemandem bereits geleistete Arbeit nachträglich entzogen
+  wird. Ohne jede Verknüpfung wird eine Kategorie einfach eigenständig für
+  die Zeiterfassung genutzt (mit dem eigenen Ziel, siehe unten).
 - **Faktor gilt zentral pro Schuljahr** – einmal vom Admin festgelegt, für
   alle Lehrkräfte gleich, berechnet aus Zeitstunden pro Woche × Schulwochen
   (z. B. 1,7 × 40 = 68 Zeitstunden je Ausgleichsstunde und Schuljahr).
@@ -29,15 +39,17 @@ erfasst und an die Schulleitung übermittelt werden können.
   (z. B. "Administration Moodle"), optional mit einem eigenen vorläufigen
   Zeitstunden-Ziel (analog zur Admin-Eingabe). Eine neu zugewiesene
   Ausgleichsstunden-Menge kann entweder mit einer bestehenden Kategorie
-  **verknüpft** oder direkt als neue Kategorie **übernommen** werden – die
-  Verknüpfung lässt sich jederzeit ändern oder wieder aufheben, nicht nur
-  einmalig. Sobald eine Zuweisung verknüpft ist, ersetzt deren offizielle
-  Berechnung das eigene Ziel (das dann nicht mehr änderbar ist, aber zur
-  Erinnerung sichtbar bleibt).
+  **verknüpft** (Vorschlag, siehe oben) oder direkt als neue Kategorie
+  **übernommen** werden (schlägt die neue Kategorie sofort zur Verknüpfung
+  vor). Sobald eine Zuweisung bestätigt verknüpft ist, ersetzt deren
+  offizielle Berechnung das eigene Ziel (das dann nicht mehr änderbar ist,
+  aber zur Erinnerung sichtbar bleibt).
 - **Kategorien sind privat, bis sie freigegeben werden** – der Admin sieht
-  eine Kategorie erst, wenn die Lehrkraft eine Zuweisung damit verknüpft
-  (dann ist sie automatisch "offiziell") oder sie über einen Haken auf der
-  Kategorie-Seite explizit für den Admin sichtbar macht.
+  eine Kategorie erst, wenn die Lehrkraft eine Zuweisung damit (bestätigt)
+  verknüpft (dann ist sie automatisch "offiziell") oder sie über einen Haken
+  auf der Kategorie-Seite explizit für den Admin sichtbar macht. Schlägt die
+  Lehrkraft eine Verknüpfung vor, wird der Kategorietitel für den Admin
+  vorab sichtbar, damit er den Vorschlag beurteilen kann.
 - **Umrechnung** – benötigte Zeitstunden einer Kategorie = Summe aller damit
   verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird als
   Balken angezeigt.

@@ -225,12 +225,12 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .checkbox { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--color-muted); }
 
 .tabs { margin-bottom: 20px; }
-.tab-buttons { display: flex; gap: 4px; border-bottom: 1px solid var(--color-border); margin-bottom: -1px; }
+.tab-buttons { display: flex; gap: 4px; border-bottom: 1px solid var(--color-border); }
 .tab-button {
   background: none;
-  border: 1px solid transparent;
-  border-bottom: none;
-  border-radius: var(--radius) var(--radius) 0 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   padding: 10px 16px;
   font-size: 0.9rem;
   color: var(--color-muted);
@@ -238,12 +238,11 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 }
 .tab-button:hover { color: var(--color-text); }
 .tab-button.active {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  color: var(--color-text);
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
   font-weight: 600;
 }
-.tab-panel { border-radius: 0 var(--radius) var(--radius) var(--radius); margin-bottom: 0; }
+.tab-panel { margin-bottom: 0; }
 
 .entries-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 .entries-table th, .entries-table td {
