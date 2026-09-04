@@ -4,9 +4,20 @@ const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { nowLocalString, diffMinutes, parseDatumEingabe, parseZeitEingabe } = require('../util/time');
 const { parseCsv } = require('../util/csv');
-const { encrypt, decrypt } = require('../util/crypto');
+const { encrypt, decrypt, UNLESBAR } = require('../util/crypto');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
+
+// Eine nicht entschluesselbare Beschreibung wird als Platzhalter angezeigt
+// (siehe util/crypto.js). Schickt das Bearbeiten-Formular genau diesen
+// Platzhalter unveraendert zurueck, darf er den bestehenden Chiffretext NICHT
+// ersetzen - sonst wuerde ein Speichern den (evtl. mit dem richtigen
+// Schluessel noch rettbaren) Originalwert endgueltig zerstoeren.
+function beschreibungZumSpeichern(eingabe, bisher) {
+  const text = (eingabe || '').trim();
+  if (text === UNLESBAR) return bisher;
+  return encrypt(text || 'Taetigkeit');
+}
 
 const ERROR_MESSAGES = {
   'timer-laeuft': 'Es laeuft bereits eine Zeiterfassung. Bitte zuerst stoppen.',
@@ -272,7 +283,7 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
   db.prepare(
     'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, unterprojekt_id=?, synced=?, synced_at=? WHERE id=?'
   ).run(
-    encrypt((beschreibung || '').trim() || 'Taetigkeit'),
+    beschreibungZumSpeichern(beschreibung, entry.beschreibung),
     startStr,
     endStr,
     duration,

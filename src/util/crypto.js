@@ -25,8 +25,19 @@ function ladeSchluessel() {
 
 const key = ladeSchluessel();
 
+// Ein Wert gilt nur dann als verschluesselt, wenn er neben dem Praefix auch
+// tatsaechlich einen plausiblen Payload traegt (gueltiges Base64, mindestens
+// IV + Auth-Tag lang). Sonst wuerde eine Beschreibung, die zufaellig mit
+// "enc1:" beginnt, als Chiffretext missverstanden - beim Lesen waere sie
+// dann nicht entschluesselbar, und die Migration in db.js wuerde sie nie
+// verschluesseln.
+const MIN_PAYLOAD_LENGTH = IV_LENGTH + AUTH_TAG_LENGTH;
+
 function isEncrypted(value) {
-  return typeof value === 'string' && value.startsWith(PREFIX);
+  if (typeof value !== 'string' || !value.startsWith(PREFIX)) return false;
+  const payload = value.slice(PREFIX.length);
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(payload)) return false;
+  return Buffer.from(payload, 'base64').length >= MIN_PAYLOAD_LENGTH;
 }
 
 // Verschluesselt einen Klartext-String zu einem speicherbaren String
@@ -42,21 +53,46 @@ function encrypt(plaintext) {
   return PREFIX + Buffer.concat([iv, authTag, ciphertext]).toString('base64');
 }
 
+// Platzhalter fuer Werte, die sich nicht entschluesseln lassen (z. B. Reste
+// aus einem frueheren ENCRYPTION_KEY oder eine beschaedigte Zeile). Wird beim
+// Speichern eines Eintrags erkannt und dann NICHT zurueckgeschrieben, damit
+// der Platzhalter den echten Chiffretext nicht ueberschreibt (siehe
+// routes/categories.js).
+const UNLESBAR = '[nicht entschluesselbar]';
+
+let unlesbarGemeldet = false;
+
 // Entschluesselt einen mit encrypt() erzeugten Wert. Werte ohne das Praefix
 // gelten als (noch) unverschluesselter Altbestand und werden unveraendert
 // zurueckgegeben, statt einen Fehler zu werfen.
+//
+// Schlaegt die Entschluesselung fehl, wird bewusst NICHT geworfen: eine
+// einzige unlesbare Zeile wuerde sonst die komplette Kategorie- oder
+// Uebersichtsseite mit einem Serverfehler blockieren - also genau die Seite,
+// ueber die sich der kaputte Eintrag korrigieren oder loeschen liesse.
 function decrypt(value) {
   if (value === null || value === undefined || value === '') return value;
   if (!isEncrypted(value)) return value;
 
-  const buf = Buffer.from(value.slice(PREFIX.length), 'base64');
-  const iv = buf.subarray(0, IV_LENGTH);
-  const authTag = buf.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
-  const ciphertext = buf.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
+  try {
+    const buf = Buffer.from(value.slice(PREFIX.length), 'base64');
+    const iv = buf.subarray(0, IV_LENGTH);
+    const authTag = buf.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
+    const ciphertext = buf.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+  } catch (err) {
+    if (!unlesbarGemeldet) {
+      unlesbarGemeldet = true;
+      console.error(
+        'Mindestens ein verschluesseltes Feld liess sich nicht entschluesseln. Passt ENCRYPTION_KEY ' +
+          'noch zum Datenbestand? Betroffene Eintraege werden als "' + UNLESBAR + '" angezeigt.'
+      );
+    }
+    return UNLESBAR;
+  }
 }
 
-module.exports = { encrypt, decrypt, isEncrypted };
+module.exports = { encrypt, decrypt, isEncrypted, UNLESBAR };
