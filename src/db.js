@@ -4,6 +4,7 @@ const Database = require('better-sqlite3');
 const config = require('./config');
 const { aktuellesSchuljahr } = require('./util/schuljahr');
 const { encrypt, isEncrypted } = require('./util/crypto');
+const { normalisiereZeitstempel } = require('./util/time');
 
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
@@ -290,6 +291,54 @@ function initDb() {
   const timeEntryColumns = db.prepare('PRAGMA table_info(time_entries)').all().map((c) => c.name);
   if (!timeEntryColumns.includes('unterprojekt_id')) {
     db.exec('ALTER TABLE time_entries ADD COLUMN unterprojekt_id INTEGER REFERENCES unterprojekte(id) ON DELETE SET NULL');
+  }
+
+  // Reparatur von Zeitstempeln, die vor der Eingabepruefung entstanden sind:
+  // Datum und Uhrzeit wurden frueher ungeprueft zum gespeicherten String
+  // zusammengesetzt. Werte wie "2026-09-01 9:5:00" kann SQLite nicht als
+  // Zeitpunkt lesen - solche Eintraege fielen aus jedem Datumsfilter heraus,
+  // zaehlten aber weiter in die Stundensummen, sodass Tabelle und
+  // Fortschrittsbalken sich widersprachen.
+  //
+  // Nur eindeutig normalisierbare Werte werden korrigiert (gleicher
+  // Zeitpunkt, nur andere Schreibweise). Werte ohne echten Kalendertag
+  // ("2026-13-45") bleiben bewusst unangetastet und werden gemeldet - sie
+  // liessen sich nur raten, und die betroffene Zeile ist in der Oberflaeche
+  // weiterhin sichtbar und korrigierbar.
+  const krummeZeitstempel = db
+    .prepare(
+      `SELECT id, start_time, end_time FROM time_entries
+       WHERE datetime(start_time) IS NULL
+          OR (end_time IS NOT NULL AND datetime(end_time) IS NULL)`
+    )
+    .all();
+  if (krummeZeitstempel.length > 0) {
+    const updateZeiten = db.prepare('UPDATE time_entries SET start_time=?, end_time=? WHERE id=?');
+    const nichtReparierbar = [];
+    const repariere = db.transaction((zeilen) => {
+      for (const zeile of zeilen) {
+        const start = normalisiereZeitstempel(zeile.start_time);
+        const ende = zeile.end_time === null ? null : normalisiereZeitstempel(zeile.end_time);
+        if (!start || (zeile.end_time !== null && !ende)) {
+          nichtReparierbar.push(zeile.id);
+          continue;
+        }
+        updateZeiten.run(start, ende, zeile.id);
+      }
+    });
+    repariere(krummeZeitstempel);
+
+    const repariert = krummeZeitstempel.length - nichtReparierbar.length;
+    if (repariert > 0) {
+      console.log(`Migration: ${repariert} Zeiteintraege mit krummer Zeitschreibweise normalisiert.`);
+    }
+    if (nichtReparierbar.length > 0) {
+      console.warn(
+        `Migration: ${nichtReparierbar.length} Zeiteintraege tragen kein gueltiges Datum und wurden nicht ` +
+          `veraendert (IDs: ${nichtReparierbar.join(', ')}). Sie erscheinen in keinem Datumsfilter - bitte in ` +
+          'der jeweiligen Kategorie korrigieren oder loeschen.'
+      );
+    }
   }
 
   // Migration fuer Datenbanken vor Einfuehrung der Feldverschluesselung:

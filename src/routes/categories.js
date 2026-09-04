@@ -2,7 +2,8 @@ const router = require('express').Router();
 const multer = require('multer');
 const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { nowLocalString, diffMinutes, parseDatumEingabe, parseZeitEingabe } = require('../util/time');
+const { nowLocalString, diffMinutes, baueZeitraum, MAX_DAUER_MINUTEN } = require('../util/time');
+const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 const { parseCsv } = require('../util/csv');
 const { encrypt, decrypt, UNLESBAR } = require('../util/crypto');
 
@@ -22,7 +23,11 @@ function beschreibungZumSpeichern(eingabe, bisher) {
 const ERROR_MESSAGES = {
   'timer-laeuft': 'Es laeuft bereits eine Zeiterfassung. Bitte zuerst stoppen.',
   'felder-fehlen': 'Bitte alle Felder ausfuellen.',
-  'ungueltige-zeit': 'Die Endzeit muss nach der Startzeit liegen.',
+  'ungueltige-zeit':
+    'Das Ende muss nach dem Beginn liegen. Endet die Taetigkeit erst am Folgetag, bitte zusaetzlich das Bis-Datum angeben.',
+  'ungueltiges-datum': 'Bitte ein gueltiges Datum angeben.',
+  'ungueltige-uhrzeit': 'Bitte gueltige Uhrzeiten im Format HH:MM angeben.',
+  'zu-lang': `Ein einzelner Eintrag kann hoechstens ${MAX_DAUER_MINUTEN / 60} Stunden umfassen. Bitte Datum und Uhrzeiten pruefen.`,
   'keine-datei': 'Bitte eine CSV-Datei auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
   'unterprojekt-titel-fehlt': 'Bitte einen Titel fuer das Unterprojekt eingeben.',
@@ -68,34 +73,10 @@ function resolveUnterprojektId(categoryId, submittedId) {
   return allgemeinUnterprojekt(categoryId).id;
 }
 
-// Solange keine Zuweisung verknuepft ist, gilt das von der Lehrkraft selbst
-// eingetragene ziel_zeitstunden als vorlaeufiges Ziel. Sobald mindestens
-// eine Zuweisung verknuepft ist, zaehlt nur noch die offizielle Berechnung
-// (Ausgleichsstunden x Schuljahr-Faktor, summiert) - das eigene Ziel wird
-// dann ignoriert (aber weiterhin angezeigt, siehe category.ejs).
-function benoetigteStunden(category) {
-  const summe = db
-    .prepare(
-      `SELECT COALESCE(SUM(z.ausgleichsstunden * COALESCE(sf.zeitstunden_pro_woche * sf.schulwochen,0)),0) as h,
-              COUNT(*) as anzahl
-       FROM zuweisungen z LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
-       WHERE z.category_id=?`
-    )
-    .get(category.id);
-  if (summe.anzahl > 0) return summe.h;
-  return category.ziel_zeitstunden || 0;
-}
-
-// Legt einen manuellen Zeiteintrag an (Datum + Von + Bis, Dauer wird daraus
-// berechnet). Gibt die Dauer in Minuten zurueck, oder null bei ungueltiger
-// Zeitspanne (Bis <= Von). Wird sowohl vom einzelnen Nachtragen-Formular
+// Legt einen manuellen Zeiteintrag aus einem bereits geprueften Zeitraum an
+// (siehe baueZeitraum in util/time.js). Wird sowohl vom Nachtragen-Formular
 // als auch vom CSV-Import verwendet.
-function insertManualEntry(cat, userId, { beschreibung, datum, von, bis, unterprojektId }, autoSync) {
-  const startStr = `${datum} ${von}:00`;
-  const endStr = `${datum} ${bis}:00`;
-  const duration = diffMinutes(startStr, endStr);
-  if (!(duration > 0)) return null;
-
+function insertManualEntry(cat, userId, { beschreibung, zeitraum, unterprojektId }, autoSync) {
   db.prepare(
     `INSERT INTO time_entries
        (category_id, user_id, unterprojekt_id, beschreibung, start_time, end_time, duration_minutes, source, synced, synced_at)
@@ -105,13 +86,12 @@ function insertManualEntry(cat, userId, { beschreibung, datum, von, bis, unterpr
     userId,
     resolveUnterprojektId(cat.id, unterprojektId),
     encrypt((beschreibung || '').trim() || 'Taetigkeit'),
-    startStr,
-    endStr,
-    duration,
+    zeitraum.startStr,
+    zeitraum.endStr,
+    zeitraum.dauer,
     autoSync ? 1 : 0,
     autoSync ? nowLocalString() : null
   );
-  return duration;
 }
 
 router.get('/categories/:id', requireAuth, (req, res) => {
@@ -213,7 +193,8 @@ router.get('/categories/:id', requireAuth, (req, res) => {
     unterprojekte,
     running: laufender,
     erfassteStunden: sumMinutes / 60,
-    benoetigteStunden: benoetigteStunden(cat),
+    ziel: zielZeitstunden(cat),
+    fortschritt: fortschrittProzent(sumMinutes / 60, zielZeitstunden(cat).stunden),
     hatZuweisung,
     activeTab,
     filter: { sort: sort === 'ASC' ? 'asc' : 'desc', von, bis, suche },
@@ -271,22 +252,20 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
   if (!entry) return res.status(404).render('error', { message: 'Eintrag nicht gefunden.' });
   if (!entry.end_time) return res.redirect(`/categories/${entry.category_id}`);
 
-  const { beschreibung, datum, von, bis, unterprojekt_id } = req.body;
+  const { beschreibung, datum, bis_datum, von, bis, unterprojekt_id } = req.body;
   if (!datum || !von || !bis) return res.redirect(`/categories/${entry.category_id}?error=felder-fehlen`);
 
-  const startStr = `${datum} ${von}:00`;
-  const endStr = `${datum} ${bis}:00`;
-  const duration = diffMinutes(startStr, endStr);
-  if (!(duration > 0)) return res.redirect(`/categories/${entry.category_id}?error=ungueltige-zeit`);
+  const zeitraum = baueZeitraum({ datum, von, bis, bisDatum: bis_datum });
+  if (zeitraum.fehler) return res.redirect(`/categories/${entry.category_id}?error=${zeitraum.fehler}`);
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   db.prepare(
     'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, unterprojekt_id=?, synced=?, synced_at=? WHERE id=?'
   ).run(
     beschreibungZumSpeichern(beschreibung, entry.beschreibung),
-    startStr,
-    endStr,
-    duration,
+    zeitraum.startStr,
+    zeitraum.endStr,
+    zeitraum.dauer,
     resolveUnterprojektId(entry.category_id, unterprojekt_id),
     user.auto_sync ? 1 : 0,
     user.auto_sync ? nowLocalString() : null,
@@ -311,17 +290,16 @@ router.post('/categories/:id/entries', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, userId);
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
 
-  const { beschreibung, datum, von, bis, unterprojekt_id } = req.body;
+  const { beschreibung, datum, bis_datum, von, bis, unterprojekt_id } = req.body;
   if (!datum || !von || !bis) return res.redirect(`/categories/${cat.id}?error=felder-fehlen&formular=nachtragen`);
 
+  const zeitraum = baueZeitraum({ datum, von, bis, bisDatum: bis_datum });
+  if (zeitraum.fehler) {
+    return res.redirect(`/categories/${cat.id}?error=${zeitraum.fehler}&formular=nachtragen`);
+  }
+
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
-  const duration = insertManualEntry(
-    cat,
-    userId,
-    { beschreibung, datum, von, bis, unterprojektId: unterprojekt_id },
-    !!user.auto_sync
-  );
-  if (duration === null) return res.redirect(`/categories/${cat.id}?error=ungueltige-zeit&formular=nachtragen`);
+  insertManualEntry(cat, userId, { beschreibung, zeitraum, unterprojektId: unterprojekt_id }, !!user.auto_sync);
 
   res.redirect(`/categories/${cat.id}?formular=nachtragen`);
 });
@@ -340,20 +318,21 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), (r
 
   const importieren = db.transaction((zeilen) => {
     for (const row of zeilen) {
-      const datum = parseDatumEingabe(row['datum'] ?? row['date']);
-      const von = parseZeitEingabe(row['von'] ?? row['start']);
-      const bis = parseZeitEingabe(row['bis'] ?? row['ende'] ?? row['end']);
       const beschreibung = row['beschreibung'] ?? row['taetigkeit'] ?? '';
+      // Das Bis-Datum ist optional und nur fuer Taetigkeiten ueber
+      // Mitternacht noetig - ohne Angabe endet der Eintrag am selben Tag.
+      const zeitraum = baueZeitraum({
+        datum: row['datum'] ?? row['date'],
+        bisDatum: row['bis-datum'] ?? row['bisdatum'] ?? row['enddatum'],
+        von: row['von'] ?? row['start'],
+        bis: row['bis'] ?? row['ende'] ?? row['end'],
+      });
 
-      if (!datum || !von || !bis) {
+      if (zeitraum.fehler) {
         uebersprungen++;
         continue;
       }
-      const duration = insertManualEntry(cat, userId, { beschreibung, datum, von, bis }, !!user.auto_sync);
-      if (duration === null) {
-        uebersprungen++;
-        continue;
-      }
+      insertManualEntry(cat, userId, { beschreibung, zeitraum }, !!user.auto_sync);
       importiert++;
     }
   });

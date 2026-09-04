@@ -104,3 +104,38 @@ test('initDb ist auf einer frischen Datenbank wiederholbar', () => {
   assert.doesNotThrow(() => initDb());
   assert.doesNotThrow(() => initDb(), 'zweiter Start darf nicht scheitern');
 });
+
+test('repariert krumme Zeitstempel, erfindet aber keine Daten', () => {
+  const { dbPfad } = frischeUmgebung();
+  const { db, initDb } = ladeSrc('db');
+  initDb();
+
+  db.prepare("INSERT INTO users (username, display_name) VALUES ('l1','L1')").run();
+  db.prepare("INSERT INTO categories (user_id,title,schuljahr) VALUES (1,'Kat','2026/27')").run();
+
+  // So sahen Eintraege aus, bevor die Eingaben geprueft wurden: Datum und
+  // Uhrzeit wurden ungeprueft zum String zusammengesetzt.
+  const einfuegen = db.prepare(
+    `INSERT INTO time_entries (category_id,user_id,beschreibung,start_time,end_time,duration_minutes)
+     VALUES (1,1,'x',?,?,120)`
+  );
+  einfuegen.run('2026-09-01 9:5:00', '2026-09-01 11:5:00');
+  einfuegen.run('2026-13-45 08:00:00', '2026-13-45 10:00:00');
+  einfuegen.run('2026-09-02 08:00:00', '2026-09-02 10:00:00');
+
+  // initDb laeuft bei jedem Start - die Reparatur haengt daran.
+  delete require.cache[require.resolve(require('path').join(__dirname, '..', 'src', 'db'))];
+  process.env.DB_PATH = dbPfad;
+  ladeSrc('db').initDb();
+
+  const geprueft = ladeSrc('db').db;
+  const zeilen = geprueft.prepare('SELECT id, start_time, datetime(start_time) as lesbar FROM time_entries ORDER BY id').all();
+
+  assert.equal(zeilen[0].start_time, '2026-09-01 09:05:00', 'krumme Schreibweise wird normalisiert');
+  assert.ok(zeilen[0].lesbar, 'und ist danach fuer SQLite ein Zeitpunkt');
+
+  assert.equal(zeilen[1].start_time, '2026-13-45 08:00:00', 'ein erfundenes Datum bleibt unangetastet');
+  assert.equal(zeilen[1].lesbar, null);
+
+  assert.equal(zeilen[2].start_time, '2026-09-02 08:00:00', 'gueltige Werte bleiben unveraendert');
+});
