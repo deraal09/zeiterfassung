@@ -3,7 +3,7 @@ const { db } = require('../db');
 const { requireAdmin } = require('../middleware/auth');
 const ldap = require('../ldap');
 const { aktuellesSchuljahr } = require('../util/schuljahr');
-const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
+const { vorschlagen, annehmen, ablehnen, istGesperrt } = require('../util/zuweisungen');
 
 const ERROR_MESSAGES = {
   'ungueltige-eingabe': 'Bitte eine gueltige Anzahl Ausgleichsstunden eingeben.',
@@ -13,6 +13,7 @@ const ERROR_MESSAGES = {
   'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Lehrkraft vor.',
+  'nicht-loeschbar': 'Fuer diese Zuweisung sind bereits Zeiten erfasst - sie kann nicht mehr geloescht werden. Bitte die Lehrkraft bitten, die Zeiten auf eine andere Kategorie zu uebertragen oder die Verknuepfung zu loesen.',
 };
 
 function parseNumber(value) {
@@ -243,6 +244,23 @@ router.post('/zuweisungen/:id/ablehnen', requireAdmin, (req, res) => {
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
   if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
   if (!ablehnen(zuweisung, 'admin')) return res.redirect(`/admin/users/${zuweisung.user_id}?error=kein-vorschlag`);
+  res.redirect(`/admin/users/${zuweisung.user_id}`);
+});
+
+// Loescht eine faelschlicherweise angelegte Zuweisung wieder vollstaendig -
+// nur moeglich, solange dafuer noch keine Zeiten erfasst wurden. Sind
+// bereits Zeiten drin, muss die Lehrkraft sie zuerst auf eine andere
+// Kategorie uebertragen oder die Verknuepfung loesen (Vorschlag "keine
+// Verknuepfung", vom Admin anzunehmen), bevor die Zuweisung geloescht
+// werden kann.
+router.post('/zuweisungen/:id/delete', requireAdmin, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
+  if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
+  if (istGesperrt(zuweisung)) {
+    return res.redirect(`/admin/users/${zuweisung.user_id}?error=nicht-loeschbar`);
+  }
+
+  db.prepare('DELETE FROM zuweisungen WHERE id=?').run(zuweisung.id);
   res.redirect(`/admin/users/${zuweisung.user_id}`);
 });
 

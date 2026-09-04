@@ -30,6 +30,12 @@ erfasst und an die Schulleitung übermittelt werden können.
   sie fest, damit niemandem bereits geleistete Arbeit nachträglich entzogen
   wird. Ohne jede Verknüpfung wird eine Kategorie einfach eigenständig für
   die Zeiterfassung genutzt (mit dem eigenen Ziel, siehe unten).
+- **Fälschlich zugewiesene Ausgleichsstunden löschen** – der Admin kann eine
+  Zuweisung wieder vollständig entfernen, solange dafür noch keine Zeiten
+  erfasst wurden. Sind bereits Zeiten erfasst, ist Löschen nicht mehr
+  möglich – die Lehrkraft muss die Zeiten zuerst auf eine andere Kategorie
+  übertragen oder die Verknüpfung lösen (per Vorschlag "keine Verknüpfung",
+  vom Admin anzunehmen).
 - **Faktor gilt zentral pro Schuljahr** – einmal vom Admin festgelegt, für
   alle Lehrkräfte gleich, berechnet aus Zeitstunden pro Woche × Schulwochen
   (z. B. 1,7 × 40 = 68 Zeitstunden je Ausgleichsstunde und Schuljahr).

@@ -41,7 +41,7 @@
         wurden, lässt sich die Verknüpfung noch per neuem Vorschlag ändern.
       </p>
       <table class="entries-table">
-        <thead><tr><th>Schuljahr</th><th>Ausgleichsstunden</th><th>Faktor</th><th>Zeitstunden</th><th>Kategorie</th></tr></thead>
+        <thead><tr><th>Schuljahr</th><th>Ausgleichsstunden</th><th>Faktor</th><th>Zeitstunden</th><th>Kategorie</th><th></th></tr></thead>
         <tbody>
           <% zuweisungen.forEach(z => { %>
             <tr>
@@ -87,6 +87,20 @@
                       <% }) %>
                     </select>
                     <button type="submit" class="link-button"><%= z.category_title ? 'Änderung vorschlagen' : 'Vorschlagen' %></button>
+                  </form>
+                <% } %>
+              </td>
+              <td>
+                <% if (z.gesperrt) { %>
+                  <p class="hint" style="margin: 0;">
+                    Nicht mehr löschbar (Zeiten erfasst). Um die Zuweisung
+                    trotzdem zu entfernen, muss die Lehrkraft die Zeiten auf
+                    eine andere Kategorie übertragen oder die Verknüpfung
+                    lösen.
+                  </p>
+                <% } else { %>
+                  <form method="post" action="/admin/zuweisungen/<%= z.id %>/delete" class="inline-form" onsubmit="return confirm('Diese Zuweisung wirklich entfernen?');">
+                    <button type="submit" class="link-button link-button-danger">Löschen</button>
                   </form>
                 <% } %>
               </td>
