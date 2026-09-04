@@ -116,6 +116,23 @@ erfasst und an die Schulleitung übermittelt werden können.
 - LDAP-Anbindung über `ldapts` (Bind als Service-Account zur Benutzersuche,
   anschließend Bind mit den eingegebenen Zugangsdaten zur Passwortprüfung)
 
+### Absicherung
+
+- **CSRF-Schutz** – jedes schreibende Formular trägt ein Token aus der
+  Sitzung; ohne gültiges Token weist der Server die Anfrage mit 403 ab. Damit
+  kann eine fremde Seite nicht im Namen einer angemeldeten Lehrkraft Zeiten
+  löschen oder Zuweisungen ändern.
+- **Sicherheits-Header** (`helmet`) – unter anderem eine
+  Content-Security-Policy: Skripte laufen nur aus eigenen Dateien und aus dem
+  einen Inline-Block, der die Nonce des jeweiligen Aufrufs trägt. Skripte in
+  HTML-Attributen sind damit ausgeschlossen.
+- **Ratelimit für Anmeldeversuche** – gezählt wird auf Benutzername *und*
+  Adresse, mit unterschiedlichen Schwellen: hinter der Schul-Adresse sitzen
+  viele Menschen, von denen sich regelmäßig jemand vertippt. Die Sperrdauer
+  wächst mit jedem weiteren Fehlversuch, ist aber gedeckelt und verfällt nach
+  einer ruhigen Phase – sonst ließe sich ein fremdes Konto dauerhaft
+  aussperren.
+
 ### Tests
 
 `npm test` führt die Testsuite aus (Node-eigener Test-Runner, keine
@@ -130,6 +147,10 @@ ein Fehler stillschweigend Daten kostet:
 - **Verschlüsselung** – Roundtrip sowie das Verhalten bei unlesbaren Werten.
 - **Zuweisung ↔ Kategorie** – der Vorschlag/Bestätigen-Ablauf und die Sperre,
   sobald für eine Kategorie Zeiten erfasst wurden.
+- **Eingabeprüfung von Datum und Uhrzeit** sowie die Berechnung der benötigten
+  Zeitstunden.
+- **Ratelimit und Redirect-Ziele** – die beiden Stellen, an denen eine zu
+  lasche Regel direkt ausnutzbar wäre.
 
 ## Konfiguration
 

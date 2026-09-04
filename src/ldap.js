@@ -14,6 +14,17 @@ function escapeFilterValue(value) {
   return String(value).replace(/[\\*()\0]/g, (c) => `\\${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
 }
 
+// Sonderzeichen, die in einem Distinguished Name eine Bedeutung haben
+// (RFC 4514). Ohne Maskierung koennte ein Benutzername mit Komma oder
+// Gleichheitszeichen den aus LDAP_BIND_USER_TEMPLATE gebauten DN umschreiben
+// und den Bind gegen einen anderen Eintrag laufen lassen.
+function escapeDnValue(value) {
+  return String(value)
+    .replace(/([\\,+"<>;=])/g, '\\$1')
+    .replace(/^([ #])/, '\\$1')
+    .replace(/ $/, '\\ ');
+}
+
 function normalize(entry) {
   const get = (attr) => {
     const v = entry[attr];
@@ -76,7 +87,11 @@ async function authenticate(username, password) {
 // gilt die Anmeldung trotzdem als erfolgreich.
 async function authenticateDirect(username, password) {
   if (!password) return null;
-  const bindDn = config.ldap.bindUserTemplate.replace('{{username}}', username);
+  // Bei einem User Principal Name ("{{username}}@schule.de") oder einer
+  // NetBIOS-Kennung ("SCHULE\{{username}}") ist der Wert zwar kein echter
+  // DN, die Maskierung stoert dort aber nicht - normale Benutzernamen
+  // enthalten keines dieser Zeichen.
+  const bindDn = config.ldap.bindUserTemplate.replace('{{username}}', escapeDnValue(username));
   const client = createClient();
   try {
     try {
