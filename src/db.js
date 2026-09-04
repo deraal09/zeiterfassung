@@ -89,10 +89,26 @@ function initDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Unterprojekte gliedern die Zeiten INNERHALB einer Kategorie weiter
+    -- (z. B. "Kurs A", "Kurs B"). Rein optional - eine Kategorie ohne
+    -- Unterprojekte funktioniert unveraendert wie bisher. Sobald das erste
+    -- Unterprojekt einer Kategorie angelegt wird, werden alle bis dahin
+    -- nicht zugeordneten Zeiten automatisch dem Unterprojekt "Allgemein"
+    -- zugeordnet (siehe categories.js) - danach hat in dieser Kategorie
+    -- jede Zeit ein Unterprojekt.
+    CREATE TABLE IF NOT EXISTS unterprojekte (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_unterprojekte_category ON unterprojekte(category_id);
+
     CREATE TABLE IF NOT EXISTS time_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      unterprojekt_id INTEGER REFERENCES unterprojekte(id) ON DELETE SET NULL,
       beschreibung TEXT NOT NULL,
       start_time TEXT NOT NULL,
       end_time TEXT,
@@ -227,6 +243,14 @@ function initDb() {
   }
   if (!zuweisungColumnsFuerVorschlag.includes('vorschlag_von')) {
     db.exec('ALTER TABLE zuweisungen ADD COLUMN vorschlag_von TEXT');
+  }
+
+  // Migration fuer Datenbanken vor Einfuehrung der Unterprojekte: die neue
+  // unterprojekte-Tabelle wird oben bereits per CREATE TABLE IF NOT EXISTS
+  // angelegt, hier fehlt nur noch die Spalte auf time_entries.
+  const timeEntryColumns = db.prepare('PRAGMA table_info(time_entries)').all().map((c) => c.name);
+  if (!timeEntryColumns.includes('unterprojekt_id')) {
+    db.exec('ALTER TABLE time_entries ADD COLUMN unterprojekt_id INTEGER REFERENCES unterprojekte(id) ON DELETE SET NULL');
   }
 
   // Migration fuer Datenbanken vor Einfuehrung der Feldverschluesselung:

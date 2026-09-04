@@ -59,6 +59,17 @@ erfasst und an die Schulleitung übermittelt werden können.
 - **Umrechnung** – benötigte Zeitstunden einer Kategorie = Summe aller damit
   verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird als
   Balken angezeigt.
+- **Unterprojekte gliedern eine Kategorie optional weiter** – z. B. "Kurs A",
+  "Kurs B" innerhalb einer Kategorie. Rein optional, kein Pflichtfeld: eine
+  Kategorie ohne Unterprojekte funktioniert unverändert flach. Sobald das
+  erste Unterprojekt angelegt wird, werden alle bis dahin nicht zugeordneten
+  Zeiten automatisch dem Unterprojekt "Allgemein" zugeordnet – ab dann hat
+  jede Zeit dieser Kategorie eins. Beim Start des Timers oder beim
+  Nachtragen lässt sich das Unterprojekt gleich mit auswählen (sonst
+  "Allgemein"), und jede Zeit lässt sich nachträglich einem anderen
+  Unterprojekt zuordnen. In der Tabelle "Erfasste Tätigkeiten" werden die
+  Zeiten dafür unter dem jeweiligen Unterprojekt eingerückt, mit dessen
+  Gesamtzeit (Summe aller zugeordneten Zeiten) als Überschrift.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
   drücken; die Zeit wird automatisch erfasst. Auf der Kategorie-Seite ist das
   die standardmäßig sichtbare Ansicht (Reiter "Erfassen"); "Zeit nachtragen"

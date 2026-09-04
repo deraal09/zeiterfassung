@@ -49,6 +49,28 @@
       </p>
     <% } %>
 
+    <section class="panel">
+      <h2>Unterprojekte <span class="meta">optional</span></h2>
+      <% if (unterprojekte.length > 0) { %>
+        <p class="hint">
+          Zeiten lassen sich beim Erfassen/Nachtragen einem Unterprojekt zuordnen (sonst landen sie automatisch bei "Allgemein") und nachträglich einem anderen zuordnen.
+        </p>
+        <ul style="margin: 0 0 12px; padding-left: 20px;">
+          <% unterprojekte.forEach(up => { %>
+            <li><%= up.title %> <span class="meta"><%= up.stunden.toFixed(2) %> h</span></li>
+          <% }) %>
+        </ul>
+      <% } else { %>
+        <p class="hint">
+          Noch keine Unterprojekte angelegt. Damit lassen sich die Zeiten dieser Kategorie z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
+        </p>
+      <% } %>
+      <form method="post" action="/categories/<%= category.id %>/unterprojekte" class="inline-form">
+        <input type="text" name="title" placeholder="Neues Unterprojekt, z. B. Kurs A" required>
+        <button type="submit" class="btn">Anlegen</button>
+      </form>
+    </section>
+
     <div class="tabs" data-tabs>
       <div class="tab-buttons" role="tablist">
         <button type="button" class="tab-button<%= activeTab === 'erfassen' ? ' active' : '' %>" data-tab-target="tab-erfassen">Erfassen</button>
@@ -60,7 +82,7 @@
         <% if (running) { %>
           <div class="timer-banner">
             <div>
-              <strong>Läuft:</strong> <%= running.beschreibung %>
+              <strong>Läuft:</strong> <%= running.beschreibung %><% if (running.unterprojekt_title) { %> <span class="meta">(<%= running.unterprojekt_title %>)</span><% } %>
               <span class="live-timer" data-start="<%= running.start_time %>">00:00:00</span>
             </div>
             <form method="post" action="/entries/<%= running.id %>/stop">
@@ -70,6 +92,14 @@
         <% } else { %>
           <form method="post" action="/categories/<%= category.id %>/start" class="inline-form">
             <input type="text" name="beschreibung" placeholder="Kurze Tätigkeitsbeschreibung" required>
+            <% if (unterprojekte.length > 0) { %>
+              <select name="unterprojekt_id" title="Unterprojekt (optional, sonst Allgemein)">
+                <option value="">– Allgemein –</option>
+                <% unterprojekte.forEach(up => { %>
+                  <option value="<%= up.id %>"><%= up.title %></option>
+                <% }) %>
+              </select>
+            <% } %>
             <button type="submit" class="btn btn-start">Start</button>
           </form>
         <% } %>
@@ -82,6 +112,14 @@
           <input type="date" name="datum" required>
           <input type="time" name="von" required>
           <input type="time" name="bis" required>
+          <% if (unterprojekte.length > 0) { %>
+            <select name="unterprojekt_id" title="Unterprojekt (optional, sonst Allgemein)">
+              <option value="">– Allgemein –</option>
+              <% unterprojekte.forEach(up => { %>
+                <option value="<%= up.id %>"><%= up.title %></option>
+              <% }) %>
+            </select>
+          <% } %>
           <button type="submit" class="btn">Eintragen</button>
         </form>
       </section>
@@ -117,9 +155,10 @@
         <% } %>
       </form>
 
-      <% entries.forEach(e => { %>
+      <% gruppen.forEach(g => { g.entries.forEach(e => { %>
         <form id="entry-edit-<%= e.id %>" method="post" action="/entries/<%= e.id %>/edit"></form>
-      <% }) %>
+      <% }) }) %>
+      <% const spalten = unterprojekte.length > 0 ? 8 : 7; %>
       <table class="entries-table">
         <thead>
           <tr>
@@ -128,33 +167,53 @@
                 Datum <%= filter.sort === 'asc' ? '▲' : '▼' %>
               </a>
             </th>
-            <th>Von</th><th>Bis</th><th>Dauer</th><th>Beschreibung</th><th>Status</th><th></th>
+            <th>Von</th><th>Bis</th><th>Dauer</th><th>Beschreibung</th>
+            <% if (unterprojekte.length > 0) { %><th>Unterprojekt</th><% } %>
+            <th>Status</th><th></th>
           </tr>
         </thead>
         <tbody>
-          <% entries.forEach(e => { %>
-            <tr>
-              <td><input type="date" name="datum" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(0,10) %>" required></td>
-              <td><input type="time" name="von" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(11,16) %>" required></td>
-              <td><input type="time" name="bis" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(11,16) %>" required></td>
-              <td><%= (e.duration_minutes/60).toFixed(2) %> h</td>
-              <td><input type="text" name="beschreibung" form="entry-edit-<%= e.id %>" value="<%= e.beschreibung %>" required></td>
-              <td><%= e.synced ? 'Synchronisiert' : 'Entwurf' %></td>
-              <td class="entries-row-actions">
-                <button type="submit" form="entry-edit-<%= e.id %>" class="link-button">Speichern</button>
-                <form method="post" action="/entries/<%= e.id %>/delete" class="inline-form">
-                  <button type="submit" class="link-button link-button-danger">Löschen</button>
-                </form>
-              </td>
-            </tr>
+          <% gruppen.forEach(g => { %>
+            <% if (g.title) { %>
+              <tr class="unterprojekt-row">
+                <td colspan="<%= spalten %>"><%= g.title %> <span class="meta"><%= g.stunden.toFixed(2) %> h</span></td>
+              </tr>
+            <% } %>
+            <% g.entries.forEach(e => { %>
+              <tr class="<%= g.title ? 'eingerueckt' : '' %>">
+                <td><input type="date" name="datum" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(0,10) %>" required></td>
+                <td><input type="time" name="von" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(11,16) %>" required></td>
+                <td><input type="time" name="bis" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(11,16) %>" required></td>
+                <td><%= (e.duration_minutes/60).toFixed(2) %> h</td>
+                <td><input type="text" name="beschreibung" form="entry-edit-<%= e.id %>" value="<%= e.beschreibung %>" required></td>
+                <% if (unterprojekte.length > 0) { %>
+                  <td>
+                    <select name="unterprojekt_id" form="entry-edit-<%= e.id %>">
+                      <% unterprojekte.forEach(up => { %>
+                        <option value="<%= up.id %>" <%= e.unterprojekt_id === up.id ? 'selected' : '' %>><%= up.title %></option>
+                      <% }) %>
+                    </select>
+                  </td>
+                <% } %>
+                <td><%= e.synced ? 'Synchronisiert' : 'Entwurf' %></td>
+                <td class="entries-row-actions">
+                  <button type="submit" form="entry-edit-<%= e.id %>" class="link-button">Speichern</button>
+                  <form method="post" action="/entries/<%= e.id %>/delete" class="inline-form">
+                    <button type="submit" class="link-button link-button-danger">Löschen</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+            <% if (g.entries.length === 0) { %>
+              <tr class="<%= g.title ? 'eingerueckt' : '' %>">
+                <td colspan="<%= spalten %>" class="empty-state">
+                  <%= (filter.von || filter.bis || filter.suche) ? 'Keine Tätigkeiten für diesen Filter.' : 'Noch keine Tätigkeiten erfasst.' %>
+                </td>
+              </tr>
+            <% } %>
           <% }) %>
         </tbody>
       </table>
-      <% if (entries.length === 0) { %>
-        <p class="empty-state">
-          <%= (filter.von || filter.bis || filter.suche) ? 'Keine Tätigkeiten für diesen Filter gefunden.' : 'Noch keine Tätigkeiten erfasst.' %>
-        </p>
-      <% } %>
     </section>
   </main>
   <script src="/public/js/timer.js"></script>

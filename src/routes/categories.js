@@ -14,6 +14,7 @@ const ERROR_MESSAGES = {
   'ungueltige-zeit': 'Die Endzeit muss nach der Startzeit liegen.',
   'keine-datei': 'Bitte eine CSV-Datei auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
+  'unterprojekt-titel-fehlt': 'Bitte einen Titel fuer das Unterprojekt eingeben.',
 };
 
 function getOwnedCategory(id, userId) {
@@ -22,6 +23,38 @@ function getOwnedCategory(id, userId) {
 
 function kategorieHatZuweisung(categoryId) {
   return !!db.prepare('SELECT 1 FROM zuweisungen WHERE category_id=? LIMIT 1').get(categoryId);
+}
+
+function getUnterprojekte(categoryId) {
+  return db.prepare('SELECT * FROM unterprojekte WHERE category_id=? ORDER BY created_at ASC').all(categoryId);
+}
+
+// Holt (oder legt bei Bedarf an) das Auffang-Unterprojekt "Allgemein" einer
+// Kategorie - dorthin wandern Zeiten, die keinem konkreten Unterprojekt
+// zugeordnet wurden, sobald die Kategorie ueberhaupt Unterprojekte hat.
+function allgemeinUnterprojekt(categoryId) {
+  let up = db.prepare("SELECT * FROM unterprojekte WHERE category_id=? AND title='Allgemein'").get(categoryId);
+  if (!up) {
+    const info = db.prepare('INSERT INTO unterprojekte (category_id, title) VALUES (?,?)').run(categoryId, 'Allgemein');
+    up = db.prepare('SELECT * FROM unterprojekte WHERE id=?').get(info.lastInsertRowid);
+  }
+  return up;
+}
+
+// Loest die zu speichernde unterprojekt_id auf. Unterprojekte sind komplett
+// optional: hat die Kategorie noch keine, bleibt der Eintrag unzugeordnet
+// (null). Hat sie welche, zaehlt entweder das explizit gewaehlte (wenn es
+// zu dieser Kategorie gehoert) oder sonst automatisch "Allgemein" - damit
+// hat in einer Kategorie mit Unterprojekten am Ende jede Zeit eins
+// zugeordnet.
+function resolveUnterprojektId(categoryId, submittedId) {
+  const hatUnterprojekte = !!db.prepare('SELECT 1 FROM unterprojekte WHERE category_id=? LIMIT 1').get(categoryId);
+  if (!hatUnterprojekte) return null;
+  if (submittedId) {
+    const up = db.prepare('SELECT id FROM unterprojekte WHERE id=? AND category_id=?').get(submittedId, categoryId);
+    if (up) return up.id;
+  }
+  return allgemeinUnterprojekt(categoryId).id;
 }
 
 // Solange keine Zuweisung verknuepft ist, gilt das von der Lehrkraft selbst
@@ -46,7 +79,7 @@ function benoetigteStunden(category) {
 // berechnet). Gibt die Dauer in Minuten zurueck, oder null bei ungueltiger
 // Zeitspanne (Bis <= Von). Wird sowohl vom einzelnen Nachtragen-Formular
 // als auch vom CSV-Import verwendet.
-function insertManualEntry(cat, userId, { beschreibung, datum, von, bis }, autoSync) {
+function insertManualEntry(cat, userId, { beschreibung, datum, von, bis, unterprojektId }, autoSync) {
   const startStr = `${datum} ${von}:00`;
   const endStr = `${datum} ${bis}:00`;
   const duration = diffMinutes(startStr, endStr);
@@ -54,11 +87,12 @@ function insertManualEntry(cat, userId, { beschreibung, datum, von, bis }, autoS
 
   db.prepare(
     `INSERT INTO time_entries
-       (category_id, user_id, beschreibung, start_time, end_time, duration_minutes, source, synced, synced_at)
-     VALUES (?,?,?,?,?,?,'manual',?,?)`
+       (category_id, user_id, unterprojekt_id, beschreibung, start_time, end_time, duration_minutes, source, synced, synced_at)
+     VALUES (?,?,?,?,?,?,?,'manual',?,?)`
   ).run(
     cat.id,
     userId,
+    resolveUnterprojektId(cat.id, unterprojektId),
     encrypt((beschreibung || '').trim() || 'Taetigkeit'),
     startStr,
     endStr,
@@ -74,9 +108,24 @@ router.get('/categories/:id', requireAuth, (req, res) => {
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
 
   const laufender = db
-    .prepare('SELECT * FROM time_entries WHERE category_id=? AND end_time IS NULL')
+    .prepare(
+      `SELECT te.*, up.title as unterprojekt_title FROM time_entries te
+       LEFT JOIN unterprojekte up ON up.id = te.unterprojekt_id
+       WHERE te.category_id=? AND te.end_time IS NULL`
+    )
     .get(cat.id);
   if (laufender) laufender.beschreibung = decrypt(laufender.beschreibung);
+
+  // Unterprojekte gliedern die Zeiten optional weiter (siehe Kommentar an
+  // der Tabelle in db.js). Je Unterprojekt wird die Gesamtzeit aus allen
+  // damit verknuepften abgeschlossenen Eintraegen berechnet - unabhaengig
+  // vom Filter der Tabelle darunter, aus demselben Grund wie erfassteStunden.
+  const unterprojekte = getUnterprojekte(cat.id).map((up) => {
+    const minuten = db
+      .prepare('SELECT COALESCE(SUM(duration_minutes),0) as m FROM time_entries WHERE unterprojekt_id=? AND end_time IS NOT NULL')
+      .get(up.id).m;
+    return { ...up, stunden: minuten / 60 };
+  });
 
   // Erfasste Zeitstunden (Fortschrittsbalken) beziehen sich immer auf ALLE
   // abgeschlossenen Eintraege, unabhaengig von Sortierung/Filter der Tabelle
@@ -116,6 +165,26 @@ router.get('/categories/:id', requireAuth, (req, res) => {
     entries = entries.filter((e) => e.beschreibung.toLowerCase().includes(nadel));
   }
 
+  // Hat die Kategorie Unterprojekte, werden die (bereits gefilterten und
+  // sortierten) Eintraege dafuer nach Unterprojekt gruppiert - jede Zeit
+  // gehoert dann zu genau einem, siehe resolveUnterprojektId. Ohne
+  // Unterprojekte bleibt es bei der bisherigen flachen Ansicht (eine
+  // "Gruppe" ohne Ueberschrift).
+  let gruppen;
+  if (unterprojekte.length > 0) {
+    const gruppenNachId = new Map(
+      unterprojekte.map((up) => [up.id, { id: up.id, title: up.title, stunden: up.stunden, entries: [] }])
+    );
+    entries.forEach((e) => {
+      const gruppe = gruppenNachId.get(e.unterprojekt_id);
+      if (gruppe) gruppe.entries.push(e);
+    });
+    gruppen = Array.from(gruppenNachId.values());
+    gruppen.sort((a, b) => (a.title === 'Allgemein' ? 1 : 0) - (b.title === 'Allgemein' ? 1 : 0));
+  } else {
+    gruppen = [{ id: null, title: null, stunden: null, entries }];
+  }
+
   const importiert = parseInt(req.query.importiert, 10);
   const uebersprungen = parseInt(req.query.uebersprungen, 10);
 
@@ -129,7 +198,8 @@ router.get('/categories/:id', requireAuth, (req, res) => {
 
   res.render('category', {
     category: cat,
-    entries,
+    gruppen,
+    unterprojekte,
     running: laufender,
     erfassteStunden: sumMinutes / 60,
     benoetigteStunden: benoetigteStunden(cat),
@@ -150,9 +220,10 @@ router.post('/categories/:id/start', requireAuth, (req, res) => {
   if (already) return res.redirect(`/categories/${cat.id}?error=timer-laeuft`);
 
   const beschreibung = (req.body.beschreibung || '').trim() || 'Taetigkeit';
+  const unterprojektId = resolveUnterprojektId(cat.id, req.body.unterprojekt_id);
   db.prepare(
-    "INSERT INTO time_entries (category_id, user_id, beschreibung, start_time, source) VALUES (?,?,?,?,'timer')"
-  ).run(cat.id, userId, encrypt(beschreibung), nowLocalString());
+    "INSERT INTO time_entries (category_id, user_id, unterprojekt_id, beschreibung, start_time, source) VALUES (?,?,?,?,?,'timer')"
+  ).run(cat.id, userId, unterprojektId, encrypt(beschreibung), nowLocalString());
 
   res.redirect(`/categories/${cat.id}`);
 });
@@ -189,7 +260,7 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
   if (!entry) return res.status(404).render('error', { message: 'Eintrag nicht gefunden.' });
   if (!entry.end_time) return res.redirect(`/categories/${entry.category_id}`);
 
-  const { beschreibung, datum, von, bis } = req.body;
+  const { beschreibung, datum, von, bis, unterprojekt_id } = req.body;
   if (!datum || !von || !bis) return res.redirect(`/categories/${entry.category_id}?error=felder-fehlen`);
 
   const startStr = `${datum} ${von}:00`;
@@ -199,12 +270,13 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   db.prepare(
-    'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, synced=?, synced_at=? WHERE id=?'
+    'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, unterprojekt_id=?, synced=?, synced_at=? WHERE id=?'
   ).run(
     encrypt((beschreibung || '').trim() || 'Taetigkeit'),
     startStr,
     endStr,
     duration,
+    resolveUnterprojektId(entry.category_id, unterprojekt_id),
     user.auto_sync ? 1 : 0,
     user.auto_sync ? nowLocalString() : null,
     entry.id
@@ -228,11 +300,16 @@ router.post('/categories/:id/entries', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, userId);
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
 
-  const { beschreibung, datum, von, bis } = req.body;
+  const { beschreibung, datum, von, bis, unterprojekt_id } = req.body;
   if (!datum || !von || !bis) return res.redirect(`/categories/${cat.id}?error=felder-fehlen&formular=nachtragen`);
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
-  const duration = insertManualEntry(cat, userId, { beschreibung, datum, von, bis }, !!user.auto_sync);
+  const duration = insertManualEntry(
+    cat,
+    userId,
+    { beschreibung, datum, von, bis, unterprojektId: unterprojekt_id },
+    !!user.auto_sync
+  );
   if (duration === null) return res.redirect(`/categories/${cat.id}?error=ungueltige-zeit&formular=nachtragen`);
 
   res.redirect(`/categories/${cat.id}?formular=nachtragen`);
@@ -286,6 +363,31 @@ router.post('/categories/:id/ziel', requireAuth, (req, res) => {
   if (!(wert > 0)) return res.redirect(`/categories/${cat.id}?error=ungueltiges-ziel`);
 
   db.prepare('UPDATE categories SET ziel_zeitstunden=? WHERE id=?').run(wert, cat.id);
+  res.redirect(`/categories/${cat.id}`);
+});
+
+// Legt ein neues Unterprojekt fuer die Kategorie an. Beim allerersten
+// Unterprojekt einer Kategorie werden gleichzeitig alle bis dahin nicht
+// zugeordneten Zeiten dem (bei Bedarf automatisch angelegten) Unterprojekt
+// "Allgemein" zugeordnet - siehe Kommentar an db.js/unterprojekte.
+router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
+  const cat = getOwnedCategory(req.params.id, req.session.user.id);
+  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+
+  const title = (req.body.title || '').trim();
+  if (!title) return res.redirect(`/categories/${cat.id}?error=unterprojekt-titel-fehlt`);
+
+  const hatteBereitsUnterprojekte = !!db.prepare('SELECT 1 FROM unterprojekte WHERE category_id=? LIMIT 1').get(cat.id);
+  db.prepare('INSERT INTO unterprojekte (category_id, title) VALUES (?,?)').run(cat.id, title);
+
+  if (!hatteBereitsUnterprojekte) {
+    const allgemein = allgemeinUnterprojekt(cat.id);
+    db.prepare('UPDATE time_entries SET unterprojekt_id=? WHERE category_id=? AND unterprojekt_id IS NULL').run(
+      allgemein.id,
+      cat.id
+    );
+  }
+
   res.redirect(`/categories/${cat.id}`);
 });
 
