@@ -76,17 +76,20 @@ erfasst und an die Schulleitung übermittelt werden können.
   und "CSV-Import" sind eigene Reiter, die nur bei Bedarf geöffnet werden.
 - **Nachtragen** – vergessene Zeiten werden mit Datum, Von- und Bis-Uhrzeit
   nachgetragen (Dauer wird daraus berechnet) und korrekt chronologisch
-  einsortiert. Bereits erfasste Einträge lassen sich jederzeit korrigieren
-  (Werte anpassen und speichern) oder löschen – ein bereits synchronisierter
-  Eintrag gilt nach einer Korrektur wieder als Entwurf, damit dem Admin kein
-  veralteter Wert stehen bleibt.
+  einsortiert. Reicht eine Tätigkeit über Mitternacht hinaus, wird zusätzlich
+  das Bis-Datum angegeben; normalerweise bleibt dieses Feld leer. Bereits
+  erfasste Einträge lassen sich jederzeit korrigieren (Werte anpassen und
+  speichern) oder löschen – ein bereits synchronisierter Eintrag gilt nach
+  einer Korrektur wieder als Entwurf, damit dem Admin kein veralteter Wert
+  stehen bleibt.
 - **CSV-Import** – mehrere nachzutragende Zeiten auf einmal per CSV-Datei
-  hochladen (Spalten: Datum, Von, Bis, Beschreibung). Komma, Semikolon,
-  Tabulator und Pipe werden automatisch als Trennzeichen erkannt; Datum als
-  `YYYY-MM-DD` oder `DD.MM.YYYY`. Ungültige Zeilen werden übersprungen und
-  gezählt, gültige trotzdem importiert.
+  hochladen (Spalten: Datum, Von, Bis, Beschreibung, optional Bis-Datum für
+  Tätigkeiten über Mitternacht). Komma, Semikolon, Tabulator und Pipe werden
+  automatisch als Trennzeichen erkannt; Datum als `YYYY-MM-DD` oder
+  `DD.MM.YYYY`. Ungültige Zeilen werden übersprungen und gezählt, gültige
+  trotzdem importiert.
 - **Sortierung und Filter der erfassten Tätigkeiten** – die Tabelle lässt sich
-  per Klick auf die Spalte "Datum" nach ältestem oder neuestem Datum zuerst
+  per Klick auf die Spalte "Beginn" nach ältestem oder neuestem Datum zuerst
   sortieren; zusätzlich kann nach einem Datumsbereich (von/bis) und/oder einem
   Suchbegriff in der Beschreibung gefiltert werden.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button

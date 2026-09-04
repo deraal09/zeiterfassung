@@ -317,3 +317,19 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .theme-toggle button:hover { color: var(--color-text); }
 .theme-toggle button.active { background: var(--color-primary); color: #fff; }
 .login-page .theme-toggle { position: absolute; top: 16px; right: 16px; }
+
+/* Beginn und Ende eines Eintrags bestehen aus Datum + Uhrzeit. Beide Felder
+   stehen in einer Zelle, damit sich auch eine Taetigkeit ueber Mitternacht
+   bearbeiten laesst, ohne die Tabelle unnoetig breit zu machen. */
+.zeit-zelle {
+  white-space: nowrap;
+}
+
+.zeit-zelle input {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.zeit-zelle input:last-child {
+  margin-bottom: 0;
+}
