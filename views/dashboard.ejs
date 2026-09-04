@@ -14,6 +14,7 @@
           <span class="live-timer" data-start="<%= timer.start_time %>">00:00:00</span>
         </div>
         <form method="post" action="/entries/<%= timer.id %>/stop">
+          <%- include('partials/csrf') %>
           <button type="submit" class="btn btn-stop">Stopp</button>
         </form>
       </div>
@@ -23,12 +24,14 @@
       <h1>Meine Ausgleichsstunden <span class="meta">Schuljahr <%= schuljahr %></span></h1>
       <div class="sync-controls">
         <form method="post" action="/settings/auto-sync" class="inline-form">
+          <%- include('partials/csrf') %>
           <label class="checkbox">
-            <input type="checkbox" name="enabled" onchange="this.form.submit()" <%= user.autoSync ? 'checked' : '' %>>
+            <input type="checkbox" name="enabled" data-submit-on-change <%= user.autoSync ? 'checked' : '' %>>
             Automatisch synchronisieren
           </label>
         </form>
         <form method="post" action="/sync" class="inline-form">
+          <%- include('partials/csrf') %>
           <button type="submit" class="btn"<%= unsyncedCount === 0 ? ' disabled' : '' %>>
             Jetzt synchronisieren<% if (unsyncedCount > 0) { %> (<%= unsyncedCount %>)<% } %>
           </button>
@@ -78,9 +81,11 @@
               </p>
               <div class="zuweisung-actions">
                 <form method="post" action="/zuweisungen/<%= z.id %>/annehmen" class="inline-form">
+                  <%- include('partials/csrf') %>
                   <button type="submit" class="btn btn-start">Annehmen</button>
                 </form>
                 <form method="post" action="/zuweisungen/<%= z.id %>/ablehnen" class="inline-form">
+                  <%- include('partials/csrf') %>
                   <button type="submit" class="link-button link-button-danger">Ablehnen</button>
                 </form>
               </div>
@@ -91,6 +96,7 @@
             <% } else if (!z.gesperrt) { %>
               <div class="zuweisung-actions">
                 <form method="post" action="/zuweisungen/<%= z.id %>/link" class="inline-form">
+                  <%- include('partials/csrf') %>
                   <select name="category_id">
                     <option value="">– keine Verknüpfung –</option>
                     <% categories.forEach(cat => { %>
@@ -101,6 +107,7 @@
                 </form>
                 <% if (!z.category_id) { %>
                   <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
+                    <%- include('partials/csrf') %>
                     <input type="text" name="title" placeholder="Titel für neue Kategorie (optional)">
                     <button type="submit" class="btn btn-start">Übernehmen</button>
                   </form>
@@ -115,6 +122,7 @@
     <section class="panel">
       <h2>Neue Kategorie anlegen</h2>
       <form method="post" action="/categories" class="inline-form">
+        <%- include('partials/csrf') %>
         <input type="text" name="title" placeholder="z. B. Administration Moodle" required>
         <input type="number" name="ziel_zeitstunden" placeholder="Ziel-Zeitstunden (optional)" step="0.25" min="0.25">
         <button type="submit" class="btn btn-start">Anlegen</button>
@@ -146,5 +154,6 @@
   </main>
   <script src="/public/js/timer.js"></script>
   <script src="/public/js/theme.js"></script>
+  <script src="/public/js/forms.js"></script>
 </body>
 </html>

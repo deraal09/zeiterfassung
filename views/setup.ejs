@@ -15,6 +15,7 @@
     </p>
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
     <form method="post" action="/setup">
+      <%- include('partials/csrf') %>
       <label for="username">Benutzername</label>
       <input type="text" id="username" name="username" autocomplete="username" required autofocus>
       <label for="displayName">Anzeigename</label>

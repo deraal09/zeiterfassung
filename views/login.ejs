@@ -11,6 +11,7 @@
     <p class="subtitle">Anmeldung mit Schulaccount</p>
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
     <form method="post" action="/login">
+      <%- include('partials/csrf') %>
       <label for="username">Benutzername</label>
       <input type="text" id="username" name="username" autocomplete="username" required autofocus>
       <label for="password">Passwort</label>

@@ -16,6 +16,7 @@
     <section class="panel">
       <h2>Ausgleichsstunden zuweisen <span class="meta">Schuljahr <%= aktuellesSchuljahr %></span></h2>
       <form method="post" action="/admin/users/<%= teacher.id %>/zuweisungen" class="entry-form">
+        <%- include('../partials/csrf') %>
         <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
         <% const aktiveKategorien = categories.filter(c => !c.archived); %>
         <% if (aktiveKategorien.length > 0) { %>
@@ -48,6 +49,7 @@
               <td><%= z.schuljahr %></td>
               <td>
                 <form method="post" action="/admin/zuweisungen/<%= z.id %>/edit" class="inline-form">
+                  <%- include('../partials/csrf') %>
                   <input type="number" step="0.25" min="0.25" name="ausgleichsstunden" value="<%= z.ausgleichsstunden %>" style="width: 80px;">
                   <button type="submit" class="link-button">Speichern</button>
                 </form>
@@ -74,9 +76,11 @@
                   </p>
                   <div class="zuweisung-actions">
                     <form method="post" action="/admin/zuweisungen/<%= z.id %>/annehmen" class="inline-form">
+                      <%- include('../partials/csrf') %>
                       <button type="submit" class="link-button">Annehmen</button>
                     </form>
                     <form method="post" action="/admin/zuweisungen/<%= z.id %>/ablehnen" class="inline-form">
+                      <%- include('../partials/csrf') %>
                       <button type="submit" class="link-button link-button-danger">Ablehnen</button>
                     </form>
                   </div>
@@ -86,6 +90,7 @@
                   </p>
                 <% } else if (!z.gesperrt && categories.filter(c => !c.archived).length > 0) { %>
                   <form method="post" action="/admin/zuweisungen/<%= z.id %>/link" class="inline-form" style="margin-top: 6px;">
+                    <%- include('../partials/csrf') %>
                     <select name="category_id">
                       <option value="">– keine Verknüpfung –</option>
                       <% categories.filter(c => !c.archived).forEach(cat => { %>
@@ -105,7 +110,8 @@
                     lösen.
                   </p>
                 <% } else { %>
-                  <form method="post" action="/admin/zuweisungen/<%= z.id %>/delete" class="inline-form" onsubmit="return confirm('Diese Zuweisung wirklich entfernen?');">
+                  <form method="post" action="/admin/zuweisungen/<%= z.id %>/delete" class="inline-form" data-confirm="Diese Zuweisung wirklich entfernen?">
+                    <%- include('../partials/csrf') %>
                     <button type="submit" class="link-button link-button-danger">Löschen</button>
                   </form>
                 <% } %>
@@ -142,6 +148,7 @@
               <td><%= cat.unsyncedHours.toFixed(2) %> h</td>
               <td>
                 <form method="post" action="/admin/categories/<%= cat.id %>/archive" class="inline-form">
+                  <%- include('../partials/csrf') %>
                   <button type="submit" class="link-button"><%= cat.archived ? 'Reaktivieren' : 'Archivieren' %></button>
                 </form>
               </td>
@@ -159,5 +166,6 @@
     </section>
   </main>
   <script src="/public/js/theme.js"></script>
+  <script src="/public/js/forms.js"></script>
 </body>
 </html>

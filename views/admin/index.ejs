@@ -21,6 +21,7 @@
         alle bereits zugewiesenen Ausgleichsstunden dieses Schuljahres aus.
       </p>
       <form method="post" action="/admin/faktor" class="entry-form">
+        <%- include('../partials/csrf') %>
         <input type="number" step="0.1" min="0" name="zeitstunden" placeholder="Zeitstunden pro Woche" value="<%= faktorSettings ? faktorSettings.zeitstundenProWoche : '' %>" required>
         <input type="number" step="1" min="0" name="schulwochen" placeholder="Schulwochen" value="<%= faktorSettings ? faktorSettings.schulwochen : '' %>" required>
         <button type="submit" class="btn btn-start"><%= faktorSettings ? 'Aktualisieren' : 'Festlegen' %></button>
@@ -46,6 +47,7 @@
         mit einer eigenen Kategorie.
       </p>
       <form method="post" action="/admin/assign" id="assign-form" class="assign-form">
+        <%- include('../partials/csrf') %>
         <div class="autocomplete">
           <label for="assign-username">Benutzername</label>
           <input type="text" id="assign-username" name="username" placeholder="Benutzername eingeben oder aus Suche wählen…" autocomplete="off" required>

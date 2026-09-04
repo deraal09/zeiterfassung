@@ -5,6 +5,8 @@ const FileStore = require('session-file-store')(session);
 
 const config = require('./src/config');
 const { initDb } = require('./src/db');
+const { csrfMiddleware } = require('./src/middleware/csrf');
+const { nonceMiddleware, helmetMiddleware } = require('./src/middleware/security');
 
 initDb();
 
@@ -12,6 +14,11 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1);
+
+// Vor allem anderen, damit auch Fehlerseiten und statische Dateien die
+// Sicherheits-Header tragen.
+app.use(nonceMiddleware);
+app.use(helmetMiddleware);
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
@@ -31,6 +38,10 @@ app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
+
+// Nach der Session (braucht req.session) und nach express.urlencoded (liest
+// das Token aus req.body) - siehe middleware/csrf.js.
+app.use(csrfMiddleware);
 
 app.use('/', require('./src/routes/auth'));
 app.use('/', require('./src/routes/dashboard'));

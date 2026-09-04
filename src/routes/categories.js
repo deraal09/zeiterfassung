@@ -2,6 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { csrfSchutzNachUpload } = require('../middleware/csrf');
 const { nowLocalString, diffMinutes, baueZeitraum, MAX_DAUER_MINUTEN } = require('../util/time');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 const { parseCsv } = require('../util/csv');
@@ -304,7 +305,10 @@ router.post('/categories/:id/entries', requireAuth, (req, res) => {
   res.redirect(`/categories/${cat.id}?formular=nachtragen`);
 });
 
-router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), (req, res) => {
+// csrfSchutzNachUpload steht hinter multer: bei multipart/form-data liest
+// erst multer die Formularfelder, vorher ist req.body leer und die globale
+// CSRF-Middleware koennte das Token gar nicht sehen.
+router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), csrfSchutzNachUpload, (req, res) => {
   const userId = req.session.user.id;
   const cat = getOwnedCategory(req.params.id, userId);
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });

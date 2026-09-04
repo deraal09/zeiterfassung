@@ -28,8 +28,9 @@
     <% } %>
 
     <form method="post" action="/categories/<%= category.id %>/sichtbarkeit" class="inline-form">
+      <%- include('partials/csrf') %>
       <label class="checkbox">
-        <input type="checkbox" name="sichtbar" onchange="this.form.submit()" <%= category.visible_for_admin || hatZuweisung ? 'checked' : '' %> <%= hatZuweisung ? 'disabled' : '' %>>
+        <input type="checkbox" name="sichtbar" data-submit-on-change <%= category.visible_for_admin || hatZuweisung ? 'checked' : '' %> <%= hatZuweisung ? 'disabled' : '' %>>
         Für Admin sichtbar machen
       </label>
     </form>
@@ -41,6 +42,7 @@
 
     <% if (!hatZuweisung) { %>
       <form method="post" action="/categories/<%= category.id %>/ziel" class="inline-form" style="margin-top: 8px;">
+        <%- include('partials/csrf') %>
         <label for="ziel_zeitstunden" class="hint" style="margin: 0;">Eigenes Ziel (Zeitstunden):</label>
         <input type="number" id="ziel_zeitstunden" name="ziel_zeitstunden" step="0.25" min="0.25" value="<%= category.ziel_zeitstunden || '' %>" placeholder="z. B. 10">
         <button type="submit" class="btn">Speichern</button>
@@ -78,6 +80,7 @@
         </p>
       <% } %>
       <form method="post" action="/categories/<%= category.id %>/unterprojekte" class="inline-form">
+        <%- include('partials/csrf') %>
         <input type="text" name="title" placeholder="Neues Unterprojekt, z. B. Kurs A" required>
         <button type="submit" class="btn">Anlegen</button>
       </form>
@@ -98,11 +101,13 @@
               <span class="live-timer" data-start="<%= running.start_time %>">00:00:00</span>
             </div>
             <form method="post" action="/entries/<%= running.id %>/stop">
+              <%- include('partials/csrf') %>
               <button type="submit" class="btn btn-stop">Stopp</button>
             </form>
           </div>
         <% } else { %>
           <form method="post" action="/categories/<%= category.id %>/start" class="inline-form">
+            <%- include('partials/csrf') %>
             <input type="text" name="beschreibung" placeholder="Kurze Tätigkeitsbeschreibung" required>
             <% if (unterprojekte.length > 0) { %>
               <select name="unterprojekt_id" title="Unterprojekt (optional, sonst Allgemein)">
@@ -120,6 +125,7 @@
       <section class="panel tab-panel" id="tab-nachtragen" data-tab-panel <%= activeTab === 'nachtragen' ? '' : 'hidden' %>>
         <h2>Zeit nachtragen</h2>
         <form method="post" action="/categories/<%= category.id %>/entries" class="entry-form">
+          <%- include('partials/csrf') %>
           <input type="text" name="beschreibung" placeholder="Tätigkeitsbeschreibung" required>
           <input type="date" name="datum" title="Datum" required>
           <input type="time" name="von" title="Von" required>
@@ -154,6 +160,7 @@
           übersprungen und gezählt.
         </p>
         <form method="post" action="/categories/<%= category.id %>/import" enctype="multipart/form-data" class="inline-form">
+          <%- include('partials/csrf') %>
           <input type="file" name="csv_file" accept=".csv,text/csv" required>
           <button type="submit" class="btn">Importieren</button>
         </form>
@@ -176,7 +183,9 @@
       </form>
 
       <% gruppen.forEach(g => { g.entries.forEach(e => { %>
-        <form id="entry-edit-<%= e.id %>" method="post" action="/entries/<%= e.id %>/edit"></form>
+        <form id="entry-edit-<%= e.id %>" method="post" action="/entries/<%= e.id %>/edit">
+          <%- include('partials/csrf') %>
+        </form>
       <% }) }) %>
       <% const spalten = unterprojekte.length > 0 ? 7 : 6; %>
       <table class="entries-table">
@@ -224,6 +233,7 @@
                 <td class="entries-row-actions">
                   <button type="submit" form="entry-edit-<%= e.id %>" class="link-button">Speichern</button>
                   <form method="post" action="/entries/<%= e.id %>/delete" class="inline-form">
+                    <%- include('partials/csrf') %>
                     <button type="submit" class="link-button link-button-danger">Löschen</button>
                   </form>
                 </td>
@@ -243,6 +253,7 @@
   </main>
   <script src="/public/js/timer.js"></script>
   <script src="/public/js/theme.js"></script>
+  <script src="/public/js/forms.js"></script>
   <script src="/public/js/tabs.js"></script>
 </body>
 </html>
