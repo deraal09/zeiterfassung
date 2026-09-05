@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { nowLocalString } = require('../util/time');
-const { aktuellesSchuljahr } = require('../util/schuljahr');
+const { aktuellesSchuljahr, istSchuljahr } = require('../util/schuljahr');
 const { decrypt } = require('../util/crypto');
 const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
@@ -29,9 +29,30 @@ function activeTimer(userId) {
   return timer;
 }
 
+// Schuljahre, in denen die Lehrkraft ueberhaupt etwas hat, plus das aktuelle
+// (auch wenn dort noch nichts angelegt wurde). Ohne diese Liste waere alles
+// ausserhalb des laufenden Schuljahres nach dem 1. August unerreichbar -
+// samt der bereits erfassten Zeiten.
+function schuljahreFuer(userId) {
+  const zeilen = db
+    .prepare(
+      `SELECT schuljahr FROM categories WHERE user_id = ?
+       UNION SELECT schuljahr FROM zuweisungen WHERE user_id = ?`
+    )
+    .all(userId, userId)
+    .map((r) => r.schuljahr);
+
+  return [...new Set([...zeilen, aktuellesSchuljahr()])].filter(Boolean).sort().reverse();
+}
+
 router.get('/', requireAuth, (req, res) => {
   const userId = req.session.user.id;
-  const schuljahr = aktuellesSchuljahr();
+  const schuljahre = schuljahreFuer(userId);
+
+  // Ein unbekanntes oder unsinniges Schuljahr in der Adresse faellt auf das
+  // laufende zurueck, statt eine leere Seite zu zeigen.
+  const gewaehlt = String(req.query.schuljahr || '');
+  const schuljahr = istSchuljahr(gewaehlt) && schuljahre.includes(gewaehlt) ? gewaehlt : aktuellesSchuljahr();
 
   const categories = db
     .prepare('SELECT * FROM categories WHERE user_id = ? AND schuljahr = ? AND archived = 0 ORDER BY created_at DESC')
@@ -63,9 +84,19 @@ router.get('/', requireAuth, (req, res) => {
        LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        LEFT JOIN categories c ON c.id = z.category_id
        LEFT JOIN categories vc ON vc.id = z.vorschlag_category_id
-       WHERE z.user_id=? ORDER BY z.created_at DESC`
+       WHERE z.user_id=? AND z.schuljahr=? ORDER BY z.created_at DESC`
     )
-    .all(userId);
+    .all(userId, schuljahr);
+
+  // Zuweisungen ausserhalb des gezeigten Schuljahres gehen sonst unter -
+  // besonders offene, die noch auf eine Verknuepfung warten.
+  const zuweisungenAndereJahre = db
+    .prepare(
+      `SELECT schuljahr, COUNT(*) as anzahl,
+              SUM(CASE WHEN category_id IS NULL THEN 1 ELSE 0 END) as offen
+       FROM zuweisungen WHERE user_id=? AND schuljahr<>? GROUP BY schuljahr ORDER BY schuljahr DESC`
+    )
+    .all(userId, schuljahr);
 
   const unsyncedCount = db
     .prepare('SELECT COUNT(*) as c FROM time_entries WHERE user_id=? AND synced=0 AND end_time IS NOT NULL')
@@ -74,7 +105,10 @@ router.get('/', requireAuth, (req, res) => {
   res.render('dashboard', {
     categories: stats,
     zuweisungen,
+    zuweisungenAndereJahre,
     schuljahr,
+    schuljahre,
+    aktuellesSchuljahr: aktuellesSchuljahr(),
     timer: activeTimer(userId),
     unsyncedCount,
     error: ERROR_MESSAGES[req.query.error] || null,
@@ -83,7 +117,11 @@ router.get('/', requireAuth, (req, res) => {
 
 router.post('/categories', requireAuth, (req, res) => {
   const title = (req.body.title || '').trim();
-  if (!title) return res.redirect('/?error=titel-fehlt');
+  // Das Schuljahr kommt aus der gerade gezeigten Ansicht: wer im Vorjahr
+  // etwas nachtraegt, will die Kategorie dort und nicht im laufenden Jahr.
+  const schuljahr = istSchuljahr(req.body.schuljahr) ? req.body.schuljahr : aktuellesSchuljahr();
+  const zurueck = `/?schuljahr=${encodeURIComponent(schuljahr)}`;
+  if (!title) return res.redirect(`${zurueck}&error=titel-fehlt`);
 
   const zielRoh = req.body.ziel_zeitstunden;
   let ziel = null;
@@ -95,10 +133,10 @@ router.post('/categories', requireAuth, (req, res) => {
   db.prepare('INSERT INTO categories (user_id, title, schuljahr, ziel_zeitstunden) VALUES (?,?,?,?)').run(
     req.session.user.id,
     title,
-    aktuellesSchuljahr(),
+    schuljahr,
     ziel
   );
-  res.redirect('/');
+  res.redirect(zurueck);
 });
 
 // Schlaegt eine (neue oder geaenderte) Verknuepfung vor (leere category_id =
@@ -113,7 +151,13 @@ router.post('/zuweisungen/:id/link', requireAuth, (req, res) => {
 
   let categoryId = null;
   if (req.body.category_id) {
-    const category = db.prepare('SELECT id FROM categories WHERE id=? AND user_id=?').get(req.body.category_id, userId);
+    // Die Kategorie muss zum Schuljahr der Zuweisung gehoeren: der Faktor
+    // haengt am Schuljahr der Zuweisung, das Ziel wird ueber die Kategorie
+    // angezeigt - ueber Jahresgrenzen hinweg verknuepft ergaebe das Zahlen,
+    // die zu keinem der beiden Jahre passen.
+    const category = db
+      .prepare('SELECT id FROM categories WHERE id=? AND user_id=? AND schuljahr=?')
+      .get(req.body.category_id, userId, zuweisung.schuljahr);
     if (!category) return res.redirect('/?error=keine-kategorie');
     categoryId = category.id;
   }

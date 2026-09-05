@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { db } = require('../db');
 const { requireAdmin } = require('../middleware/auth');
 const ldap = require('../ldap');
-const { aktuellesSchuljahr } = require('../util/schuljahr');
+const { aktuellesSchuljahr, istSchuljahr } = require('../util/schuljahr');
 const { vorschlagen, annehmen, ablehnen, istGesperrt } = require('../util/zuweisungen');
 const { zielZeitstunden } = require('../util/stunden');
 
@@ -12,9 +12,13 @@ const ERROR_MESSAGES = {
   'keine-kategorie': 'Bitte eine Kategorie dieser Lehrkraft auswaehlen.',
   'kein-faktor': 'Bitte zuerst Zeitstunden pro Woche und Schulwochen fuer dieses Schuljahr festlegen.',
   'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
+  'ungueltiges-schuljahr': 'Bitte ein Schuljahr in der Schreibweise 2026/27 angeben.',
+  'schuljahr-passt-nicht': 'Die Kategorie gehoert zu einem anderen Schuljahr als die Zuweisung.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Lehrkraft vor.',
   'vorschlag-ungueltig': 'Die vorgeschlagene Kategorie existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
+  'benutzer-nicht-leer':
+    'Dieses Konto laesst sich nicht entfernen: es hat bereits Zuweisungen, Kategorien oder erfasste Zeiten, oder es war schon einmal angemeldet.',
   'nicht-loeschbar': 'Fuer diese Zuweisung sind bereits Zeiten erfasst - sie kann nicht mehr geloescht werden. Bitte die Lehrkraft bitten, die Zeiten auf eine andere Kategorie zu uebertragen oder die Verknuepfung zu loesen.',
 };
 
@@ -46,15 +50,44 @@ router.get('/', requireAdmin, (req, res) => {
     )
     .all();
   const schuljahr = aktuellesSchuljahr();
+
+  // Alle gepflegten Schuljahre, damit sich ein Vorjahr korrigieren und ein
+  // kommendes vorbereiten laesst.
+  const alleFaktoren = db
+    .prepare(
+      `SELECT sf.*, sf.zeitstunden_pro_woche * sf.schulwochen as faktor,
+              (SELECT COUNT(*) FROM zuweisungen z WHERE z.schuljahr = sf.schuljahr) as zuweisungen
+       FROM schuljahr_faktoren sf ORDER BY sf.schuljahr DESC`
+    )
+    .all();
+
+  // Schuljahre mit Zuweisungen, fuer die noch kein Faktor gepflegt ist -
+  // dort steht das Stundenziel sonst stillschweigend auf "unbekannt".
+  const faktorFehlt = db
+    .prepare(
+      `SELECT z.schuljahr, COUNT(*) as zuweisungen FROM zuweisungen z
+       LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
+       WHERE sf.schuljahr IS NULL GROUP BY z.schuljahr ORDER BY z.schuljahr DESC`
+    )
+    .all();
+
   res.render('admin/index', {
     users,
     schuljahr,
     faktorSettings: faktorSettingsFuer(schuljahr),
+    alleFaktoren,
+    faktorFehlt,
     error: ERROR_MESSAGES[req.query.error] || null,
   });
 });
 
 router.post('/faktor', requireAdmin, (req, res) => {
+  // Frueher wurde immer das laufende Schuljahr geschrieben - ein Vorjahr
+  // liess sich damit nicht mehr korrigieren und ein kommendes nicht
+  // vorbereiten.
+  const schuljahr = req.body.schuljahr || aktuellesSchuljahr();
+  if (!istSchuljahr(schuljahr)) return res.redirect('/admin?error=ungueltiges-schuljahr');
+
   const zeitstunden = parseNumber(req.body.zeitstunden);
   const schulwochen = parseNumber(req.body.schulwochen);
   if (!(zeitstunden > 0) || !(schulwochen > 0)) {
@@ -69,7 +102,7 @@ router.post('/faktor', requireAdmin, (req, res) => {
        schulwochen=excluded.schulwochen,
        updated_by=excluded.updated_by,
        updated_at=excluded.updated_at`
-  ).run(aktuellesSchuljahr(), zeitstunden, schulwochen, req.session.user.username);
+  ).run(schuljahr, zeitstunden, schulwochen, req.session.user.username);
 
   res.redirect('/admin');
 });
@@ -149,8 +182,18 @@ router.get('/users/:id', requireAdmin, (req, res) => {
     )
     .all(teacher.id);
 
+  const zaehleFuerTeacher = (tabelle) =>
+    db.prepare(`SELECT COUNT(*) as c FROM ${tabelle} WHERE user_id=?`).get(teacher.id).c;
+  const kontoEntfernbar =
+    !teacher.last_login &&
+    teacher.id !== req.session.user.id &&
+    zaehleFuerTeacher('zuweisungen') === 0 &&
+    zaehleFuerTeacher('categories') === 0 &&
+    zaehleFuerTeacher('time_entries') === 0;
+
   res.render('admin/user', {
     teacher,
+    kontoEntfernbar,
     categories,
     hiddenCategoryCount,
     zuweisungen,
@@ -179,8 +222,8 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   let vorschlagCategoryId = null;
   if (req.body.category_id) {
     const category = db
-      .prepare('SELECT id FROM categories WHERE id=? AND user_id=?')
-      .get(req.body.category_id, teacher.id);
+      .prepare('SELECT id FROM categories WHERE id=? AND user_id=? AND schuljahr=?')
+      .get(req.body.category_id, teacher.id, schuljahr);
     if (category) vorschlagCategoryId = category.id;
   }
 
@@ -211,10 +254,12 @@ router.post('/zuweisungen/:id/link', requireAdmin, (req, res) => {
 
   let categoryId = null;
   if (req.body.category_id) {
+    // Wie im Dashboard: die Kategorie muss zum Schuljahr der Zuweisung
+    // gehoeren, sonst passen Faktor und Stundenziel nicht zusammen.
     const category = db
-      .prepare('SELECT id FROM categories WHERE id=? AND user_id=?')
-      .get(req.body.category_id, zuweisung.user_id);
-    if (!category) return res.redirect(`/admin/users/${zuweisung.user_id}?error=keine-kategorie`);
+      .prepare('SELECT id FROM categories WHERE id=? AND user_id=? AND schuljahr=?')
+      .get(req.body.category_id, zuweisung.user_id, zuweisung.schuljahr);
+    if (!category) return res.redirect(`/admin/users/${zuweisung.user_id}?error=schuljahr-passt-nicht`);
     categoryId = category.id;
   }
 
@@ -259,6 +304,31 @@ router.post('/zuweisungen/:id/delete', requireAdmin, (req, res) => {
 
   db.prepare('DELETE FROM zuweisungen WHERE id=?').run(zuweisung.id);
   res.redirect(`/admin/users/${zuweisung.user_id}`);
+});
+
+// Entfernt ein Konto, das durch einen Vertipper im Benutzernamen entstanden
+// ist. Bewusst nur fuer echte Karteileichen: sobald daran Zuweisungen,
+// Kategorien oder Zeiten haengen oder sich jemand damit angemeldet hat,
+// bleibt es stehen - ON DELETE CASCADE wuerde sonst stillschweigend erfasste
+// Arbeitszeit mitloeschen.
+router.post('/users/:id/delete', requireAdmin, (req, res) => {
+  const teacher = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
+  if (!teacher) return res.status(404).render('error', { message: 'Lehrkraft nicht gefunden.' });
+
+  const zaehle = (tabelle) =>
+    db.prepare(`SELECT COUNT(*) as c FROM ${tabelle} WHERE user_id=?`).get(teacher.id).c;
+
+  const unberuehrt =
+    !teacher.last_login &&
+    teacher.id !== req.session.user.id &&
+    zaehle('zuweisungen') === 0 &&
+    zaehle('categories') === 0 &&
+    zaehle('time_entries') === 0;
+
+  if (!unberuehrt) return res.redirect(`/admin/users/${teacher.id}?error=benutzer-nicht-leer`);
+
+  db.prepare('DELETE FROM users WHERE id=?').run(teacher.id);
+  res.redirect('/admin');
 });
 
 router.post('/categories/:id/archive', requireAdmin, (req, res) => {

@@ -21,7 +21,24 @@
     <% } %>
 
     <div class="page-header">
-      <h1>Meine Ausgleichsstunden <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+      <h1>
+        Meine Ausgleichsstunden
+        <% if (schuljahre.length > 1) { %>
+          <form method="get" action="/" class="inline-form schuljahr-wahl">
+            <label for="schuljahr-wahl" class="meta">Schuljahr</label>
+            <select id="schuljahr-wahl" name="schuljahr" data-submit-on-change>
+              <% schuljahre.forEach(sj => { %>
+                <option value="<%= sj %>" <%= sj === schuljahr ? 'selected' : '' %>>
+                  <%= sj %><%= sj === aktuellesSchuljahr ? ' (laufend)' : '' %>
+                </option>
+              <% }) %>
+            </select>
+            <noscript><button type="submit" class="btn">Wechseln</button></noscript>
+          </form>
+        <% } else { %>
+          <span class="meta">Schuljahr <%= schuljahr %></span>
+        <% } %>
+      </h1>
       <div class="sync-controls">
         <form method="post" action="/settings/auto-sync" class="inline-form">
           <%- include('partials/csrf') %>
@@ -41,9 +58,16 @@
 
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
 
+    <% if (zuweisungenAndereJahre.length > 0) { %>
+      <p class="hint">
+        Weitere Zuweisungen in anderen Schuljahren:
+        <% zuweisungenAndereJahre.forEach((j, i) => { %><%= i > 0 ? ' · ' : '' %><a href="/?schuljahr=<%= encodeURIComponent(j.schuljahr) %>"><%= j.schuljahr %></a> (<%= j.anzahl %><%= j.offen > 0 ? `, ${j.offen} noch nicht verknüpft` : '' %>)<% }) %>
+      </p>
+    <% } %>
+
     <% if (zuweisungen.length > 0) { %>
       <section class="panel">
-        <h2>Meine Ausgleichsstunden-Zuweisungen</h2>
+        <h2>Meine Ausgleichsstunden-Zuweisungen <span class="meta">Schuljahr <%= schuljahr %></span></h2>
         <p class="hint">
           Von der Schulleitung zugewiesene Ausgleichsstunden. Verknüpfe sie mit
           einer eigenen Kategorie oder übernimm sie als neue Kategorie – ein
@@ -120,9 +144,10 @@
     <% } %>
 
     <section class="panel">
-      <h2>Neue Kategorie anlegen</h2>
+      <h2>Neue Kategorie anlegen <span class="meta">für <%= schuljahr %></span></h2>
       <form method="post" action="/categories" class="inline-form">
         <%- include('partials/csrf') %>
+        <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
         <input type="text" name="title" placeholder="z. B. Administration Moodle" required>
         <input type="number" name="ziel_zeitstunden" placeholder="Ziel-Zeitstunden (optional)" step="0.25" min="0.25">
         <button type="submit" class="btn btn-start">Anlegen</button>
@@ -130,7 +155,7 @@
     </section>
 
     <% if (categories.length === 0) { %>
-      <p class="empty-state">Noch keine Kategorien für dieses Schuljahr angelegt.</p>
+      <p class="empty-state">Noch keine Kategorien für <%= schuljahr %> angelegt.</p>
     <% } %>
 
     <div class="card-grid">

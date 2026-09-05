@@ -333,3 +333,14 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .zeit-zelle input:last-child {
   margin-bottom: 0;
 }
+
+/* Schuljahr-Auswahl in der Ueberschrift: soll wie ein Teil der Zeile wirken
+   und nicht wie ein eigener Block. */
+.schuljahr-wahl {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-left: 8px;
+  font-size: 0.6em;
+  font-weight: normal;
+}

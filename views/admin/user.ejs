@@ -13,12 +13,24 @@
 
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
 
+    <% if (kontoEntfernbar) { %>
+      <p class="hint">
+        Dieses Konto hat weder Zuweisungen noch Kategorien oder Zeiten und war
+        nie angemeldet – vermutlich ein Vertipper beim Benutzernamen.
+        <form method="post" action="/admin/users/<%= teacher.id %>/delete" class="inline-form"
+              data-confirm="Konto &quot;<%= teacher.username %>&quot; wirklich entfernen?">
+          <%- include('../partials/csrf') %>
+          <button type="submit" class="link-button link-button-danger">Konto entfernen</button>
+        </form>
+      </p>
+    <% } %>
+
     <section class="panel">
       <h2>Ausgleichsstunden zuweisen <span class="meta">Schuljahr <%= aktuellesSchuljahr %></span></h2>
       <form method="post" action="/admin/users/<%= teacher.id %>/zuweisungen" class="entry-form">
         <%- include('../partials/csrf') %>
-        <input type="number" step="0.25" min="0" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
-        <% const aktiveKategorien = categories.filter(c => !c.archived); %>
+        <input type="number" step="0.25" min="0.25" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
+        <% const aktiveKategorien = categories.filter(c => !c.archived && c.schuljahr === aktuellesSchuljahr); %>
         <% if (aktiveKategorien.length > 0) { %>
           <select name="category_id">
             <option value="">Kategorie noch offen lassen (optional)</option>
@@ -88,17 +100,27 @@
                   <p class="hint" style="margin: 6px 0 0;">
                     Dein Vorschlag (<%= z.vorschlag_category_title || '– Verknüpfung aufheben –' %>) wartet auf Bestätigung durch die Lehrkraft.
                   </p>
-                <% } else if (!z.gesperrt && categories.filter(c => !c.archived).length > 0) { %>
-                  <form method="post" action="/admin/zuweisungen/<%= z.id %>/link" class="inline-form" style="margin-top: 6px;">
-                    <%- include('../partials/csrf') %>
-                    <select name="category_id">
-                      <option value="">– keine Verknüpfung –</option>
-                      <% categories.filter(c => !c.archived).forEach(cat => { %>
-                        <option value="<%= cat.id %>" <%= z.category_id === cat.id ? 'selected' : '' %>><%= cat.title %></option>
-                      <% }) %>
-                    </select>
-                    <button type="submit" class="link-button"><%= z.category_title ? 'Änderung vorschlagen' : 'Vorschlagen' %></button>
-                  </form>
+                <% } else if (!z.gesperrt) { %>
+                  <%# Nur Kategorien aus dem Schuljahr DIESER Zuweisung: der %>
+                  <%# Faktor haengt am Schuljahr der Zuweisung, das Ziel an der %>
+                  <%# Kategorie - jahresuebergreifend passt beides nicht zusammen. %>
+                  <% const passende = categories.filter(c => !c.archived && c.schuljahr === z.schuljahr); %>
+                  <% if (passende.length > 0) { %>
+                    <form method="post" action="/admin/zuweisungen/<%= z.id %>/link" class="inline-form" style="margin-top: 6px;">
+                      <%- include('../partials/csrf') %>
+                      <select name="category_id">
+                        <option value="">– keine Verknüpfung –</option>
+                        <% passende.forEach(cat => { %>
+                          <option value="<%= cat.id %>" <%= z.category_id === cat.id ? 'selected' : '' %>><%= cat.title %></option>
+                        <% }) %>
+                      </select>
+                      <button type="submit" class="link-button"><%= z.category_title ? 'Änderung vorschlagen' : 'Vorschlagen' %></button>
+                    </form>
+                  <% } else { %>
+                    <p class="hint" style="margin: 6px 0 0;">
+                      Keine Kategorie dieser Lehrkraft für <%= z.schuljahr %> vorhanden.
+                    </p>
+                  <% } %>
                 <% } %>
               </td>
               <td>
