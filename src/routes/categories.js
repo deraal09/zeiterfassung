@@ -32,6 +32,9 @@ const ERROR_MESSAGES = {
   'keine-datei': 'Bitte eine CSV-Datei auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
   'unterprojekt-titel-fehlt': 'Bitte einen Titel fuer das Unterprojekt eingeben.',
+  'unterprojekt-nicht-gefunden': 'Das Unterprojekt gehoert nicht zu dieser Kategorie.',
+  'auffang-nicht-loeschbar':
+    'Dieses Unterprojekt nimmt die Zeiten ohne eigene Zuordnung auf und laesst sich nur loeschen, wenn es das letzte ist.',
 };
 
 function getOwnedCategory(id, userId) {
@@ -46,13 +49,19 @@ function getUnterprojekte(categoryId) {
   return db.prepare('SELECT * FROM unterprojekte WHERE category_id=? ORDER BY created_at ASC').all(categoryId);
 }
 
-// Holt (oder legt bei Bedarf an) das Auffang-Unterprojekt "Allgemein" einer
-// Kategorie - dorthin wandern Zeiten, die keinem konkreten Unterprojekt
-// zugeordnet wurden, sobald die Kategorie ueberhaupt Unterprojekte hat.
-function allgemeinUnterprojekt(categoryId) {
-  let up = db.prepare("SELECT * FROM unterprojekte WHERE category_id=? AND title='Allgemein'").get(categoryId);
+// Holt (oder legt bei Bedarf an) das Auffang-Unterprojekt einer Kategorie -
+// dorthin wandern Zeiten, die keinem konkreten Unterprojekt zugeordnet
+// wurden, sobald die Kategorie ueberhaupt Unterprojekte hat.
+//
+// Erkannt wird es am Kennzeichen ist_auffang, nicht mehr am Titel: sonst
+// wuerde ein von der Lehrkraft selbst "Allgemein" genanntes Unterprojekt
+// ungewollt zum Auffang, und ein Umbenennen erzeugte ein zweites.
+function auffangUnterprojekt(categoryId) {
+  let up = db.prepare('SELECT * FROM unterprojekte WHERE category_id=? AND ist_auffang=1').get(categoryId);
   if (!up) {
-    const info = db.prepare('INSERT INTO unterprojekte (category_id, title) VALUES (?,?)').run(categoryId, 'Allgemein');
+    const info = db
+      .prepare('INSERT INTO unterprojekte (category_id, title, ist_auffang) VALUES (?,?,1)')
+      .run(categoryId, 'Allgemein');
     up = db.prepare('SELECT * FROM unterprojekte WHERE id=?').get(info.lastInsertRowid);
   }
   return up;
@@ -71,7 +80,7 @@ function resolveUnterprojektId(categoryId, submittedId) {
     const up = db.prepare('SELECT id FROM unterprojekte WHERE id=? AND category_id=?').get(submittedId, categoryId);
     if (up) return up.id;
   }
-  return allgemeinUnterprojekt(categoryId).id;
+  return auffangUnterprojekt(categoryId).id;
 }
 
 // Legt einen manuellen Zeiteintrag aus einem bereits geprueften Zeitraum an
@@ -165,14 +174,16 @@ router.get('/categories/:id', requireAuth, (req, res) => {
   let gruppen;
   if (unterprojekte.length > 0) {
     const gruppenNachId = new Map(
-      unterprojekte.map((up) => [up.id, { id: up.id, title: up.title, stunden: up.stunden, entries: [] }])
+      unterprojekte.map((up) => [up.id, { id: up.id, title: up.title, stunden: up.stunden, istAuffang: !!up.ist_auffang, entries: [] }])
     );
     entries.forEach((e) => {
       const gruppe = gruppenNachId.get(e.unterprojekt_id);
       if (gruppe) gruppe.entries.push(e);
     });
     gruppen = Array.from(gruppenNachId.values());
-    gruppen.sort((a, b) => (a.title === 'Allgemein' ? 1 : 0) - (b.title === 'Allgemein' ? 1 : 0));
+    // Das Auffang-Unterprojekt steht unten - dort landet, was keiner
+    // konkreten Teilaufgabe zugeordnet wurde.
+    gruppen.sort((a, b) => (a.istAuffang ? 1 : 0) - (b.istAuffang ? 1 : 0));
   } else {
     gruppen = [{ id: null, title: null, stunden: null, entries }];
   }
@@ -336,7 +347,23 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), cs
         uebersprungen++;
         continue;
       }
-      insertManualEntry(cat, userId, { beschreibung, zeitraum }, !!user.auto_sync);
+      // Unterprojekt wird ueber den Titel zugeordnet; steht dort nichts oder
+      // etwas Unbekanntes, uebernimmt resolveUnterprojektId das Auffang-
+      // Unterprojekt (bzw. laesst den Eintrag frei, wenn die Kategorie gar
+      // keine Unterprojekte hat).
+      const unterprojektTitel = (row['unterprojekt'] ?? '').trim();
+      const unterprojekt = unterprojektTitel
+        ? db
+            .prepare('SELECT id FROM unterprojekte WHERE category_id=? AND title=? COLLATE NOCASE')
+            .get(cat.id, unterprojektTitel)
+        : null;
+
+      insertManualEntry(
+        cat,
+        userId,
+        { beschreibung, zeitraum, unterprojektId: unterprojekt ? unterprojekt.id : null },
+        !!user.auto_sync
+      );
       importiert++;
     }
   });
@@ -375,7 +402,7 @@ router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
   db.prepare('INSERT INTO unterprojekte (category_id, title) VALUES (?,?)').run(cat.id, title);
 
   if (!hatteBereitsUnterprojekte) {
-    const allgemein = allgemeinUnterprojekt(cat.id);
+    const allgemein = auffangUnterprojekt(cat.id);
     db.prepare('UPDATE time_entries SET unterprojekt_id=? WHERE category_id=? AND unterprojekt_id IS NULL').run(
       allgemein.id,
       cat.id
@@ -383,6 +410,66 @@ router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
   }
 
   res.redirect(`/categories/${cat.id}`);
+});
+
+// Benennt ein Unterprojekt um. Auch das Auffang-Unterprojekt darf einen
+// eigenen Namen bekommen - es wird ueber ist_auffang erkannt, nicht ueber
+// seinen Titel.
+router.post('/unterprojekte/:id/rename', requireAuth, (req, res) => {
+  const up = db
+    .prepare(
+      `SELECT up.* FROM unterprojekte up
+       JOIN categories c ON c.id = up.category_id
+       WHERE up.id=? AND c.user_id=?`
+    )
+    .get(req.params.id, req.session.user.id);
+  if (!up) return res.status(404).render('error', { message: 'Unterprojekt nicht gefunden.' });
+
+  const title = (req.body.title || '').trim();
+  if (!title) return res.redirect(`/categories/${up.category_id}?error=unterprojekt-titel-fehlt`);
+
+  db.prepare('UPDATE unterprojekte SET title=? WHERE id=?').run(title, up.id);
+  res.redirect(`/categories/${up.category_id}`);
+});
+
+// Loescht ein Unterprojekt. Die erfassten Zeiten bleiben immer erhalten -
+// sie wandern ins Auffang-Unterprojekt, oder werden bei der letzten
+// Loeschung wieder unzugeordnet (dann hat die Kategorie keine Unterprojekte
+// mehr und die flache Ansicht greift wie vorher).
+router.post('/unterprojekte/:id/delete', requireAuth, (req, res) => {
+  const up = db
+    .prepare(
+      `SELECT up.* FROM unterprojekte up
+       JOIN categories c ON c.id = up.category_id
+       WHERE up.id=? AND c.user_id=?`
+    )
+    .get(req.params.id, req.session.user.id);
+  if (!up) return res.status(404).render('error', { message: 'Unterprojekt nicht gefunden.' });
+
+  const uebrige = db
+    .prepare('SELECT COUNT(*) as c FROM unterprojekte WHERE category_id=? AND id<>?')
+    .get(up.category_id, up.id).c;
+
+  // Das Auffang-Unterprojekt kann nicht weg, solange es noch andere gibt -
+  // deren Zeiten haetten sonst kein Ziel mehr.
+  if (up.ist_auffang && uebrige > 0) {
+    return res.redirect(`/categories/${up.category_id}?error=auffang-nicht-loeschbar`);
+  }
+
+  const loeschen = db.transaction(() => {
+    if (uebrige > 0) {
+      db.prepare('UPDATE time_entries SET unterprojekt_id=? WHERE unterprojekt_id=?').run(
+        auffangUnterprojekt(up.category_id).id,
+        up.id
+      );
+    } else {
+      db.prepare('UPDATE time_entries SET unterprojekt_id=NULL WHERE unterprojekt_id=?').run(up.id);
+    }
+    db.prepare('DELETE FROM unterprojekte WHERE id=?').run(up.id);
+  });
+  loeschen();
+
+  res.redirect(`/categories/${up.category_id}`);
 });
 
 router.post('/categories/:id/sichtbarkeit', requireAuth, (req, res) => {

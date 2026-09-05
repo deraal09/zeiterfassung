@@ -67,13 +67,38 @@
       <h2>Unterprojekte <span class="meta">optional</span></h2>
       <% if (unterprojekte.length > 0) { %>
         <p class="hint">
-          Zeiten lassen sich beim Erfassen/Nachtragen einem Unterprojekt zuordnen (sonst landen sie automatisch bei "Allgemein") und nachträglich einem anderen zuordnen.
+          Zeiten lassen sich beim Erfassen/Nachtragen einem Unterprojekt zuordnen (sonst landen sie im auffangenden Unterprojekt) und nachträglich einem anderen zuordnen.
         </p>
-        <ul style="margin: 0 0 12px; padding-left: 20px;">
-          <% unterprojekte.forEach(up => { %>
-            <li><%= up.title %> <span class="meta"><%= up.stunden.toFixed(2) %> h</span></li>
-          <% }) %>
-        </ul>
+        <table class="entries-table" style="margin-bottom: 12px;">
+          <tbody>
+            <% unterprojekte.forEach(up => { %>
+              <tr>
+                <td>
+                  <form method="post" action="/unterprojekte/<%= up.id %>/rename" class="inline-form">
+                    <%- include('partials/csrf') %>
+                    <input type="text" name="title" value="<%= up.title %>" required>
+                    <button type="submit" class="link-button">Umbenennen</button>
+                  </form>
+                </td>
+                <td class="meta">
+                  <%= up.stunden.toFixed(2) %> h<% if (up.ist_auffang) { %> · nimmt Zeiten ohne eigene Zuordnung auf<% } %>
+                </td>
+                <td>
+                  <form method="post" action="/unterprojekte/<%= up.id %>/delete" class="inline-form"
+                        data-confirm="Unterprojekt &quot;<%= up.title %>&quot; löschen? Die erfassten Zeiten bleiben erhalten.">
+                    <%- include('partials/csrf') %>
+                    <button type="submit" class="link-button link-button-danger">Löschen</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        <p class="hint">
+          Beim Löschen bleiben die erfassten Zeiten erhalten: sie wandern in das
+          auffangende Unterprojekt – oder werden wieder unzugeordnet, wenn es
+          das letzte war.
+        </p>
       <% } else { %>
         <p class="hint">
           Noch keine Unterprojekte angelegt. Damit lassen sich die Zeiten dieser Kategorie z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
@@ -156,7 +181,8 @@
           <code>HH:MM</code>. Komma, Semikolon, Tabulator und Pipe (<code>|</code>)
           werden automatisch als Trennzeichen erkannt.
           Optional <code>Bis-Datum</code> für Tätigkeiten, die erst am Folgetag
-          enden. Zeilen mit ungültigem Datum oder ungültiger Uhrzeit werden
+          enden, und <code>Unterprojekt</code> (Titel; unbekannte Angaben landen
+          im auffangenden Unterprojekt). Zeilen mit ungültigem Datum oder ungültiger Uhrzeit werden
           übersprungen und gezählt.
         </p>
         <form method="post" action="/categories/<%= category.id %>/import" enctype="multipart/form-data" class="inline-form">

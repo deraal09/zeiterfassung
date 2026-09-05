@@ -12,6 +12,16 @@ const db = new Database(config.dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Fuehrt eine Migration genau einmal aus und vermerkt das. Fuer Schritte,
+// deren blosse Pruefung schon teuer waere.
+function einmalig(name, arbeit) {
+  const erledigt = db.prepare('SELECT 1 FROM schema_migrationen WHERE name=?').get(name);
+  if (erledigt) return false;
+  arbeit();
+  db.prepare('INSERT INTO schema_migrationen (name) VALUES (?)').run(name);
+  return true;
+}
+
 function initDb() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -97,10 +107,15 @@ function initDb() {
     -- nicht zugeordneten Zeiten automatisch dem Unterprojekt "Allgemein"
     -- zugeordnet (siehe categories.js) - danach hat in dieser Kategorie
     -- jede Zeit ein Unterprojekt.
+    -- ist_auffang markiert das Unterprojekt, in dem Zeiten ohne eigene
+    -- Zuordnung landen. Frueher wurde es am Titel "Allgemein" erkannt - dann
+    -- wird aber ein gleichnamiges Unterprojekt der Lehrkraft ungewollt zum
+    -- Auffang, und ein Umbenennen erzeugt beim naechsten Mal ein zweites.
     CREATE TABLE IF NOT EXISTS unterprojekte (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
       title TEXT NOT NULL,
+      ist_auffang INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_unterprojekte_category ON unterprojekte(category_id);
@@ -131,6 +146,14 @@ function initDb() {
     -- eine Weile gesperrt, jeder weitere Fehlversuch danach verdoppelt die
     -- Sperrdauer (exponentieller Backoff gegen automatisiertes
     -- Durchprobieren von Passwoertern).
+    -- Merker fuer Migrationen, die nur einmal laufen muessen. Ohne ihn
+    -- muesste jeder Start pruefen, ob noch etwas zu tun ist - was bei der
+    -- Verschluesselung bedeutet, saemtliche Zeiteintraege zu lesen.
+    CREATE TABLE IF NOT EXISTS schema_migrationen (
+      name TEXT PRIMARY KEY,
+      ausgefuehrt_am TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS login_ratelimit (
       schluessel TEXT PRIMARY KEY,
       fehlversuche INTEGER NOT NULL DEFAULT 0,
@@ -304,6 +327,14 @@ function initDb() {
     db.exec('ALTER TABLE login_ratelimit ADD COLUMN letzter_versuch INTEGER');
   }
 
+  // Migration fuer Datenbanken vor Einfuehrung des Auffang-Kennzeichens:
+  // bisher galt der Titel "Allgemein" als Merkmal.
+  const unterprojektColumns = db.prepare('PRAGMA table_info(unterprojekte)').all().map((c) => c.name);
+  if (!unterprojektColumns.includes('ist_auffang')) {
+    db.exec('ALTER TABLE unterprojekte ADD COLUMN ist_auffang INTEGER NOT NULL DEFAULT 0');
+    db.prepare("UPDATE unterprojekte SET ist_auffang=1 WHERE title='Allgemein'").run();
+  }
+
   // Reparatur von Zeitstempeln, die vor der Eingabepruefung entstanden sind:
   // Datum und Uhrzeit wurden frueher ungeprueft zum gespeicherten String
   // zusammengesetzt. Werte wie "2026-09-01 9:5:00" kann SQLite nicht als
@@ -354,17 +385,21 @@ function initDb() {
 
   // Migration fuer Datenbanken vor Einfuehrung der Feldverschluesselung:
   // beschreibung wird serverseitig mit ENCRYPTION_KEY verschluesselt
-  // gespeichert (siehe util/crypto.js), damit die Tätigkeitsbeschreibungen
+  // gespeichert (siehe util/crypto.js), damit die Taetigkeitsbeschreibungen
   // selbst bei einem Server-/Hosterwechsel oder einem Zugriff auf die reine
   // DB-Datei ohne den separat aufbewahrten Schluessel nicht lesbar sind.
-  // Laeuft bei jedem Start, ist aber idempotent (isEncrypted ueberspringt
-  // bereits verschluesselte Zeilen) und daher auch bei grossem Bestand
-  // unkritisch.
-  const unverschluesselt = db
-    .prepare('SELECT id, beschreibung FROM time_entries')
-    .all()
-    .filter((row) => !isEncrypted(row.beschreibung));
-  if (unverschluesselt.length > 0) {
+  //
+  // Laeuft nur einmal: die Pruefung selbst muesste sonst bei jedem Start
+  // saemtliche Zeiteintraege lesen und entschluesseln, um festzustellen,
+  // dass nichts zu tun ist. Neue Eintraege werden ohnehin beim Schreiben
+  // verschluesselt (siehe routes/categories.js).
+  einmalig('beschreibungen-verschluesseln', () => {
+    const unverschluesselt = db
+      .prepare('SELECT id, beschreibung FROM time_entries')
+      .all()
+      .filter((row) => !isEncrypted(row.beschreibung));
+    if (unverschluesselt.length === 0) return;
+
     const updateBeschreibung = db.prepare('UPDATE time_entries SET beschreibung=? WHERE id=?');
     const verschluesseln = db.transaction((rows) => {
       for (const row of rows) {
@@ -372,7 +407,8 @@ function initDb() {
       }
     });
     verschluesseln(unverschluesselt);
-  }
+    console.log(`Migration: ${unverschluesselt.length} Beschreibungen verschluesselt.`);
+  });
 }
 
 module.exports = { db, initDb };
