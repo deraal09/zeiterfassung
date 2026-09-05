@@ -88,6 +88,13 @@ erfasst und an die Schulleitung übermittelt werden können.
   automatisch als Trennzeichen erkannt; Datum als `YYYY-MM-DD` oder
   `DD.MM.YYYY`. Ungültige Zeilen werden übersprungen und gezählt, gültige
   trotzdem importiert.
+- **Schuljahr wechseln** – die Übersicht zeigt standardmäßig das laufende
+  Schuljahr; über die Auswahl in der Überschrift lassen sich frühere
+  Schuljahre samt ihrer Kategorien und Zeiten wieder öffnen. Zuweisungen in
+  anderen Schuljahren werden darüber verlinkt, damit besonders noch nicht
+  verknüpfte nicht übersehen werden. Eine Zuweisung kann nur mit einer
+  Kategorie aus ihrem eigenen Schuljahr verknüpft werden – der Faktor hängt
+  am Schuljahr der Zuweisung, das Ziel wird über die Kategorie angezeigt.
 - **Sortierung und Filter der erfassten Tätigkeiten** – die Tabelle lässt sich
   per Klick auf die Spalte "Beginn" nach ältestem oder neuestem Datum zuerst
   sortieren; zusätzlich kann nach einem Datumsbereich (von/bis) und/oder einem
@@ -136,7 +143,8 @@ erfasst und an die Schulleitung übermittelt werden können.
 ### Tests
 
 `npm test` führt die Testsuite aus (Node-eigener Test-Runner, keine
-zusätzlichen Abhängigkeiten). Abgedeckt sind vor allem die Stellen, an denen
+zusätzlichen Laufzeit-Abhängigkeiten), `npm run lint` prüft den Code mit
+ESLint. Abgedeckt sind vor allem die Stellen, an denen
 ein Fehler stillschweigend Daten kostet:
 
 - **Migrationen** – für jede Schema-Stufe wird ein Altbestand nachgebaut und
@@ -151,6 +159,8 @@ ein Fehler stillschweigend Daten kostet:
   Zeitstunden.
 - **Ratelimit und Redirect-Ziele** – die beiden Stellen, an denen eine zu
   lasche Regel direkt ausnutzbar wäre.
+- **Schuljahres-Logik** – Wechsel am 1. August und die Prüfung der
+  Schreibweise.
 
 ## Konfiguration
 

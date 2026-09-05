@@ -23,7 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         localStorage.setItem('theme', pref);
       }
-    } catch (e) {}
+    } catch (e) {
+      // Manche Browser sperren localStorage (privates Fenster, blockierte
+      // Website-Daten). Die Umschaltung wirkt dann nur fuer diese Seite,
+      // statt mit einem Fehler abzubrechen.
+    }
   }
 
   function updateActiveButtons() {
