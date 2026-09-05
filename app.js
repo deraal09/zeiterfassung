@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
 
@@ -52,7 +53,6 @@ app.use((req, res) => {
   res.status(404).render('error', { message: 'Seite nicht gefunden.' });
 });
 
-// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).render('error', { message: 'Ein Fehler ist aufgetreten.' });
@@ -66,6 +66,18 @@ const listenOptions = isNumericPort
   : config.portEnv
     ? { path: config.portEnv }
     : { port: config.fallbackPort };
+
+// Beim Binden auf einen Unix-Socket bleibt nach einem harten Abbruch die
+// alte Socket-Datei liegen; der naechste Start scheitert dann an
+// EADDRINUSE, obwohl kein Prozess mehr laeuft.
+if (listenOptions.path) {
+  try {
+    fs.unlinkSync(listenOptions.path);
+  } catch (err) {
+    // ENOENT ist der Normalfall: es lag nichts herum.
+    if (err.code !== 'ENOENT') console.warn(`Alte Socket-Datei liess sich nicht entfernen: ${err.message}`);
+  }
+}
 
 app.listen(listenOptions, () => {
   const target = listenOptions.path ? listenOptions.path : `Port ${listenOptions.port}`;
