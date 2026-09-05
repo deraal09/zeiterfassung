@@ -90,7 +90,10 @@ erfasst und an die Schulleitung übermittelt werden können.
   Bis-Datum für Tätigkeiten über Mitternacht und Unterprojekt). Komma,
   Semikolon, Tabulator und Pipe werden automatisch als Trennzeichen erkannt;
   Datum als `YYYY-MM-DD` oder `DD.MM.YYYY`. Ungültige Zeilen werden
-  übersprungen und gezählt, gültige trotzdem importiert. Umgekehrt lassen
+  übersprungen und gezählt, gültige trotzdem importiert. Hat eine Kategorie
+  Unterprojekte, lässt sich beim Import zusätzlich eines aus einer Liste
+  auswählen, das für alle Zeilen ohne eigene Unterprojekt-Spalte gilt – eine
+  Spalte in der Datei hat für ihre Zeile trotzdem Vorrang. Umgekehrt lassen
   sich die (aktuell gefilterten) Zeiten einer Kategorie als CSV-Datei
   exportieren – mit Semikolon als Trennzeichen, Komma als Dezimaltrennzeichen
   und UTF-8-BOM, damit Excel die Datei direkt korrekt öffnet.

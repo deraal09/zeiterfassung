@@ -431,6 +431,9 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), cs
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   const rows = parseCsv(req.file.buffer.toString('utf8'));
+  // Vorauswahl aus dem Formular gilt fuer Zeilen ohne eigene Unterprojekt-
+  // Spalte (bzw. mit einem darin unbekannten Titel) - siehe resolveUnterprojektId.
+  const formularUnterprojektId = req.body.unterprojekt_id;
 
   let importiert = 0;
   let uebersprungen = 0;
@@ -451,12 +454,13 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), cs
         uebersprungen++;
         continue;
       }
-      // Unterprojekt wird ueber den Titel zugeordnet; steht dort nichts oder
-      // etwas Unbekanntes, uebernimmt resolveUnterprojektId das Auffang-
-      // Unterprojekt (bzw. laesst den Eintrag frei, wenn die Kategorie gar
-      // keine Unterprojekte hat).
+      // Unterprojekt wird bevorzugt ueber den Titel in der Spalte zugeordnet;
+      // steht dort nichts oder etwas Unbekanntes, gilt die Vorauswahl aus dem
+      // Formular. Bleibt auch die leer, uebernimmt resolveUnterprojektId das
+      // Auffang-Unterprojekt (bzw. laesst den Eintrag frei, wenn die
+      // Kategorie gar keine Unterprojekte hat).
       const unterprojektTitel = (row['unterprojekt'] ?? '').trim();
-      const unterprojekt = unterprojektTitel
+      const unterprojektAusSpalte = unterprojektTitel
         ? db
             .prepare('SELECT id FROM unterprojekte WHERE category_id=? AND title=? COLLATE NOCASE')
             .get(cat.id, unterprojektTitel)
@@ -465,7 +469,7 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), cs
       insertManualEntry(
         cat,
         userId,
-        { beschreibung, zeitraum, unterprojektId: unterprojekt ? unterprojekt.id : null },
+        { beschreibung, zeitraum, unterprojektId: unterprojektAusSpalte ? unterprojektAusSpalte.id : formularUnterprojektId },
         !!user.auto_sync
       );
       importiert++;

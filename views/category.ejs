@@ -134,13 +134,25 @@
           <code>HH:MM</code>. Komma, Semikolon, Tabulator und Pipe (<code>|</code>)
           werden automatisch als Trennzeichen erkannt.
           Optional <code>Bis-Datum</code> für Tätigkeiten, die erst am Folgetag
-          enden, und <code>Unterprojekt</code> (Titel; unbekannte Angaben landen
-          im auffangenden Unterprojekt). Zeilen mit ungültigem Datum oder ungültiger Uhrzeit werden
-          übersprungen und gezählt.
+          enden, und <code>Unterprojekt</code> (Titel je Zeile; unbekannte
+          Angaben landen im auffangenden Unterprojekt). Zeilen mit ungültigem
+          Datum oder ungültiger Uhrzeit werden übersprungen und gezählt.
+          <% if (unterprojekte.length > 0) { %>
+            Hat die Datei keine eigene <code>Unterprojekt</code>-Spalte, gilt
+            stattdessen die Auswahl unten für die ganze Datei.
+          <% } %>
         </p>
         <form method="post" action="/categories/<%= category.id %>/import" enctype="multipart/form-data" class="inline-form">
           <%- include('partials/csrf') %>
           <input type="file" name="csv_file" accept=".csv,text/csv" required>
+          <% if (unterprojekte.length > 0) { %>
+            <select name="unterprojekt_id" title="Unterprojekt für Zeilen ohne eigene Unterprojekt-Spalte (sonst Allgemein)">
+              <option value="">– Allgemein –</option>
+              <% unterprojekte.forEach(up => { %>
+                <option value="<%= up.id %>"><%= up.title %></option>
+              <% }) %>
+            </select>
+          <% } %>
           <button type="submit" class="btn">Importieren</button>
         </form>
 
