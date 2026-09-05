@@ -1,0 +1,55 @@
+<table class="entries-table">
+  <thead>
+    <tr>
+      <th>Beginn</th><th>Ende</th><th>Dauer</th><th>Beschreibung</th><th>Status</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% entries.forEach(e => { %>
+      <tr>
+        <td class="zeit-zelle">
+          <input type="date" name="datum" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(0,10) %>" title="Beginn (Datum)" data-submit-on-change required>
+          <input type="time" name="von" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(11,16) %>" title="Beginn (Uhrzeit)" data-submit-on-change required>
+        </td>
+        <td class="zeit-zelle">
+          <input type="date" name="bis_datum" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(0,10) %>" title="Ende (Datum)" data-submit-on-change>
+          <input type="time" name="bis" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(11,16) %>" title="Ende (Uhrzeit)" data-submit-on-change required>
+        </td>
+        <td><%= (e.duration_minutes/60).toFixed(2) %> h</td>
+        <td><input type="text" name="beschreibung" form="entry-edit-<%= e.id %>" value="<%= e.beschreibung %>" data-submit-on-change required></td>
+        <td><%= e.synced ? 'Synchronisiert' : 'Entwurf' %></td>
+        <td class="entries-row-actions">
+          <details class="aktion-menu" name="aktion-menu">
+            <summary class="link-button">Aktion</summary>
+            <div class="aktion-menu-content">
+              <% if (unterprojekte.length > 0) { %>
+                <p class="aktion-menu-label">Zuweisen zu</p>
+                <% unterprojekte.forEach(up => { %>
+                  <form method="post" action="/entries/<%= e.id %>/zuweisen" class="inline-form">
+                    <%- include('csrf') %>
+                    <input type="hidden" name="unterprojekt_id" value="<%= up.id %>">
+                    <button type="submit" class="link-button" <%= e.unterprojekt_id === up.id ? 'disabled' : '' %>>
+                      <%= up.title %><%= e.unterprojekt_id === up.id ? ' (aktuell)' : '' %>
+                    </button>
+                  </form>
+                <% }) %>
+                <hr>
+              <% } %>
+              <form method="post" action="/entries/<%= e.id %>/delete" class="inline-form" data-confirm="Eintrag wirklich löschen?">
+                <%- include('csrf') %>
+                <button type="submit" class="link-button link-button-danger">Löschen</button>
+              </form>
+            </div>
+          </details>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (entries.length === 0) { %>
+      <tr>
+        <td colspan="6" class="empty-state">
+          <%= (filter.von || filter.bis || filter.suche) ? 'Keine Tätigkeiten für diesen Filter.' : 'Noch keine Tätigkeiten erfasst.' %>
+        </td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>

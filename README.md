@@ -60,16 +60,18 @@ erfasst und an die Schulleitung übermittelt werden können.
   verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird als
   Balken angezeigt.
 - **Unterprojekte gliedern eine Kategorie optional weiter** – z. B. "Kurs A",
-  "Kurs B" innerhalb einer Kategorie. Rein optional, kein Pflichtfeld: eine
-  Kategorie ohne Unterprojekte funktioniert unverändert flach. Sobald das
-  erste Unterprojekt angelegt wird, werden alle bis dahin nicht zugeordneten
-  Zeiten automatisch dem Unterprojekt "Allgemein" zugeordnet – ab dann hat
-  jede Zeit dieser Kategorie eins. Beim Start des Timers oder beim
-  Nachtragen lässt sich das Unterprojekt gleich mit auswählen (sonst
-  "Allgemein"), und jede Zeit lässt sich nachträglich einem anderen
-  Unterprojekt zuordnen. In der Tabelle "Erfasste Tätigkeiten" werden die
-  Zeiten dafür unter dem jeweiligen Unterprojekt eingerückt, mit dessen
-  Gesamtzeit (Summe aller zugeordneten Zeiten) als Überschrift.
+  "Kurs B" innerhalb einer Kategorie, anlegbar im Reiter "Unterprojekte" auf
+  der Kategorie-Seite. Rein optional, kein Pflichtfeld: eine Kategorie ohne
+  Unterprojekte funktioniert unverändert flach. Sobald das erste Unterprojekt
+  angelegt wird, werden alle bis dahin nicht zugeordneten Zeiten automatisch
+  dem Unterprojekt "Allgemein" zugeordnet – ab dann hat jede Zeit dieser
+  Kategorie eins. Beim Start des Timers oder beim Nachtragen lässt sich das
+  Unterprojekt gleich mit auswählen (sonst "Allgemein"), und über das
+  Aktion-Menü einer Zeile jederzeit einem anderen zuordnen. In der Tabelle
+  "Erfasste Tätigkeiten" lässt sich jedes Unterprojekt einzeln auf- und
+  zuklappen, mit seiner Gesamtzeit (Summe aller zugeordneten Zeiten) in der
+  Kopfzeile – praktisch, um nur an einem Unterprojekt zu arbeiten und die
+  übrigen auszublenden.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
   drücken; die Zeit wird automatisch erfasst. Auf der Kategorie-Seite ist das
   die standardmäßig sichtbare Ansicht (Reiter "Erfassen"); "Zeit nachtragen"
@@ -78,16 +80,20 @@ erfasst und an die Schulleitung übermittelt werden können.
   nachgetragen (Dauer wird daraus berechnet) und korrekt chronologisch
   einsortiert. Reicht eine Tätigkeit über Mitternacht hinaus, wird zusätzlich
   das Bis-Datum angegeben; normalerweise bleibt dieses Feld leer. Bereits
-  erfasste Einträge lassen sich jederzeit korrigieren (Werte anpassen und
-  speichern) oder löschen – ein bereits synchronisierter Eintrag gilt nach
-  einer Korrektur wieder als Entwurf, damit dem Admin kein veralteter Wert
-  stehen bleibt.
-- **CSV-Import** – mehrere nachzutragende Zeiten auf einmal per CSV-Datei
-  hochladen (Spalten: Datum, Von, Bis, Beschreibung, optional Bis-Datum für
-  Tätigkeiten über Mitternacht). Komma, Semikolon, Tabulator und Pipe werden
-  automatisch als Trennzeichen erkannt; Datum als `YYYY-MM-DD` oder
-  `DD.MM.YYYY`. Ungültige Zeilen werden übersprungen und gezählt, gültige
-  trotzdem importiert.
+  erfasste Einträge lassen sich jederzeit korrigieren – jede Änderung an
+  Datum, Uhrzeit oder Beschreibung speichert sofort beim Verlassen des
+  Feldes, ganz ohne Speichern-Button – oder über das Aktion-Menü löschen. Ein
+  bereits synchronisierter Eintrag gilt nach einer Korrektur wieder als
+  Entwurf, damit dem Admin kein veralteter Wert stehen bleibt.
+- **CSV-Import und -Export** – mehrere nachzutragende Zeiten auf einmal per
+  CSV-Datei hochladen (Spalten: Datum, Von, Bis, Beschreibung, optional
+  Bis-Datum für Tätigkeiten über Mitternacht und Unterprojekt). Komma,
+  Semikolon, Tabulator und Pipe werden automatisch als Trennzeichen erkannt;
+  Datum als `YYYY-MM-DD` oder `DD.MM.YYYY`. Ungültige Zeilen werden
+  übersprungen und gezählt, gültige trotzdem importiert. Umgekehrt lassen
+  sich die (aktuell gefilterten) Zeiten einer Kategorie als CSV-Datei
+  exportieren – mit Semikolon als Trennzeichen, Komma als Dezimaltrennzeichen
+  und UTF-8-BOM, damit Excel die Datei direkt korrekt öffnet.
 - **Schuljahr wechseln** – die Übersicht zeigt standardmäßig das laufende
   Schuljahr; über die Auswahl in der Überschrift lassen sich frühere
   Schuljahre samt ihrer Kategorien und Zeiten wieder öffnen. Zuweisungen in
@@ -101,9 +107,17 @@ erfasst und an die Schulleitung übermittelt werden können.
   Suchbegriff in der Beschreibung gefiltert werden.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
-- **Admin-Bereich** – Lehrkräfte werden per Live-Suche aus dem LDAP gesucht und
-  bekommen Ausgleichsstunden zugewiesen; Übersicht zeigt je Kategorie
-  synchronisierte und noch offene (ungemeldete) Stunden.
+- **Admin-Bereich** – Standardansicht ist eine Kachel je Lehrkraft mit den
+  insgesamt vergebenen Ausgleichsstunden und noch nicht verknüpften
+  Zuweisungen; ein Klick öffnet die Detailseite. Dort werden Lehrkräfte per
+  Live-Suche aus dem LDAP gesucht und bekommen Ausgleichsstunden zugewiesen;
+  je Kategorie werden synchronisierte und noch offene (ungemeldete) Stunden
+  angezeigt.
+- **Kategorien archivieren oder löschen** – die Lehrkraft kann eine eigene
+  Kategorie jederzeit archivieren (verschwindet aus der eigenen Übersicht,
+  bleibt inklusive aller Zeiten erhalten – der Admin kann sie bei Bedarf
+  reaktivieren) oder, solange weder Zeiten noch eine
+  Ausgleichsstunden-Verknüpfung daran hängen, vollständig löschen.
 - **Verschlüsselung der Tätigkeitsbeschreibungen** – die Beschreibungstexte in
   `time_entries` werden serverseitig mit AES-256-GCM verschlüsselt gespeichert
   (Schlüssel `ENCRYPTION_KEY`, siehe Konfiguration unten). Der Schutz gilt für

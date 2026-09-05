@@ -138,6 +138,15 @@ h1 .meta, h2 .meta {
 }
 .card:hover { border-color: var(--color-primary); text-decoration: none; }
 .card h2 { font-size: 1.05rem; }
+.card-link { display: block; color: inherit; }
+.card-link:hover { text-decoration: none; }
+.card-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
 
 .progress {
   background: var(--color-bg);
@@ -252,14 +261,58 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
   font-size: 0.9rem;
 }
 .entries-table tr.archived { opacity: 0.55; }
-.entries-table tr.unterprojekt-row td {
-  background: var(--color-bg);
-  font-weight: 600;
-  border-bottom: 1px solid var(--color-border);
-}
-.entries-table tr.eingerueckt td:first-child { padding-left: 24px; }
 
 .empty-state { color: var(--color-muted); font-style: italic; }
+
+/* Unterprojekte lassen sich ein- und ausklappen (natives <details>, kein
+   JS noetig) - offen zeigt die zugehoerigen Zeiten, geschlossen blendet sie
+   aus, z. B. fuer Unterprojekte, an denen gerade nicht gearbeitet wird. */
+.unterprojekt-details {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.unterprojekt-details:last-child { margin-bottom: 0; }
+.unterprojekt-details summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  background: var(--color-bg);
+  font-weight: 600;
+  list-style: none;
+}
+.unterprojekt-details summary::-webkit-details-marker { display: none; }
+.unterprojekt-details summary::before { content: '▸'; display: inline-block; width: 1em; }
+.unterprojekt-details[open] summary::before { content: '▾'; }
+.unterprojekt-details .entries-table { margin-top: 0; }
+.unterprojekt-details .entries-table tr:last-child td { border-bottom: none; }
+
+/* Kleines Aktion-Menue je Zeile (Zuweisen zu einem Unterprojekt, Loeschen) -
+   ebenfalls per <details> ohne eigenes JS, mit name="aktion-menu" schliessen
+   sich mehrere offene Menues gegenseitig (in Browsern, die das unterstuetzen). */
+.aktion-menu { position: relative; display: inline-block; }
+.aktion-menu summary { list-style: none; cursor: pointer; }
+.aktion-menu summary::-webkit-details-marker { display: none; }
+.aktion-menu-content {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 20;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 8px;
+  min-width: 170px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.aktion-menu-content .inline-form { display: block; }
+.aktion-menu-content .link-button { display: block; width: 100%; text-align: left; padding: 4px 6px; }
+.aktion-menu-content .link-button:disabled { color: var(--color-muted); cursor: default; text-decoration: none; }
+.aktion-menu-label { margin: 0 0 2px; padding: 0 6px; font-size: 0.75rem; color: var(--color-muted); text-transform: uppercase; }
+.aktion-menu-content hr { border: none; border-top: 1px solid var(--color-border); margin: 4px 0; }
 
 .alert { padding: 10px 14px; border-radius: var(--radius); margin-bottom: 16px; }
 .alert-error { background: var(--color-alert-error-bg); border: 1px solid var(--color-alert-error-border); color: var(--color-danger); }

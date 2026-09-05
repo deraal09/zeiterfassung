@@ -63,59 +63,12 @@
       </p>
     <% } %>
 
-    <section class="panel">
-      <h2>Unterprojekte <span class="meta">optional</span></h2>
-      <% if (unterprojekte.length > 0) { %>
-        <p class="hint">
-          Zeiten lassen sich beim Erfassen/Nachtragen einem Unterprojekt zuordnen (sonst landen sie im auffangenden Unterprojekt) und nachträglich einem anderen zuordnen.
-        </p>
-        <table class="entries-table" style="margin-bottom: 12px;">
-          <tbody>
-            <% unterprojekte.forEach(up => { %>
-              <tr>
-                <td>
-                  <form method="post" action="/unterprojekte/<%= up.id %>/rename" class="inline-form">
-                    <%- include('partials/csrf') %>
-                    <input type="text" name="title" value="<%= up.title %>" required>
-                    <button type="submit" class="link-button">Umbenennen</button>
-                  </form>
-                </td>
-                <td class="meta">
-                  <%= up.stunden.toFixed(2) %> h<% if (up.ist_auffang) { %> · nimmt Zeiten ohne eigene Zuordnung auf<% } %>
-                </td>
-                <td>
-                  <form method="post" action="/unterprojekte/<%= up.id %>/delete" class="inline-form"
-                        data-confirm="Unterprojekt &quot;<%= up.title %>&quot; löschen? Die erfassten Zeiten bleiben erhalten.">
-                    <%- include('partials/csrf') %>
-                    <button type="submit" class="link-button link-button-danger">Löschen</button>
-                  </form>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-        <p class="hint">
-          Beim Löschen bleiben die erfassten Zeiten erhalten: sie wandern in das
-          auffangende Unterprojekt – oder werden wieder unzugeordnet, wenn es
-          das letzte war.
-        </p>
-      <% } else { %>
-        <p class="hint">
-          Noch keine Unterprojekte angelegt. Damit lassen sich die Zeiten dieser Kategorie z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
-        </p>
-      <% } %>
-      <form method="post" action="/categories/<%= category.id %>/unterprojekte" class="inline-form">
-        <%- include('partials/csrf') %>
-        <input type="text" name="title" placeholder="Neues Unterprojekt, z. B. Kurs A" required>
-        <button type="submit" class="btn">Anlegen</button>
-      </form>
-    </section>
-
     <div class="tabs" data-tabs>
       <div class="tab-buttons" role="tablist">
         <button type="button" class="tab-button<%= activeTab === 'erfassen' ? ' active' : '' %>" data-tab-target="tab-erfassen">Erfassen</button>
         <button type="button" class="tab-button<%= activeTab === 'nachtragen' ? ' active' : '' %>" data-tab-target="tab-nachtragen">Zeit nachtragen</button>
-        <button type="button" class="tab-button<%= activeTab === 'import' ? ' active' : '' %>" data-tab-target="tab-import">CSV-Import</button>
+        <button type="button" class="tab-button<%= activeTab === 'import' ? ' active' : '' %>" data-tab-target="tab-import">Import / Export</button>
+        <button type="button" class="tab-button<%= activeTab === 'unterprojekte' ? ' active' : '' %>" data-tab-target="tab-unterprojekte">Unterprojekte</button>
       </div>
 
       <section class="panel tab-panel" id="tab-erfassen" data-tab-panel <%= activeTab === 'erfassen' ? '' : 'hidden' %>>
@@ -190,18 +143,81 @@
           <input type="file" name="csv_file" accept=".csv,text/csv" required>
           <button type="submit" class="btn">Importieren</button>
         </form>
+
+        <hr>
+        <h2>Zeiten als CSV exportieren</h2>
+        <p class="hint">
+          Exportiert die aktuell unten gefilterten Zeiten dieser Kategorie
+          (Beginn, Ende, Dauer, Beschreibung, Unterprojekt, Status) als
+          CSV-Datei zum Öffnen in Excel.
+        </p>
+        <a class="btn"
+           href="/categories/<%= category.id %>/export?von=<%= encodeURIComponent(filter.von) %>&bis=<%= encodeURIComponent(filter.bis) %>&suche=<%= encodeURIComponent(filter.suche) %>&sort=<%= filter.sort %>">
+          CSV-Export
+        </a>
+      </section>
+
+      <section class="panel tab-panel" id="tab-unterprojekte" data-tab-panel <%= activeTab === 'unterprojekte' ? '' : 'hidden' %>>
+        <h2>Unterprojekte <span class="meta">optional</span></h2>
+        <% if (unterprojekte.length > 0) { %>
+          <p class="hint">
+            Zeiten lassen sich beim Erfassen/Nachtragen einem Unterprojekt zuordnen (sonst landen sie im auffangenden Unterprojekt) und nachträglich über das Aktion-Menü einem anderen zuordnen.
+          </p>
+          <table class="entries-table" style="margin-bottom: 12px;">
+            <tbody>
+              <% unterprojekte.forEach(up => { %>
+                <tr>
+                  <td>
+                    <form method="post" action="/unterprojekte/<%= up.id %>/rename" class="inline-form">
+                      <%- include('partials/csrf') %>
+                      <input type="text" name="title" value="<%= up.title %>" required>
+                      <button type="submit" class="link-button">Umbenennen</button>
+                    </form>
+                  </td>
+                  <td class="meta">
+                    <%= up.stunden.toFixed(2) %> h<% if (up.ist_auffang) { %> · nimmt Zeiten ohne eigene Zuordnung auf<% } %>
+                  </td>
+                  <td>
+                    <form method="post" action="/unterprojekte/<%= up.id %>/delete" class="inline-form"
+                          data-confirm="Unterprojekt &quot;<%= up.title %>&quot; löschen? Die erfassten Zeiten bleiben erhalten.">
+                      <%- include('partials/csrf') %>
+                      <button type="submit" class="link-button link-button-danger">Löschen</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+          <p class="hint">
+            Beim Löschen bleiben die erfassten Zeiten erhalten: sie wandern in das
+            auffangende Unterprojekt – oder werden wieder unzugeordnet, wenn es
+            das letzte war.
+          </p>
+        <% } else { %>
+          <p class="hint">
+            Noch keine Unterprojekte angelegt. Damit lassen sich die Zeiten dieser Kategorie z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
+          </p>
+        <% } %>
+        <form method="post" action="/categories/<%= category.id %>/unterprojekte" class="inline-form">
+          <%- include('partials/csrf') %>
+          <input type="text" name="title" placeholder="Neues Unterprojekt, z. B. Kurs A" required>
+          <button type="submit" class="btn">Anlegen</button>
+        </form>
       </section>
     </div>
 
     <section class="panel">
       <h2>Erfasste Tätigkeiten</h2>
-      <p class="hint">Falls sich jemand verschrieben hat: Werte anpassen und "Speichern" klicken.</p>
+      <p class="hint">Änderungen an Datum, Uhrzeit oder Beschreibung werden sofort gespeichert, sobald das Feld verlassen wird – ein Speichern-Button ist nicht nötig.</p>
 
       <form method="get" action="/categories/<%= category.id %>" class="entry-form">
         <input type="date" name="von" value="<%= filter.von %>" title="Von Datum">
         <input type="date" name="bis" value="<%= filter.bis %>" title="Bis Datum">
         <input type="text" name="suche" value="<%= filter.suche %>" placeholder="Beschreibung durchsuchen">
-        <input type="hidden" name="sort" value="<%= filter.sort %>">
+        <select name="sort" title="Sortierung" data-submit-on-change>
+          <option value="desc" <%= filter.sort === 'desc' ? 'selected' : '' %>>Neueste zuerst</option>
+          <option value="asc" <%= filter.sort === 'asc' ? 'selected' : '' %>>Älteste zuerst</option>
+        </select>
         <button type="submit" class="btn">Filtern</button>
         <% if (filter.von || filter.bis || filter.suche) { %>
           <a class="btn" href="/categories/<%= category.id %>?sort=<%= filter.sort %>">Zurücksetzen</a>
@@ -213,68 +229,17 @@
           <%- include('partials/csrf') %>
         </form>
       <% }) }) %>
-      <% const spalten = unterprojekte.length > 0 ? 7 : 6; %>
-      <table class="entries-table">
-        <thead>
-          <tr>
-            <th>
-              <a href="/categories/<%= category.id %>?sort=<%= filter.sort === 'asc' ? 'desc' : 'asc' %>&von=<%= encodeURIComponent(filter.von) %>&bis=<%= encodeURIComponent(filter.bis) %>&suche=<%= encodeURIComponent(filter.suche) %>">
-                Beginn <%= filter.sort === 'asc' ? '▲' : '▼' %>
-              </a>
-            </th>
-            <th>Ende</th><th>Dauer</th><th>Beschreibung</th>
-            <% if (unterprojekte.length > 0) { %><th>Unterprojekt</th><% } %>
-            <th>Status</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% gruppen.forEach(g => { %>
-            <% if (g.title) { %>
-              <tr class="unterprojekt-row">
-                <td colspan="<%= spalten %>"><%= g.title %> <span class="meta"><%= g.stunden.toFixed(2) %> h</span></td>
-              </tr>
-            <% } %>
-            <% g.entries.forEach(e => { %>
-              <tr class="<%= g.title ? 'eingerueckt' : '' %>">
-                <td class="zeit-zelle">
-                  <input type="date" name="datum" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(0,10) %>" title="Beginn (Datum)" required>
-                  <input type="time" name="von" form="entry-edit-<%= e.id %>" value="<%= e.start_time.slice(11,16) %>" title="Beginn (Uhrzeit)" required>
-                </td>
-                <td class="zeit-zelle">
-                  <input type="date" name="bis_datum" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(0,10) %>" title="Ende (Datum)">
-                  <input type="time" name="bis" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(11,16) %>" title="Ende (Uhrzeit)" required>
-                </td>
-                <td><%= (e.duration_minutes/60).toFixed(2) %> h</td>
-                <td><input type="text" name="beschreibung" form="entry-edit-<%= e.id %>" value="<%= e.beschreibung %>" required></td>
-                <% if (unterprojekte.length > 0) { %>
-                  <td>
-                    <select name="unterprojekt_id" form="entry-edit-<%= e.id %>">
-                      <% unterprojekte.forEach(up => { %>
-                        <option value="<%= up.id %>" <%= e.unterprojekt_id === up.id ? 'selected' : '' %>><%= up.title %></option>
-                      <% }) %>
-                    </select>
-                  </td>
-                <% } %>
-                <td><%= e.synced ? 'Synchronisiert' : 'Entwurf' %></td>
-                <td class="entries-row-actions">
-                  <button type="submit" form="entry-edit-<%= e.id %>" class="link-button">Speichern</button>
-                  <form method="post" action="/entries/<%= e.id %>/delete" class="inline-form">
-                    <%- include('partials/csrf') %>
-                    <button type="submit" class="link-button link-button-danger">Löschen</button>
-                  </form>
-                </td>
-              </tr>
-            <% }) %>
-            <% if (g.entries.length === 0) { %>
-              <tr class="<%= g.title ? 'eingerueckt' : '' %>">
-                <td colspan="<%= spalten %>" class="empty-state">
-                  <%= (filter.von || filter.bis || filter.suche) ? 'Keine Tätigkeiten für diesen Filter.' : 'Noch keine Tätigkeiten erfasst.' %>
-                </td>
-              </tr>
-            <% } %>
-          <% }) %>
-        </tbody>
-      </table>
+
+      <% gruppen.forEach(g => { %>
+        <% if (g.title) { %>
+          <details class="unterprojekt-details" open>
+            <summary><%= g.title %> <span class="meta"><%= g.stunden.toFixed(2) %> h</span></summary>
+            <%- include('partials/entries-table', { entries: g.entries, filter, unterprojekte }) %>
+          </details>
+        <% } else { %>
+          <%- include('partials/entries-table', { entries: g.entries, filter, unterprojekte }) %>
+        <% } %>
+      <% }) %>
     </section>
   </main>
   <script src="/public/js/timer.js"></script>

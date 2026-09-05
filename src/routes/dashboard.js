@@ -15,7 +15,21 @@ const ERROR_MESSAGES = {
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Schulleitung vor.',
   'vorschlag-ungueltig': 'Die vorgeschlagene Kategorie existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
+  'kategorie-nicht-loeschbar':
+    'Diese Kategorie hat bereits erfasste Zeiten oder eine Ausgleichsstunden-Verknuepfung und laesst sich deshalb nicht loeschen - nur archivieren.',
 };
+
+// Eine Kategorie laesst sich nur endgueltig loeschen, solange nichts an ihr
+// haengt: weder erfasste Zeiten noch eine (bestaetigte oder vorgeschlagene)
+// Ausgleichsstunden-Verknuepfung. Sonst bliebe beim Loeschen entweder Arbeit
+// verloren oder eine Zuweisung ohne Ziel zurueck - dafuer gibt es Archivieren.
+function kategorieLoeschbar(categoryId) {
+  const hatZeiten = !!db.prepare('SELECT 1 FROM time_entries WHERE category_id=? LIMIT 1').get(categoryId);
+  const hatZuweisung = !!db
+    .prepare('SELECT 1 FROM zuweisungen WHERE category_id=? OR vorschlag_category_id=? LIMIT 1')
+    .get(categoryId, categoryId);
+  return !hatZeiten && !hatZuweisung;
+}
 
 function activeTimer(userId) {
   const timer = db
@@ -68,6 +82,7 @@ router.get('/', requireAuth, (req, res) => {
       erfassteStunden: sumMinutes / 60,
       ziel,
       fortschritt: fortschrittProzent(sumMinutes / 60, ziel.stunden),
+      loeschbar: kategorieLoeschbar(cat.id),
     };
   });
 
@@ -137,6 +152,31 @@ router.post('/categories', requireAuth, (req, res) => {
     ziel
   );
   res.redirect(zurueck);
+});
+
+// Archiviert eine Kategorie: sie verschwindet aus der Kategorien-Liste
+// dieses Schuljahres (blendet sie also aus), bleibt aber inklusive aller
+// Zeiten erhalten. Der Admin kann eine archivierte Kategorie bei Bedarf
+// wieder reaktivieren.
+router.post('/categories/:id/archive', requireAuth, (req, res) => {
+  const cat = db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
+  if (!cat) return res.redirect('/');
+  db.prepare('UPDATE categories SET archived=1 WHERE id=?').run(cat.id);
+  res.redirect(`/?schuljahr=${encodeURIComponent(cat.schuljahr)}`);
+});
+
+// Loescht eine faelschlicherweise angelegte Kategorie vollstaendig - nur
+// moeglich, solange weder Zeiten noch eine Ausgleichsstunden-Verknuepfung
+// daran haengen (sonst nur Archivieren, siehe kategorieLoeschbar oben).
+router.post('/categories/:id/delete', requireAuth, (req, res) => {
+  const cat = db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
+  if (!cat) return res.redirect('/');
+  if (!kategorieLoeschbar(cat.id)) {
+    return res.redirect(`/?schuljahr=${encodeURIComponent(cat.schuljahr)}&error=kategorie-nicht-loeschbar`);
+  }
+
+  db.prepare('DELETE FROM categories WHERE id=?').run(cat.id);
+  res.redirect(`/?schuljahr=${encodeURIComponent(cat.schuljahr)}`);
 });
 
 // Schlaegt eine (neue oder geaenderte) Verknuepfung vor (leere category_id =

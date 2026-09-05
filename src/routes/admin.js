@@ -42,10 +42,14 @@ function faktorSettingsFuer(schuljahr) {
 }
 
 router.get('/', requireAdmin, (req, res) => {
+  // summe_ausgleichsstunden zaehlt ueber alle Schuljahre - fuer die
+  // Standardansicht (Kacheln) reicht diese grobe Zahl, Details gibt es auf
+  // der Lehrkraft-Seite je Schuljahr.
   const users = db
     .prepare(
       `SELECT u.*,
-        (SELECT COUNT(*) FROM zuweisungen z WHERE z.user_id=u.id AND z.category_id IS NULL) as offene_zuweisungen
+        (SELECT COUNT(*) FROM zuweisungen z WHERE z.user_id=u.id AND z.category_id IS NULL) as offene_zuweisungen,
+        (SELECT COALESCE(SUM(z.ausgleichsstunden),0) FROM zuweisungen z WHERE z.user_id=u.id) as summe_ausgleichsstunden
        FROM users u ORDER BY u.display_name COLLATE NOCASE`
     )
     .all();

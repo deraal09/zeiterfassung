@@ -37,6 +37,30 @@ const ERROR_MESSAGES = {
     'Dieses Unterprojekt nimmt die Zeiten ohne eigene Zuordnung auf und laesst sich nur loeschen, wenn es das letzte ist.',
 };
 
+// Baut aus Kopfzeile + Zeilen einen CSV-Text zum Oeffnen in Excel: Semikolon
+// als Trennzeichen und Komma als Dezimaltrennzeichen (deutsche Excel-
+// Standardeinstellung), ein fuehrendes BOM, damit Excel die Datei als UTF-8
+// statt als ANSI liest (sonst werden Umlaute zu Kauderwelsch).
+function csvFeld(wert) {
+  const text = String(wert ?? '');
+  if (/[;"\n\r]/.test(text)) return '"' + text.replace(/"/g, '""') + '"';
+  return text;
+}
+
+const CSV_BOM = String.fromCharCode(0xfeff);
+
+function zuCsv(zeilen) {
+  return CSV_BOM + zeilen.map((zeile) => zeile.map(csvFeld).join(';')).join('\r\n');
+}
+
+function alsDateiname(titel) {
+  const slug = titel
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `zeiten-${slug || 'kategorie'}.csv`;
+}
+
 function getOwnedCategory(id, userId) {
   return db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(id, userId);
 }
@@ -197,7 +221,9 @@ router.get('/categories/:id', requireAuth, (req, res) => {
   // sichtbar. Nach dem Absenden von "Zeit nachtragen" oder "CSV importieren"
   // bleibt die jeweilige Ansicht aktiv, damit Fehler/Ergebnis im Kontext
   // sichtbar bleiben.
-  const activeTab = ['nachtragen', 'import'].includes(req.query.formular) ? req.query.formular : 'erfassen';
+  const activeTab = ['nachtragen', 'import', 'unterprojekte'].includes(req.query.formular)
+    ? req.query.formular
+    : 'erfassen';
 
   res.render('category', {
     category: cat,
@@ -232,6 +258,63 @@ router.post('/categories/:id/start', requireAuth, (req, res) => {
   res.redirect(`/categories/${cat.id}`);
 });
 
+// Exportiert die Zeiten dieser Kategorie als CSV zum Oeffnen in Excel -
+// beruecksichtigt denselben Datums-/Beschreibungsfilter und dieselbe
+// Sortierung wie die Tabelle "Erfasste Taetigkeiten" (siehe GET
+// /categories/:id oben), damit genau das exportiert wird, was gerade
+// angezeigt wird.
+router.get('/categories/:id/export', requireAuth, (req, res) => {
+  const cat = getOwnedCategory(req.params.id, req.session.user.id);
+  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+
+  const sort = req.query.sort === 'asc' ? 'ASC' : 'DESC';
+  const von = (req.query.von || '').trim();
+  const bis = (req.query.bis || '').trim();
+  const suche = (req.query.suche || '').trim();
+
+  const bedingungen = ['te.category_id = ?', 'te.end_time IS NOT NULL'];
+  const params = [cat.id];
+  if (von) {
+    bedingungen.push('date(te.start_time) >= date(?)');
+    params.push(von);
+  }
+  if (bis) {
+    bedingungen.push('date(te.start_time) <= date(?)');
+    params.push(bis);
+  }
+
+  let entries = db
+    .prepare(
+      `SELECT te.*, up.title as unterprojekt_title FROM time_entries te
+       LEFT JOIN unterprojekte up ON up.id = te.unterprojekt_id
+       WHERE ${bedingungen.join(' AND ')} ORDER BY te.start_time ${sort}`
+    )
+    .all(...params);
+  entries.forEach((e) => { e.beschreibung = decrypt(e.beschreibung); });
+  if (suche) {
+    const nadel = suche.toLowerCase();
+    entries = entries.filter((e) => e.beschreibung.toLowerCase().includes(nadel));
+  }
+
+  const zeilen = [
+    ['Beginn-Datum', 'Beginn-Uhrzeit', 'Ende-Datum', 'Ende-Uhrzeit', 'Dauer (Stunden)', 'Beschreibung', 'Unterprojekt', 'Status'],
+    ...entries.map((e) => [
+      e.start_time.slice(0, 10),
+      e.start_time.slice(11, 16),
+      e.end_time.slice(0, 10),
+      e.end_time.slice(11, 16),
+      (e.duration_minutes / 60).toFixed(2).replace('.', ','),
+      e.beschreibung,
+      e.unterprojekt_title || '',
+      e.synced ? 'Synchronisiert' : 'Entwurf',
+    ]),
+  ];
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${alsDateiname(cat.title)}"`);
+  res.send(zuCsv(zeilen));
+});
+
 router.post('/entries/:id/stop', requireAuth, (req, res) => {
   const userId = req.session.user.id;
   const entry = db.prepare('SELECT * FROM time_entries WHERE id=? AND user_id=?').get(req.params.id, userId);
@@ -264,7 +347,12 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
   if (!entry) return res.status(404).render('error', { message: 'Eintrag nicht gefunden.' });
   if (!entry.end_time) return res.redirect(`/categories/${entry.category_id}`);
 
-  const { beschreibung, datum, bis_datum, von, bis, unterprojekt_id } = req.body;
+  // unterprojekt_id wird hier bewusst NICHT angefasst - die Zuordnung
+  // erfolgt separat ueber das Aktion-Menue (/entries/:id/zuweisen), damit ein
+  // automatisches Speichern dieses Formulars (siehe forms.js) eine bereits
+  // gesetzte Zuordnung nicht versehentlich auf das Auffang-Unterprojekt
+  // zuruecksetzt.
+  const { beschreibung, datum, bis_datum, von, bis } = req.body;
   if (!datum || !von || !bis) return res.redirect(`/categories/${entry.category_id}?error=felder-fehlen`);
 
   const zeitraum = baueZeitraum({ datum, von, bis, bisDatum: bis_datum });
@@ -272,18 +360,34 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   db.prepare(
-    'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, unterprojekt_id=?, synced=?, synced_at=? WHERE id=?'
+    'UPDATE time_entries SET beschreibung=?, start_time=?, end_time=?, duration_minutes=?, synced=?, synced_at=? WHERE id=?'
   ).run(
     beschreibungZumSpeichern(beschreibung, entry.beschreibung),
     zeitraum.startStr,
     zeitraum.endStr,
     zeitraum.dauer,
-    resolveUnterprojektId(entry.category_id, unterprojekt_id),
     user.auto_sync ? 1 : 0,
     user.auto_sync ? nowLocalString() : null,
     entry.id
   );
 
+  res.redirect(`/categories/${entry.category_id}`);
+});
+
+// Ordnet einen Eintrag ueber das Aktion-Menue direkt einem anderen
+// Unterprojekt zu, ohne die uebrigen Felder anzufassen (Gegenstueck zum
+// bewusst unterprojekt_id-freien /entries/:id/edit oben).
+router.post('/entries/:id/zuweisen', requireAuth, (req, res) => {
+  const userId = req.session.user.id;
+  const entry = db.prepare('SELECT * FROM time_entries WHERE id=? AND user_id=?').get(req.params.id, userId);
+  if (!entry) return res.status(404).render('error', { message: 'Eintrag nicht gefunden.' });
+
+  const up = db
+    .prepare('SELECT id FROM unterprojekte WHERE id=? AND category_id=?')
+    .get(req.body.unterprojekt_id, entry.category_id);
+  if (!up) return res.redirect(`/categories/${entry.category_id}?error=unterprojekt-nicht-gefunden`);
+
+  db.prepare('UPDATE time_entries SET unterprojekt_id=? WHERE id=?').run(up.id, entry.id);
   res.redirect(`/categories/${entry.category_id}`);
 });
 
@@ -396,7 +500,7 @@ router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
   if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
 
   const title = (req.body.title || '').trim();
-  if (!title) return res.redirect(`/categories/${cat.id}?error=unterprojekt-titel-fehlt`);
+  if (!title) return res.redirect(`/categories/${cat.id}?error=unterprojekt-titel-fehlt&formular=unterprojekte`);
 
   const hatteBereitsUnterprojekte = !!db.prepare('SELECT 1 FROM unterprojekte WHERE category_id=? LIMIT 1').get(cat.id);
   db.prepare('INSERT INTO unterprojekte (category_id, title) VALUES (?,?)').run(cat.id, title);
@@ -409,7 +513,7 @@ router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
     );
   }
 
-  res.redirect(`/categories/${cat.id}`);
+  res.redirect(`/categories/${cat.id}?formular=unterprojekte`);
 });
 
 // Benennt ein Unterprojekt um. Auch das Auffang-Unterprojekt darf einen
@@ -426,10 +530,10 @@ router.post('/unterprojekte/:id/rename', requireAuth, (req, res) => {
   if (!up) return res.status(404).render('error', { message: 'Unterprojekt nicht gefunden.' });
 
   const title = (req.body.title || '').trim();
-  if (!title) return res.redirect(`/categories/${up.category_id}?error=unterprojekt-titel-fehlt`);
+  if (!title) return res.redirect(`/categories/${up.category_id}?error=unterprojekt-titel-fehlt&formular=unterprojekte`);
 
   db.prepare('UPDATE unterprojekte SET title=? WHERE id=?').run(title, up.id);
-  res.redirect(`/categories/${up.category_id}`);
+  res.redirect(`/categories/${up.category_id}?formular=unterprojekte`);
 });
 
 // Loescht ein Unterprojekt. Die erfassten Zeiten bleiben immer erhalten -
@@ -453,7 +557,7 @@ router.post('/unterprojekte/:id/delete', requireAuth, (req, res) => {
   // Das Auffang-Unterprojekt kann nicht weg, solange es noch andere gibt -
   // deren Zeiten haetten sonst kein Ziel mehr.
   if (up.ist_auffang && uebrige > 0) {
-    return res.redirect(`/categories/${up.category_id}?error=auffang-nicht-loeschbar`);
+    return res.redirect(`/categories/${up.category_id}?error=auffang-nicht-loeschbar&formular=unterprojekte`);
   }
 
   const loeschen = db.transaction(() => {
@@ -469,7 +573,7 @@ router.post('/unterprojekte/:id/delete', requireAuth, (req, res) => {
   });
   loeschen();
 
-  res.redirect(`/categories/${up.category_id}`);
+  res.redirect(`/categories/${up.category_id}?formular=unterprojekte`);
 });
 
 router.post('/categories/:id/sichtbarkeit', requireAuth, (req, res) => {

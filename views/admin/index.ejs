@@ -91,20 +91,24 @@
 
     <section class="panel">
       <h2>Übersicht</h2>
-      <table class="entries-table">
-        <thead><tr><th>Name</th><th>Benutzername</th><th>Offene Zuweisungen</th><th></th></tr></thead>
-        <tbody>
-          <% users.forEach(u => { %>
-            <tr>
-              <td><%= u.display_name %></td>
-              <td><%= u.username %></td>
-              <td><%= u.offene_zuweisungen %></td>
-              <td><a href="/admin/users/<%= u.id %>">Details</a></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-      <% if (users.length === 0) { %><p class="empty-state">Noch keine Lehrkräfte erfasst.</p><% } %>
+      <p class="hint">Vergebene Ausgleichsstunden je Lehrkraft, über alle Schuljahre summiert.</p>
+      <% if (users.length === 0) { %>
+        <p class="empty-state">Noch keine Lehrkräfte erfasst.</p>
+      <% } %>
+      <div class="card-grid">
+        <% users.forEach(u => { %>
+          <a class="card" href="/admin/users/<%= u.id %>">
+            <h2><%= u.display_name %></h2>
+            <p class="meta"><%= u.username %></p>
+            <p class="progress-label"><strong><%= u.summe_ausgleichsstunden %></strong> Ausgleichsstunden vergeben</p>
+            <% if (u.offene_zuweisungen > 0) { %>
+              <p class="hint" style="margin: 0;">
+                <%= u.offene_zuweisungen %> noch nicht verknüpfte Zuweisung<%= u.offene_zuweisungen === 1 ? '' : 'en' %>
+              </p>
+            <% } %>
+          </a>
+        <% }) %>
+      </div>
     </section>
   </main>
   <script src="/public/js/admin.js"></script>

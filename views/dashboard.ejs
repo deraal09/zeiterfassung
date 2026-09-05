@@ -160,20 +160,36 @@
 
     <div class="card-grid">
       <% categories.forEach(cat => { %>
-        <a class="card" href="/categories/<%= cat.id %>">
-          <h2><%= cat.title %></h2>
-          <% if (cat.ziel.stunden !== null) { %>
-            <div class="progress">
-              <div class="progress-bar" style="width: <%= cat.fortschritt %>%"></div>
-            </div>
-            <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> von <%= cat.ziel.stunden.toFixed(2) %> Zeitstunden erfasst</p>
-          <% } else { %>
-            <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> Zeitstunden erfasst</p>
-            <p class="hint" style="margin: 0;">
-              <%= cat.ziel.quelle === 'kein-faktor' ? 'Ziel noch offen (Faktor fehlt)' : 'Noch kein Ziel hinterlegt' %>
-            </p>
-          <% } %>
-        </a>
+        <div class="card">
+          <a class="card-link" href="/categories/<%= cat.id %>">
+            <h2><%= cat.title %></h2>
+            <% if (cat.ziel.stunden !== null) { %>
+              <div class="progress">
+                <div class="progress-bar" style="width: <%= cat.fortschritt %>%"></div>
+              </div>
+              <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> von <%= cat.ziel.stunden.toFixed(2) %> Zeitstunden erfasst</p>
+            <% } else { %>
+              <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> Zeitstunden erfasst</p>
+              <p class="hint" style="margin: 0;">
+                <%= cat.ziel.quelle === 'kein-faktor' ? 'Ziel noch offen (Faktor fehlt)' : 'Noch kein Ziel hinterlegt' %>
+              </p>
+            <% } %>
+          </a>
+          <div class="card-actions">
+            <form method="post" action="/categories/<%= cat.id %>/archive" class="inline-form"
+                  data-confirm="Kategorie &quot;<%= cat.title %>&quot; archivieren? Sie verschwindet dann aus dieser Übersicht, bleibt aber inklusive aller Zeiten erhalten.">
+              <%- include('partials/csrf') %>
+              <button type="submit" class="link-button">Archivieren</button>
+            </form>
+            <% if (cat.loeschbar) { %>
+              <form method="post" action="/categories/<%= cat.id %>/delete" class="inline-form"
+                    data-confirm="Kategorie &quot;<%= cat.title %>&quot; endgültig löschen?">
+                <%- include('partials/csrf') %>
+                <button type="submit" class="link-button link-button-danger">Löschen</button>
+              </form>
+            <% } %>
+          </div>
+        </div>
       <% }) %>
     </div>
   </main>
