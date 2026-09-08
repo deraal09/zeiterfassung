@@ -128,12 +128,15 @@ erfasst und an die Schulleitung übermittelt werden können.
   Zeit, bleibt der Reiter "Auswertung" ganz ausgeblendet.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
-- **Admin-Bereich** – Standardansicht ist eine Kachel je Lehrkraft mit den
+- **Admin-Bereich** – für einen Admin-Account ist das der Startpunkt nach der
+  Anmeldung (nicht die eigene Zeiterfassung, die für die Schulleitung nur
+  zweitrangig ist): Standardansicht ist eine Kachel je Lehrkraft mit den
   insgesamt vergebenen Ausgleichsstunden und noch nicht verknüpften
   Zuweisungen; ein Klick öffnet die Detailseite. Dort werden Lehrkräfte per
   Live-Suche aus dem LDAP gesucht und bekommen Ausgleichsstunden zugewiesen;
   je Kategorie werden synchronisierte und noch offene (ungemeldete) Stunden
-  angezeigt.
+  angezeigt. Die eigene Zeiterfassung bleibt über "Meine Zeiten" in der
+  Navigation erreichbar.
 - **Kategorien archivieren oder löschen** – die Lehrkraft kann eine eigene
   Kategorie jederzeit archivieren (verschwindet aus der eigenen Übersicht,
   bleibt inklusive aller Zeiten erhalten – der Admin kann sie bei Bedarf

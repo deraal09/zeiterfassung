@@ -57,7 +57,7 @@ router.post('/setup', (req, res) => {
 });
 
 router.get('/login', (req, res) => {
-  if (req.session.user) return res.redirect('/');
+  if (req.session.user) return res.redirect(req.session.user.isAdmin ? '/admin' : '/');
   if (userCount() === 0) return res.redirect('/setup');
   res.render('login', { error: null });
 });
@@ -101,7 +101,9 @@ router.post('/login', async (req, res) => {
         isAdmin: !!localRow.is_admin,
         autoSync: !!localRow.auto_sync,
       };
-      res.redirect('/');
+      // Fuer die Schulleitung ist die eigene Zeiterfassung nur zweitrangig -
+      // im Vordergrund steht die Uebersicht der vergebenen Ausgleichsstunden.
+      res.redirect(req.session.user.isAdmin ? '/admin' : '/');
     });
   }
 
@@ -142,7 +144,7 @@ router.post('/login', async (req, res) => {
         isAdmin: !!isAdmin,
         autoSync: !!row.auto_sync,
       };
-      res.redirect('/');
+      res.redirect(isAdmin ? '/admin' : '/');
     });
   } catch (err) {
     console.error('LDAP-Anmeldefehler:', err.message);

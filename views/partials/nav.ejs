@@ -1,10 +1,14 @@
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="/">Zeiterfassung</a>
+    <a class="brand" href="<%= user && user.isAdmin ? '/admin' : '/' %>">Zeiterfassung</a>
     <% if (user) { %>
       <nav class="nav-links">
-        <a href="/">Übersicht</a>
-        <% if (user.isAdmin) { %><a href="/admin">Admin</a><% } %>
+        <% if (user.isAdmin) { %>
+          <a href="/admin">Admin</a>
+          <a href="/">Meine Zeiten</a>
+        <% } else { %>
+          <a href="/">Übersicht</a>
+        <% } %>
         <span class="nav-user"><%= user.displayName %></span>
         <form action="/logout" method="post" class="inline-form">
           <%- include('csrf') %>
