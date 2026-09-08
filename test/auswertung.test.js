@@ -37,6 +37,21 @@ test('balkenDaten laesst Kategorien ohne erfasste Zeit weg', () => {
   assert.equal(ergebnis.balken[0].title, 'Mit Zeiten');
 });
 
+test('balkenDaten zeigt auch sehr kleine Werte noch als sichtbares Segment', () => {
+  // 5 Minuten (~0,083h) auf einer Achse mit Maximum 10h wuerden gerundet
+  // 0px ergeben - das Segment soll trotzdem sichtbar bleiben (>= 2px).
+  const ergebnis = balkenDaten(
+    [
+      { title: 'Gross', synced: 8, entwurf: 0 },
+      { title: 'Winzig', synced: 5 / 60, entwurf: 0 },
+    ],
+    200
+  );
+  const winzig = ergebnis.balken.find((b) => b.title === 'Winzig');
+  assert.equal(winzig.syncedPx >= 2, true);
+  assert.equal(winzig.entwurfPx, 0, 'ein echter Wert von 0 bleibt 0px');
+});
+
 test('balkenDaten berechnet Pixelhoehen relativ zum Achsen-Maximum', () => {
   // Groesster Balken: 2 + 3 = 5h -> Achse rundet auf 5 (max) auf.
   const ergebnis = balkenDaten(

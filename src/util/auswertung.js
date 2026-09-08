@@ -42,9 +42,17 @@ function balkenDaten(kategorien, plotHoehePx) {
 
   const { max, ticks } = achse(Math.max(...zeilen.map((z) => z.synced + z.entwurf)));
 
+  // Mindestens 2px fuer jeden Wert > 0 - sonst rundet ein sehr kleiner Anteil
+  // (z. B. 5 Minuten bei einer Achse von mehreren Stunden) auf 0px und das
+  // Segment verschwindet optisch, obwohl Daten vorhanden sind.
+  const pixelHoehe = (wert) => {
+    if (!(wert > 0)) return 0;
+    return Math.max(2, Math.round((wert / max) * plotHoehePx));
+  };
+
   const balken = zeilen.map((z) => {
-    const syncedPx = Math.round((z.synced / max) * plotHoehePx);
-    const entwurfPx = Math.round((z.entwurf / max) * plotHoehePx);
+    const syncedPx = pixelHoehe(z.synced);
+    const entwurfPx = pixelHoehe(z.entwurf);
     return {
       title: z.title,
       synced: z.synced,

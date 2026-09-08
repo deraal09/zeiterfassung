@@ -145,29 +145,33 @@
 
     <% if (auswertung) { %>
       <section class="panel">
-        <h2>Zeiten je Kategorie <span class="meta">Schuljahr <%= schuljahr %></span></h2>
-        <p class="hint">
-          Alle erfassten Zeiten dieses Schuljahres im Überblick, je Kategorie
-          unterteilt in bereits synchronisierte und noch nicht synchronisierte
-          (Entwurf) Stunden. Noch unklar, ob gestapelt oder gruppiert
-          übersichtlicher ist? Einfach umschalten und vergleichen.
-        </p>
-        <div class="tabs" data-tabs>
-          <div class="tab-buttons" role="tablist">
-            <button type="button" class="tab-button active" data-tab-target="tab-diagramm-stapel">Gestapelt</button>
-            <button type="button" class="tab-button" data-tab-target="tab-diagramm-gruppiert">Gruppiert</button>
+        <details class="auswertung-details" open>
+          <summary>
+            <h2>Zeiten je Kategorie <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+          </summary>
+          <p class="hint">
+            Alle erfassten Zeiten dieses Schuljahres im Überblick, je Kategorie
+            unterteilt in bereits synchronisierte und noch nicht synchronisierte
+            (Entwurf) Stunden. Noch unklar, ob gestapelt oder gruppiert
+            übersichtlicher ist? Einfach umschalten und vergleichen.
+          </p>
+          <div class="tabs" data-tabs>
+            <div class="tab-buttons" role="tablist">
+              <button type="button" class="tab-button active" data-tab-target="tab-diagramm-stapel">Gestapelt</button>
+              <button type="button" class="tab-button" data-tab-target="tab-diagramm-gruppiert">Gruppiert</button>
+            </div>
+            <div id="tab-diagramm-stapel" data-tab-panel>
+              <%- include('partials/saeulendiagramm', { auswertung, variante: 'stapel' }) %>
+            </div>
+            <div id="tab-diagramm-gruppiert" data-tab-panel hidden>
+              <%- include('partials/saeulendiagramm', { auswertung, variante: 'gruppiert' }) %>
+            </div>
           </div>
-          <div id="tab-diagramm-stapel" data-tab-panel>
-            <%- include('partials/saeulendiagramm', { auswertung, variante: 'stapel' }) %>
+          <div class="saeulendiagramm-legende">
+            <span><span class="swatch segment-synced" style="background: var(--chart-series-1, #2a78d6);"></span> Synchronisiert</span>
+            <span><span class="swatch segment-entwurf" style="background: var(--chart-series-2, #eb6834);"></span> Entwurf</span>
           </div>
-          <div id="tab-diagramm-gruppiert" data-tab-panel hidden>
-            <%- include('partials/saeulendiagramm', { auswertung, variante: 'gruppiert' }) %>
-          </div>
-        </div>
-        <div class="saeulendiagramm-legende">
-          <span><span class="swatch segment-synced"></span> Synchronisiert</span>
-          <span><span class="swatch segment-entwurf"></span> Entwurf</span>
-        </div>
+        </details>
       </section>
     <% } %>
 

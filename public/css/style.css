@@ -301,6 +301,19 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .unterprojekt-details .entries-table { margin-top: 0; }
 .unterprojekt-details .entries-table tr:last-child td { border-bottom: none; }
 
+/* Einklappbare Panel-Ueberschrift (z. B. die Saeulendiagramm-Auswertung) -
+   dieselbe details/summary-Mechanik, aber ohne eigene Kopfleiste: die
+   Ueberschrift des Panels selbst ist der Klick-Bereich. */
+.auswertung-details summary {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 12px;
+}
+.auswertung-details summary::-webkit-details-marker { display: none; }
+.auswertung-details summary::before { content: '▸'; display: inline-block; width: 1em; color: var(--color-muted); }
+.auswertung-details[open] summary::before { content: '▾'; }
+.auswertung-details summary h2 { display: inline; margin-bottom: 0; }
+
 /* Kleines Aktion-Menue je Zeile (Zuweisen zu einem Unterprojekt, Loeschen) -
    ebenfalls per <details> ohne eigenes JS, mit name="aktion-menu" schliessen
    sich mehrere offene Menues gegenseitig (in Browsern, die das unterstuetzen). */
