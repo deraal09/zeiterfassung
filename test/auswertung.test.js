@@ -52,6 +52,32 @@ test('balkenDaten zeigt auch sehr kleine Werte noch als sichtbares Segment', () 
   assert.equal(winzig.entwurfPx, 0, 'ein echter Wert von 0 bleibt 0px');
 });
 
+test('balkenDaten mit alleZeilen behaelt Nullwerte als Luecke im Balken', () => {
+  // Zeitleiste: Monate ohne Zeit (z. B. Sommerferien) sollen als 0h-Balken
+  // sichtbar bleiben statt zu verschwinden.
+  const ergebnis = balkenDaten(
+    [
+      { title: 'Aug', synced: 3, entwurf: 0 },
+      { title: 'Sep', synced: 0, entwurf: 0 },
+      { title: 'Okt', synced: 1, entwurf: 0 },
+    ],
+    200,
+    { alleZeilen: true }
+  );
+  assert.equal(ergebnis.balken.length, 3);
+  assert.equal(ergebnis.balken.map((b) => b.title).join(','), 'Aug,Sep,Okt', 'Reihenfolge bleibt erhalten');
+  const sep = ergebnis.balken.find((b) => b.title === 'Sep');
+  assert.equal(sep.syncedPx, 0);
+  assert.equal(sep.entwurfPx, 0);
+});
+
+test('balkenDaten mit alleZeilen liefert trotzdem null, wenn wirklich ueberall 0h steht', () => {
+  assert.equal(
+    balkenDaten([{ title: 'Aug', synced: 0, entwurf: 0 }], 200, { alleZeilen: true }),
+    null
+  );
+});
+
 test('balkenDaten berechnet Pixelhoehen relativ zum Achsen-Maximum', () => {
   // Groesster Balken: 2 + 3 = 5h -> Achse rundet auf 5 (max) auf.
   const ergebnis = balkenDaten(

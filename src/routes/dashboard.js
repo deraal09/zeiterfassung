@@ -49,6 +49,26 @@ function activeTimer(userId) {
   return timer;
 }
 
+const MONATSKUERZEL = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+
+// Die 12 Monate eines Schuljahres in der richtigen Reihenfolge (August des
+// Startjahres bis Juli des Folgejahres), je mit dem SQLite-Schluessel
+// "YYYY-MM" (passend zu substr(start_time,1,7)) und einem kurzen Label fuer
+// die Zeitleiste.
+function monateFuerSchuljahr(schuljahr) {
+  const startJahr = Number(schuljahr.slice(0, 4));
+  const monate = [];
+  for (let i = 0; i < 12; i++) {
+    const monatIndex = (7 + i) % 12; // 0=Jan .. 7=Aug
+    const jahr = i < 5 ? startJahr : startJahr + 1;
+    monate.push({
+      schluessel: `${jahr}-${String(monatIndex + 1).padStart(2, '0')}`,
+      label: `${MONATSKUERZEL[monatIndex]} ${String(jahr).slice(2)}`,
+    });
+  }
+  return monate;
+}
+
 // Schuljahre, in denen die Lehrkraft ueberhaupt etwas hat, plus das aktuelle
 // (auch wenn dort noch nichts angelegt wurde). Ohne diese Liste waere alles
 // ausserhalb des laufenden Schuljahres nach dem 1. August unerreichbar -
@@ -109,6 +129,41 @@ router.get('/', requireAuth, (req, res) => {
     AUSWERTUNG_PLOT_HOEHE_PX
   );
 
+  // Grafische Auswertung "Zeiten im Schuljahresverlauf" - dieselben Zeiten
+  // wie oben, hier aber nach Kalendermonat (tatsaechliches Datum der
+  // Taetigkeit, substr(start_time,1,7)) statt nach Kategorie gruppiert.
+  // alleZeilen:true haelt auch Monate ohne Zeit als 0h-Balken - eine Luecke
+  // (z. B. die Sommerferien) ist hier selbst die Information.
+  let auswertungZeitleiste = null;
+  const categoryIds = categories.map((c) => c.id);
+  if (categoryIds.length > 0) {
+    const platzhalter = categoryIds.map(() => '?').join(',');
+    const monatssummen = db
+      .prepare(
+        `SELECT substr(start_time,1,7) as monat,
+                COALESCE(SUM(CASE WHEN synced=1 THEN duration_minutes ELSE 0 END),0) as synced_minutes,
+                COALESCE(SUM(CASE WHEN synced=0 THEN duration_minutes ELSE 0 END),0) as entwurf_minutes
+         FROM time_entries
+         WHERE category_id IN (${platzhalter}) AND end_time IS NOT NULL
+         GROUP BY monat`
+      )
+      .all(...categoryIds);
+    const monatsMap = new Map(monatssummen.map((m) => [m.monat, m]));
+
+    auswertungZeitleiste = balkenDaten(
+      monateFuerSchuljahr(schuljahr).map((m) => {
+        const eintrag = monatsMap.get(m.schluessel);
+        return {
+          title: m.label,
+          synced: eintrag ? eintrag.synced_minutes / 60 : 0,
+          entwurf: eintrag ? eintrag.entwurf_minutes / 60 : 0,
+        };
+      }),
+      AUSWERTUNG_PLOT_HOEHE_PX,
+      { alleZeilen: true }
+    );
+  }
+
   // Alle Zuweisungen der Lehrkraft (offen und bereits verknuepft). Solange
   // die bestaetigte Kategorie noch keine Zeiten hat (gesperrt=0), laesst
   // sich die Verknuepfung per Vorschlag/Bestaetigung noch aendern oder
@@ -143,6 +198,7 @@ router.get('/', requireAuth, (req, res) => {
   res.render('dashboard', {
     categories: stats,
     auswertung,
+    auswertungZeitleiste,
     zuweisungen,
     zuweisungenAndereJahre,
     schuljahr,

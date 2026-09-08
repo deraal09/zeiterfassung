@@ -1,8 +1,10 @@
-// Grafische Auswertung "Zeiten je Kategorie" auf dem Dashboard: ein
-// Saeulendiagramm ueber alle Kategorien eines Schuljahres, gestapelt bzw.
+// Grafische Auswertung auf dem Dashboard: Saeulendiagramme, gestapelt bzw.
 // gruppiert aus synchronisierten und noch nicht synchronisierten (Entwurf)
-// Stunden. Reine Berechnung ohne DB-Zugriff, damit sich Achse und
-// Balken-Geometrie unabhaengig von der Route testen lassen.
+// Stunden - einmal je Kategorie ("Zeiten je Kategorie"), einmal je Monat
+// des Schuljahres ("Zeiten im Schuljahresverlauf"). Reine Berechnung ohne
+// DB-Zugriff, damit sich Achse und Balken-Geometrie unabhaengig von der
+// Route testen lassen; welche Zeilen (Kategorien oder Monate) reinkommen,
+// bestimmt die Route.
 
 // Rundet einen rohen Maximalwert auf eine "runde" Achsen-Obergrenze auf
 // (1/2/5 x 10^n) - sonst zeigen die Gitterlinien krumme Werte wie 17,3.
@@ -30,15 +32,23 @@ function achse(rohMax, schritte = 4) {
   return { max, ticks };
 }
 
-// kategorien: [{ title, synced, entwurf }] (Stunden). Kategorien ganz ohne
-// erfasste Zeit liefern keinen Balken - sie haetten nichts zu zeigen und
-// wuerden die Achse nur unnoetig stauchen.
+// zeilen: [{ title, synced, entwurf }] (Stunden) - je eine Kategorie oder,
+// fuer die Zeitleiste, je ein Monat des Schuljahres.
 //
-// Liefert null, wenn es insgesamt nichts zu zeigen gibt (dann blendet die
-// Ansicht die Auswertung ganz aus statt eines leeren Diagramms).
-function balkenDaten(kategorien, plotHoehePx) {
-  const zeilen = kategorien.filter((k) => k.synced + k.entwurf > 0);
-  if (zeilen.length === 0) return null;
+// Ohne alleZeilen liefert eine Zeile ganz ohne erfasste Zeit keinen Balken -
+// passend fuer "je Kategorie", wo eine leere Kategorie nichts zu zeigen
+// haette und die Achse nur unnoetig stauchen wuerde. Mit alleZeilen:true
+// (Zeitleiste) bleiben auch Nullwerte als Balken der Hoehe 0 erhalten -
+// dort ist eine Luecke (z. B. die Sommerferien) selbst die Information und
+// soll nicht stillschweigend verschwinden.
+//
+// Liefert in jedem Fall null, wenn es insgesamt nichts zu zeigen gibt (dann
+// blendet die Ansicht die Auswertung ganz aus statt eines leeren Diagramms).
+function balkenDaten(zeilenRoh, plotHoehePx, { alleZeilen = false } = {}) {
+  const hatDaten = zeilenRoh.some((z) => z.synced + z.entwurf > 0);
+  if (!hatDaten) return null;
+
+  const zeilen = alleZeilen ? zeilenRoh : zeilenRoh.filter((k) => k.synced + k.entwurf > 0);
 
   const { max, ticks } = achse(Math.max(...zeilen.map((z) => z.synced + z.entwurf)));
 

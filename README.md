@@ -118,7 +118,11 @@ erfasst und an die Schulleitung übermittelt werden können.
   kleine, aber von Null verschiedene Werte, damit sie nicht optisch
   verschwinden). Kategorien ohne erfasste Zeit erscheinen nicht im Diagramm;
   hat noch keine Kategorie irgendeine Zeit, bleibt der Abschnitt ganz
-  ausgeblendet.
+  ausgeblendet. Ein zweites, ebenso einklappbares Säulendiagramm "Zeiten im
+  Schuljahresverlauf" zeigt dieselben Zeiten stattdessen über die zwölf
+  Monate des Schuljahres (August bis Juli) verteilt, damit erkennbar ist, zu
+  welcher Zeit im Schuljahr wie viel gearbeitet wurde; Monate ohne erfasste
+  Zeit bleiben dabei als sichtbare Lücke erhalten.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – Standardansicht ist eine Kachel je Lehrkraft mit den

@@ -175,6 +175,37 @@
       </section>
     <% } %>
 
+    <% if (auswertungZeitleiste) { %>
+      <section class="panel">
+        <details class="auswertung-details" open>
+          <summary>
+            <h2>Zeiten im Schuljahresverlauf <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+          </summary>
+          <p class="hint">
+            Alle erfassten Zeiten dieses Schuljahres nach Monat, unterteilt in
+            bereits synchronisierte und noch nicht synchronisierte (Entwurf)
+            Stunden. Monate ohne erfasste Zeit erscheinen als Lücke.
+          </p>
+          <div class="tabs" data-tabs>
+            <div class="tab-buttons" role="tablist">
+              <button type="button" class="tab-button active" data-tab-target="tab-diagramm-zeit-stapel">Gestapelt</button>
+              <button type="button" class="tab-button" data-tab-target="tab-diagramm-zeit-gruppiert">Gruppiert</button>
+            </div>
+            <div id="tab-diagramm-zeit-stapel" data-tab-panel>
+              <%- include('partials/saeulendiagramm', { auswertung: auswertungZeitleiste, variante: 'stapel' }) %>
+            </div>
+            <div id="tab-diagramm-zeit-gruppiert" data-tab-panel hidden>
+              <%- include('partials/saeulendiagramm', { auswertung: auswertungZeitleiste, variante: 'gruppiert' }) %>
+            </div>
+          </div>
+          <div class="saeulendiagramm-legende">
+            <span><span class="swatch segment-synced" style="background: var(--chart-series-1, #2a78d6);"></span> Synchronisiert</span>
+            <span><span class="swatch segment-entwurf" style="background: var(--chart-series-2, #eb6834);"></span> Entwurf</span>
+          </div>
+        </details>
+      </section>
+    <% } %>
+
     <section class="panel">
       <h2>Neue Kategorie anlegen <span class="meta">für <%= schuljahr %></span></h2>
       <form method="post" action="/categories" class="inline-form">
