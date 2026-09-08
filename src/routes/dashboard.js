@@ -7,6 +7,12 @@ const { decrypt } = require('../util/crypto');
 const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 const { interneZielseite } = require('../util/redirect');
+const { balkenDaten } = require('../util/auswertung');
+
+// Hoehe der Plot-Flaeche der Saeulendiagramm-Auswertung in Pixeln (siehe
+// util/auswertung.js) - hier statt dort definiert, weil es eine
+// Darstellungs-Konstante ist, keine Berechnung.
+const AUSWERTUNG_PLOT_HOEHE_PX = 200;
 
 const ERROR_MESSAGES = {
   'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
@@ -73,18 +79,35 @@ router.get('/', requireAuth, (req, res) => {
     .all(userId, schuljahr);
 
   const stats = categories.map((cat) => {
-    const sumMinutes = db
-      .prepare('SELECT COALESCE(SUM(duration_minutes),0) as minutes FROM time_entries WHERE category_id = ? AND end_time IS NOT NULL')
-      .get(cat.id).minutes;
+    const minuten = db
+      .prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN synced=1 THEN duration_minutes ELSE 0 END),0) as synced_minutes,
+           COALESCE(SUM(CASE WHEN synced=0 THEN duration_minutes ELSE 0 END),0) as entwurf_minutes
+         FROM time_entries WHERE category_id = ? AND end_time IS NOT NULL`
+      )
+      .get(cat.id);
+    const sumMinutes = minuten.synced_minutes + minuten.entwurf_minutes;
     const ziel = zielZeitstunden(cat);
     return {
       ...cat,
       erfassteStunden: sumMinutes / 60,
+      syncedStunden: minuten.synced_minutes / 60,
+      entwurfStunden: minuten.entwurf_minutes / 60,
       ziel,
       fortschritt: fortschrittProzent(sumMinutes / 60, ziel.stunden),
       loeschbar: kategorieLoeschbar(cat.id),
     };
   });
+
+  // Grafische Auswertung "Zeiten je Kategorie" (Saeulendiagramm, siehe
+  // views/partials/saeulendiagramm.ejs) - null, wenn in diesem Schuljahr noch
+  // gar keine Zeit erfasst wurde, dann zeigt das Dashboard keinen leeren
+  // Diagramm-Rahmen.
+  const auswertung = balkenDaten(
+    stats.map((cat) => ({ title: cat.title, synced: cat.syncedStunden, entwurf: cat.entwurfStunden })),
+    AUSWERTUNG_PLOT_HOEHE_PX
+  );
 
   // Alle Zuweisungen der Lehrkraft (offen und bereits verknuepft). Solange
   // die bestaetigte Kategorie noch keine Zeiten hat (gesperrt=0), laesst
@@ -119,6 +142,7 @@ router.get('/', requireAuth, (req, res) => {
 
   res.render('dashboard', {
     categories: stats,
+    auswertung,
     zuweisungen,
     zuweisungenAndereJahre,
     schuljahr,

@@ -17,6 +17,12 @@
   --color-alert-success-border: #bbf7d0;
   --color-btn-text-on-accent: #ffffff;
   --radius: 8px;
+  /* Kategoriale Diagrammfarben (validierte Palette, siehe dataviz-Skill):
+     feste Reihenfolge, nie pro Diagramm neu gemischt. */
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-gridline: #e1e0d9;
+  --chart-axis-muted: #898781;
 }
 
 /* System-Einstellung folgen, solange kein manuelles Theme gewaehlt wurde */
@@ -37,6 +43,10 @@
     --color-alert-error-border: #5c2b2b;
     --color-alert-success-bg: #16321f;
     --color-alert-success-border: #245530;
+    --chart-series-1: #3987e5;
+    --chart-series-2: #d95926;
+    --chart-gridline: #2c2c2a;
+    --chart-axis-muted: #898781;
   }
 }
 
@@ -57,6 +67,10 @@
   --color-alert-error-border: #5c2b2b;
   --color-alert-success-bg: #16321f;
   --color-alert-success-border: #245530;
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+  --chart-gridline: #2c2c2a;
+  --chart-axis-muted: #898781;
 }
 
 * { box-sizing: border-box; }
@@ -397,3 +411,82 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
   font-size: 0.6em;
   font-weight: normal;
 }
+
+/* Saeulendiagramm "Zeiten je Kategorie" (Dashboard) - reines HTML/CSS, kein
+   SVG und kein Diagramm-JS: Balkenhoehen kommen bereits fertig als Pixelwerte
+   aus util/auswertung.js. Gestapelt/Gruppiert schaltet ueber die bestehende
+   Tabs-Mechanik um (zwei fertig gerenderte Varianten, per CSS ein-/ausgeblendet). */
+.saeulendiagramm-plot {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  row-gap: 8px;
+}
+.saeulendiagramm-achsen-labels { grid-column: 1; grid-row: 1; position: relative; }
+.saeulendiagramm-achsen-labels span {
+  position: absolute;
+  right: 8px;
+  transform: translateY(50%);
+  font-size: 0.75rem;
+  color: var(--chart-axis-muted);
+  white-space: nowrap;
+}
+.saeulendiagramm-flaeche {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  border-bottom: 1px solid var(--chart-axis-muted);
+  overflow-x: auto;
+}
+.saeulendiagramm-gitternetz { position: absolute; inset: 0; }
+.saeulendiagramm-gitternetz .gitterlinie {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--chart-gridline);
+}
+.saeulendiagramm-balken {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 0 8px;
+}
+.balken-gruppe { flex: 1 0 32px; min-width: 32px; display: flex; justify-content: center; }
+.balken-saeule-feld { display: flex; align-items: flex-end; justify-content: center; }
+.balken-saeule { display: flex; align-items: flex-end; }
+.balken-saeule.stapel { flex-direction: column-reverse; width: 24px; gap: 2px; }
+.balken-saeule.gruppiert { flex-direction: row; gap: 2px; }
+.balken-saeule.gruppiert .segment { width: 16px; }
+.balken-saeule .segment {
+  width: 100%;
+  border-radius: 0;
+}
+.balken-saeule .segment.oben,
+.balken-saeule.gruppiert .segment { border-radius: 4px 4px 0 0; }
+.segment-synced { background: var(--chart-series-1); }
+.segment-entwurf { background: var(--chart-series-2); }
+.saeulendiagramm-labels {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  gap: 16px;
+  padding: 0 8px;
+}
+.balken-label {
+  flex: 1 0 32px;
+  min-width: 32px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+.saeulendiagramm-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 14px;
+  font-size: 0.85rem;
+}
+.saeulendiagramm-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.saeulendiagramm-legende .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }

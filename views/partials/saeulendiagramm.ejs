@@ -1,0 +1,40 @@
+<div class="saeulendiagramm-plot">
+  <div class="saeulendiagramm-achsen-labels" style="height: <%= auswertung.plotHoehePx %>px;">
+    <% auswertung.achsenTicks.forEach(t => { %>
+      <span style="bottom: <%= t.bottomPx %>px;"><%= t.wert %> h</span>
+    <% }) %>
+  </div>
+  <div class="saeulendiagramm-flaeche" style="height: <%= auswertung.plotHoehePx %>px;">
+    <div class="saeulendiagramm-gitternetz">
+      <% auswertung.achsenTicks.forEach(t => { %>
+        <div class="gitterlinie" style="bottom: <%= t.bottomPx %>px;"></div>
+      <% }) %>
+    </div>
+    <div class="saeulendiagramm-balken">
+      <% auswertung.balken.forEach(b => { %>
+        <div class="balken-gruppe">
+          <div class="balken-saeule-feld" style="height: <%= auswertung.plotHoehePx %>px;">
+            <% if (variante === 'stapel') { %>
+              <div class="balken-saeule stapel"
+                   title="<%= b.title %> – Synchronisiert: <%= b.synced.toFixed(2) %> h, Entwurf: <%= b.entwurf.toFixed(2) %> h, Gesamt: <%= b.summe.toFixed(2) %> h">
+                <div class="segment segment-synced<%= b.obenAbgerundet === 'synced' ? ' oben' : '' %>" style="height: <%= b.syncedPx %>px;"></div>
+                <div class="segment segment-entwurf<%= b.obenAbgerundet === 'entwurf' ? ' oben' : '' %>" style="height: <%= b.entwurfPx %>px;"></div>
+              </div>
+            <% } else { %>
+              <div class="balken-saeule gruppiert"
+                   title="<%= b.title %> – Synchronisiert: <%= b.synced.toFixed(2) %> h, Entwurf: <%= b.entwurf.toFixed(2) %> h">
+                <div class="segment segment-synced" style="height: <%= b.syncedPx %>px;"></div>
+                <div class="segment segment-entwurf" style="height: <%= b.entwurfPx %>px;"></div>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+  <div class="saeulendiagramm-labels">
+    <% auswertung.balken.forEach(b => { %>
+      <span class="balken-label"><%= b.title %></span>
+    <% }) %>
+  </div>
+</div>

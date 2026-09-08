@@ -108,6 +108,14 @@ erfasst und an die Schulleitung übermittelt werden können.
   per Klick auf die Spalte "Beginn" nach ältestem oder neuestem Datum zuerst
   sortieren; zusätzlich kann nach einem Datumsbereich (von/bis) und/oder einem
   Suchbegriff in der Beschreibung gefiltert werden.
+- **Grafische Auswertung** – das Dashboard zeigt ein Säulendiagramm "Zeiten je
+  Kategorie" für das gewählte Schuljahr, je Kategorie unterteilt in bereits
+  synchronisierte und noch nicht synchronisierte (Entwurf) Stunden, farblich
+  unterschieden mit Legende. Zwischen gestapelter und gruppierter Darstellung
+  lässt sich per Reiter umschalten. Reines HTML/CSS ohne Diagramm-Bibliothek;
+  die Balken-Geometrie berechnet `src/util/auswertung.js`. Kategorien ohne
+  erfasste Zeit erscheinen nicht im Diagramm; hat noch keine Kategorie
+  irgendeine Zeit, bleibt der Abschnitt ganz ausgeblendet.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – Standardansicht ist eine Kachel je Lehrkraft mit den
