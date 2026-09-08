@@ -21,6 +21,13 @@
      feste Reihenfolge, nie pro Diagramm neu gemischt. */
   --chart-series-1: #2a78d6;
   --chart-series-2: #eb6834;
+  --chart-series-3: #1baf7a;
+  --chart-series-4: #eda100;
+  --chart-series-5: #e87ba4;
+  --chart-series-6: #008300;
+  --chart-series-7: #4a3aa7;
+  --chart-series-8: #e34948;
+  --chart-series-andere: #767672;
   --chart-gridline: #e1e0d9;
   --chart-axis-muted: #898781;
 }
@@ -45,6 +52,13 @@
     --color-alert-success-border: #245530;
     --chart-series-1: #3987e5;
     --chart-series-2: #d95926;
+    --chart-series-3: #199e70;
+    --chart-series-4: #c98500;
+    --chart-series-5: #d55181;
+    --chart-series-6: #008300;
+    --chart-series-7: #9085e9;
+    --chart-series-8: #e66767;
+    --chart-series-andere: #a4a39b;
     --chart-gridline: #2c2c2a;
     --chart-axis-muted: #898781;
   }
@@ -69,6 +83,13 @@
   --color-alert-success-border: #245530;
   --chart-series-1: #3987e5;
   --chart-series-2: #d95926;
+  --chart-series-3: #199e70;
+  --chart-series-4: #c98500;
+  --chart-series-5: #d55181;
+  --chart-series-6: #008300;
+  --chart-series-7: #9085e9;
+  --chart-series-8: #e66767;
+  --chart-series-andere: #a4a39b;
   --chart-gridline: #2c2c2a;
   --chart-axis-muted: #898781;
 }
@@ -300,19 +321,6 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .unterprojekt-details[open] summary::before { content: '▾'; }
 .unterprojekt-details .entries-table { margin-top: 0; }
 .unterprojekt-details .entries-table tr:last-child td { border-bottom: none; }
-
-/* Einklappbare Panel-Ueberschrift (z. B. die Saeulendiagramm-Auswertung) -
-   dieselbe details/summary-Mechanik, aber ohne eigene Kopfleiste: die
-   Ueberschrift des Panels selbst ist der Klick-Bereich. */
-.auswertung-details summary {
-  cursor: pointer;
-  list-style: none;
-  margin-bottom: 12px;
-}
-.auswertung-details summary::-webkit-details-marker { display: none; }
-.auswertung-details summary::before { content: '▸'; display: inline-block; width: 1em; color: var(--color-muted); }
-.auswertung-details[open] summary::before { content: '▾'; }
-.auswertung-details summary h2 { display: inline; margin-bottom: 0; }
 
 /* Kleines Aktion-Menue je Zeile (Zuweisen zu einem Unterprojekt, Loeschen) -
    ebenfalls per <details> ohne eigenes JS, mit name="aktion-menu" schliessen

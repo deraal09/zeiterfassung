@@ -143,78 +143,88 @@
       </section>
     <% } %>
 
-    <% if (auswertung) { %>
-      <section class="panel">
-        <details class="auswertung-details" open>
-          <summary>
-            <h2>Zeiten je Kategorie <span class="meta">Schuljahr <%= schuljahr %></span></h2>
-          </summary>
-          <p class="hint">
-            Alle erfassten Zeiten dieses Schuljahres im Überblick, je Kategorie
-            unterteilt in bereits synchronisierte und noch nicht synchronisierte
-            (Entwurf) Stunden. Noch unklar, ob gestapelt oder gruppiert
-            übersichtlicher ist? Einfach umschalten und vergleichen.
-          </p>
-          <div class="tabs" data-tabs>
-            <div class="tab-buttons" role="tablist">
-              <button type="button" class="tab-button active" data-tab-target="tab-diagramm-stapel">Gestapelt</button>
-              <button type="button" class="tab-button" data-tab-target="tab-diagramm-gruppiert">Gruppiert</button>
-            </div>
-            <div id="tab-diagramm-stapel" data-tab-panel>
-              <%- include('partials/saeulendiagramm', { auswertung, variante: 'stapel' }) %>
-            </div>
-            <div id="tab-diagramm-gruppiert" data-tab-panel hidden>
-              <%- include('partials/saeulendiagramm', { auswertung, variante: 'gruppiert' }) %>
-            </div>
-          </div>
-          <div class="saeulendiagramm-legende">
-            <span><span class="swatch segment-synced" style="background: var(--chart-series-1, #2a78d6);"></span> Synchronisiert</span>
-            <span><span class="swatch segment-entwurf" style="background: var(--chart-series-2, #eb6834);"></span> Entwurf</span>
-          </div>
-        </details>
-      </section>
-    <% } %>
-
-    <% if (auswertungZeitleiste) { %>
-      <section class="panel">
-        <details class="auswertung-details" open>
-          <summary>
-            <h2>Zeiten im Schuljahresverlauf <span class="meta">Schuljahr <%= schuljahr %></span></h2>
-          </summary>
-          <p class="hint">
-            Alle erfassten Zeiten dieses Schuljahres nach Monat, unterteilt in
-            bereits synchronisierte und noch nicht synchronisierte (Entwurf)
-            Stunden. Monate ohne erfasste Zeit erscheinen als Lücke.
-          </p>
-          <div class="tabs" data-tabs>
-            <div class="tab-buttons" role="tablist">
-              <button type="button" class="tab-button active" data-tab-target="tab-diagramm-zeit-stapel">Gestapelt</button>
-              <button type="button" class="tab-button" data-tab-target="tab-diagramm-zeit-gruppiert">Gruppiert</button>
-            </div>
-            <div id="tab-diagramm-zeit-stapel" data-tab-panel>
-              <%- include('partials/saeulendiagramm', { auswertung: auswertungZeitleiste, variante: 'stapel' }) %>
-            </div>
-            <div id="tab-diagramm-zeit-gruppiert" data-tab-panel hidden>
-              <%- include('partials/saeulendiagramm', { auswertung: auswertungZeitleiste, variante: 'gruppiert' }) %>
-            </div>
-          </div>
-          <div class="saeulendiagramm-legende">
-            <span><span class="swatch segment-synced" style="background: var(--chart-series-1, #2a78d6);"></span> Synchronisiert</span>
-            <span><span class="swatch segment-entwurf" style="background: var(--chart-series-2, #eb6834);"></span> Entwurf</span>
-          </div>
-        </details>
-      </section>
-    <% } %>
-
     <section class="panel">
-      <h2>Neue Kategorie anlegen <span class="meta">für <%= schuljahr %></span></h2>
-      <form method="post" action="/categories" class="inline-form">
-        <%- include('partials/csrf') %>
-        <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
-        <input type="text" name="title" placeholder="z. B. Administration Moodle" required>
-        <input type="number" name="ziel_zeitstunden" placeholder="Ziel-Zeitstunden (optional)" step="0.25" min="0.25">
-        <button type="submit" class="btn btn-start">Anlegen</button>
-      </form>
+      <div class="tabs" data-tabs>
+        <div class="tab-buttons" role="tablist">
+          <button type="button" class="tab-button active" data-tab-target="tab-neue-kategorie">Neue Kategorie</button>
+          <% /* auswertung und auswertungZeitleiste beruhen auf denselben Zeiteintraegen
+                (nur einmal je Kategorie, einmal je Monat gruppiert) und sind daher immer
+                gemeinsam null oder gemeinsam gesetzt - ein Guard auf auswertung reicht. */ %>
+          <% if (auswertung) { %>
+            <button type="button" class="tab-button" data-tab-target="tab-auswertung">Auswertung</button>
+          <% } %>
+        </div>
+
+        <div id="tab-neue-kategorie" data-tab-panel>
+          <h2>Neue Kategorie anlegen <span class="meta">für <%= schuljahr %></span></h2>
+          <form method="post" action="/categories" class="inline-form">
+            <%- include('partials/csrf') %>
+            <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
+            <input type="text" name="title" placeholder="z. B. Administration Moodle" required>
+            <input type="number" name="ziel_zeitstunden" placeholder="Ziel-Zeitstunden (optional)" step="0.25" min="0.25">
+            <button type="submit" class="btn btn-start">Anlegen</button>
+          </form>
+        </div>
+
+        <% if (auswertung) { %>
+          <div id="tab-auswertung" data-tab-panel hidden>
+            <div class="tabs" data-tabs>
+              <div class="tab-buttons" role="tablist">
+                <button type="button" class="tab-button active" data-tab-target="tab-auswertung-kategorie">Zeiten je Kategorie</button>
+                <button type="button" class="tab-button" data-tab-target="tab-auswertung-zeitleiste">Zeiten im Schuljahresverlauf</button>
+              </div>
+
+              <div id="tab-auswertung-kategorie" data-tab-panel>
+                <h2>Zeiten je Kategorie <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+                <p class="hint">
+                  Alle erfassten Zeiten dieses Schuljahres im Überblick, je Kategorie
+                  unterteilt in bereits synchronisierte und noch nicht synchronisierte
+                  (Entwurf) Stunden. Noch unklar, ob gestapelt oder gruppiert
+                  übersichtlicher ist? Einfach umschalten und vergleichen.
+                </p>
+                <div class="tabs" data-tabs>
+                  <div class="tab-buttons" role="tablist">
+                    <button type="button" class="tab-button active" data-tab-target="tab-diagramm-stapel">Gestapelt</button>
+                    <button type="button" class="tab-button" data-tab-target="tab-diagramm-gruppiert">Gruppiert</button>
+                  </div>
+                  <div id="tab-diagramm-stapel" data-tab-panel>
+                    <%- include('partials/saeulendiagramm', { auswertung, variante: 'stapel' }) %>
+                  </div>
+                  <div id="tab-diagramm-gruppiert" data-tab-panel hidden>
+                    <%- include('partials/saeulendiagramm', { auswertung, variante: 'gruppiert' }) %>
+                  </div>
+                </div>
+                <div class="saeulendiagramm-legende">
+                  <span><span class="swatch segment-synced" style="background: var(--chart-series-1, #2a78d6);"></span> Synchronisiert</span>
+                  <span><span class="swatch segment-entwurf" style="background: var(--chart-series-2, #eb6834);"></span> Entwurf</span>
+                </div>
+              </div>
+
+              <div id="tab-auswertung-zeitleiste" data-tab-panel hidden>
+                <h2>Zeiten im Schuljahresverlauf <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+                <p class="hint">
+                  Alle erfassten Zeiten dieses Schuljahres nach Monat, farblich nach
+                  Kategorie unterschieden. Monate ohne erfasste Zeit erscheinen als
+                  Lücke.
+                </p>
+                <div class="tabs" data-tabs>
+                  <div class="tab-buttons" role="tablist">
+                    <button type="button" class="tab-button active" data-tab-target="tab-diagramm-zeit-stapel">Gestapelt</button>
+                    <button type="button" class="tab-button" data-tab-target="tab-diagramm-zeit-gruppiert">Gruppiert</button>
+                  </div>
+                  <div id="tab-diagramm-zeit-stapel" data-tab-panel>
+                    <%- include('partials/saeulendiagramm-kategorien', { auswertung: auswertungZeitleiste, variante: 'stapel' }) %>
+                  </div>
+                  <div id="tab-diagramm-zeit-gruppiert" data-tab-panel hidden>
+                    <%- include('partials/saeulendiagramm-kategorien', { auswertung: auswertungZeitleiste, variante: 'gruppiert' }) %>
+                  </div>
+                </div>
+                <%- include('partials/saeulendiagramm-kategorien-legende', { serien: auswertungZeitleiste.serien }) %>
+              </div>
+            </div>
+          </div>
+        <% } %>
+      </div>
     </section>
 
     <% if (categories.length === 0) { %>

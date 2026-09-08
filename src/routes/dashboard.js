@@ -7,7 +7,7 @@ const { decrypt } = require('../util/crypto');
 const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 const { interneZielseite } = require('../util/redirect');
-const { balkenDaten } = require('../util/auswertung');
+const { balkenDaten, kategorienBalkenDaten, kategorieFarbe, AUSWERTUNG_MAX_KATEGORIEN } = require('../util/auswertung');
 
 // Hoehe der Plot-Flaeche der Saeulendiagramm-Auswertung in Pixeln (siehe
 // util/auswertung.js) - hier statt dort definiert, weil es eine
@@ -131,37 +131,58 @@ router.get('/', requireAuth, (req, res) => {
 
   // Grafische Auswertung "Zeiten im Schuljahresverlauf" - dieselben Zeiten
   // wie oben, hier aber nach Kalendermonat (tatsaechliches Datum der
-  // Taetigkeit, substr(start_time,1,7)) statt nach Kategorie gruppiert.
-  // alleZeilen:true haelt auch Monate ohne Zeit als 0h-Balken - eine Luecke
-  // (z. B. die Sommerferien) ist hier selbst die Information.
+  // Taetigkeit, substr(start_time,1,7)) und farblich nach Kategorie statt
+  // nach Synchronisiert/Entwurf gruppiert. Monate ohne Zeit bleiben immer
+  // erhalten (nicht wie bei balkenDaten optional) - eine Luecke (z. B. die
+  // Sommerferien) ist hier selbst die Information. Die Kategorie-Reihenfolge
+  // (wie im Diagramm "Zeiten je Kategorie") haelt die Farbzuordnung stabil,
+  // auch wenn ein Monat nicht fuer jede Kategorie Zeit enthaelt; mehr als
+  // AUSWERTUNG_MAX_KATEGORIEN Kategorien fallen unter "Andere" statt eine
+  // weitere Farbe zu erfinden (siehe kategorieFarbe).
   let auswertungZeitleiste = null;
   const categoryIds = categories.map((c) => c.id);
   if (categoryIds.length > 0) {
     const platzhalter = categoryIds.map(() => '?').join(',');
-    const monatssummen = db
+    const kategorieMonatssummen = db
       .prepare(
-        `SELECT substr(start_time,1,7) as monat,
-                COALESCE(SUM(CASE WHEN synced=1 THEN duration_minutes ELSE 0 END),0) as synced_minutes,
-                COALESCE(SUM(CASE WHEN synced=0 THEN duration_minutes ELSE 0 END),0) as entwurf_minutes
+        `SELECT category_id, substr(start_time,1,7) as monat,
+                COALESCE(SUM(duration_minutes),0) as minuten
          FROM time_entries
          WHERE category_id IN (${platzhalter}) AND end_time IS NOT NULL
-         GROUP BY monat`
+         GROUP BY category_id, monat`
       )
       .all(...categoryIds);
-    const monatsMap = new Map(monatssummen.map((m) => [m.monat, m]));
 
-    auswertungZeitleiste = balkenDaten(
-      monateFuerSchuljahr(schuljahr).map((m) => {
-        const eintrag = monatsMap.get(m.schluessel);
-        return {
-          title: m.label,
-          synced: eintrag ? eintrag.synced_minutes / 60 : 0,
-          entwurf: eintrag ? eintrag.entwurf_minutes / 60 : 0,
-        };
-      }),
-      AUSWERTUNG_PLOT_HOEHE_PX,
-      { alleZeilen: true }
+    const serien = categories.slice(0, AUSWERTUNG_MAX_KATEGORIEN).map((c, i) => ({
+      key: String(c.id),
+      label: c.title,
+      farbindex: i,
+      farbe: kategorieFarbe(i),
+    }));
+    if (categories.length > AUSWERTUNG_MAX_KATEGORIEN) {
+      serien.push({ key: 'andere', label: 'Andere', farbindex: -1, farbe: kategorieFarbe(-1) });
+    }
+    const schluesselFuerKategorie = new Map(
+      categories.map((c, i) => [c.id, i < AUSWERTUNG_MAX_KATEGORIEN ? String(c.id) : 'andere'])
     );
+
+    const minutenProMonat = new Map();
+    kategorieMonatssummen.forEach((row) => {
+      const schluessel = schluesselFuerKategorie.get(row.category_id);
+      if (!minutenProMonat.has(row.monat)) minutenProMonat.set(row.monat, new Map());
+      const proSchluessel = minutenProMonat.get(row.monat);
+      proSchluessel.set(schluessel, (proSchluessel.get(schluessel) || 0) + row.minuten);
+    });
+
+    const monate = monateFuerSchuljahr(schuljahr).map((m) => {
+      const proSchluessel = minutenProMonat.get(m.schluessel) || new Map();
+      return {
+        title: m.label,
+        werte: serien.map((s) => (proSchluessel.get(s.key) || 0) / 60),
+      };
+    });
+
+    auswertungZeitleiste = kategorienBalkenDaten(monate, serien, AUSWERTUNG_PLOT_HOEHE_PX);
   }
 
   // Alle Zuweisungen der Lehrkraft (offen und bereits verknuepft). Solange

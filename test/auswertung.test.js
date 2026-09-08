@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { nizeMax, achse, balkenDaten } = require('../src/util/auswertung');
+const { nizeMax, achse, balkenDaten, kategorieFarbe, kategorienBalkenDaten } = require('../src/util/auswertung');
 
 test('nizeMax rundet auf 1/2/5/10 x 10^n auf', () => {
   assert.equal(nizeMax(7), 10);
@@ -95,4 +95,53 @@ test('balkenDaten berechnet Pixelhoehen relativ zum Achsen-Maximum', () => {
   const b = ergebnis.balken.find((b2) => b2.title === 'B');
   assert.equal(b.syncedPx, 40, '1/5 von 200px');
   assert.equal(b.entwurfPx, 0);
+});
+
+test('kategorieFarbe liefert eine CSS-Variable mit Hex-Fallback je Farbindex', () => {
+  assert.equal(kategorieFarbe(0), 'var(--chart-series-1, #2a78d6)');
+  assert.equal(kategorieFarbe(7), 'var(--chart-series-8, #e34948)');
+  assert.equal(kategorieFarbe(-1), 'var(--chart-series-andere, #767672)', '"Andere" bekommt eine eigene, neutrale Farbe');
+});
+
+test('kategorienBalkenDaten liefert null, wenn nirgends Zeit erfasst wurde', () => {
+  const serien = [{ key: '1', label: 'A', farbindex: 0, farbe: kategorieFarbe(0) }];
+  assert.equal(kategorienBalkenDaten([{ title: 'Aug', werte: [0] }], serien, 200), null);
+  assert.equal(kategorienBalkenDaten([], serien, 200), null);
+});
+
+test('kategorienBalkenDaten behaelt alle Monate, auch ohne jede Zeit (Luecke)', () => {
+  const serien = [
+    { key: '1', label: 'A', farbindex: 0, farbe: kategorieFarbe(0) },
+    { key: '2', label: 'B', farbindex: 1, farbe: kategorieFarbe(1) },
+  ];
+  const ergebnis = kategorienBalkenDaten(
+    [
+      { title: 'Aug', werte: [2, 0] },
+      { title: 'Sep', werte: [0, 0] },
+      { title: 'Okt', werte: [0, 3] },
+    ],
+    serien,
+    200
+  );
+  assert.equal(ergebnis.balken.length, 3);
+  assert.equal(ergebnis.balken.map((b) => b.title).join(','), 'Aug,Sep,Okt');
+  const sep = ergebnis.balken.find((b) => b.title === 'Sep');
+  assert.equal(sep.summe, 0);
+  assert.equal(sep.segmente.every((s) => s.px === 0), true);
+});
+
+test('kategorienBalkenDaten ordnet Segmente je Balken der Reihenfolge von serien zu und rundet nur das oberste sichtbare Segment', () => {
+  const serien = [
+    { key: '1', label: 'A', farbindex: 0, farbe: kategorieFarbe(0) },
+    { key: '2', label: 'B', farbindex: 1, farbe: kategorieFarbe(1) },
+    { key: '3', label: 'C', farbindex: 2, farbe: kategorieFarbe(2) },
+  ];
+  const ergebnis = kategorienBalkenDaten([{ title: 'Aug', werte: [2, 0, 1] }], serien, 200);
+  const balken = ergebnis.balken[0];
+  assert.equal(balken.summe, 3);
+  assert.equal(balken.segmente.map((s) => s.label).join(','), 'A,B,C', 'Reihenfolge folgt serien, nicht dem Wert');
+  assert.equal(balken.segmente[0].farbe, kategorieFarbe(0));
+  assert.equal(balken.segmente[1].px, 0, 'B hat 0h und bleibt unsichtbar');
+  assert.equal(balken.segmente[1].obenAbgerundet, undefined);
+  assert.equal(balken.segmente[2].obenAbgerundet, true, 'C ist das letzte Segment mit Wert > 0');
 });

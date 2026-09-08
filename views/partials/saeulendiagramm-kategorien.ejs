@@ -1,0 +1,44 @@
+<div class="saeulendiagramm-plot">
+  <div class="saeulendiagramm-achsen-labels" style="height: <%= auswertung.plotHoehePx %>px;">
+    <% auswertung.achsenTicks.forEach(t => { %>
+      <span style="bottom: <%= t.bottomPx %>px;"><%= t.wert %> h</span>
+    <% }) %>
+  </div>
+  <div class="saeulendiagramm-flaeche" style="height: <%= auswertung.plotHoehePx %>px;">
+    <div class="saeulendiagramm-gitternetz">
+      <% auswertung.achsenTicks.forEach(t => { %>
+        <div class="gitterlinie" style="bottom: <%= t.bottomPx %>px;"></div>
+      <% }) %>
+    </div>
+    <div class="saeulendiagramm-balken">
+      <% auswertung.balken.forEach(b => { %>
+        <% const sichtbar = b.segmente.filter(s => s.stunden > 0); %>
+        <% const titelText = b.title + ' – ' + (sichtbar.length
+             ? sichtbar.map(s => `${s.label}: ${s.stunden.toFixed(2)} h`).join(', ') + `, Gesamt: ${b.summe.toFixed(2)} h`
+             : 'keine Zeit erfasst'); %>
+        <div class="balken-gruppe">
+          <div class="balken-saeule-feld" style="height: <%= auswertung.plotHoehePx %>px;">
+            <% if (variante === 'stapel') { %>
+              <div class="balken-saeule stapel" title="<%= titelText %>">
+                <% b.segmente.forEach(s => { %>
+                  <div class="segment<%= s.obenAbgerundet ? ' oben' : '' %>" style="height: <%= s.px %>px; background: <%= s.farbe %>;"></div>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <div class="balken-saeule gruppiert" title="<%= titelText %>">
+                <% b.segmente.forEach(s => { %>
+                  <div class="segment" style="height: <%= s.px %>px; background: <%= s.farbe %>;"></div>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+  <div class="saeulendiagramm-labels">
+    <% auswertung.balken.forEach(b => { %>
+      <span class="balken-label"><%= b.title %></span>
+    <% }) %>
+  </div>
+</div>

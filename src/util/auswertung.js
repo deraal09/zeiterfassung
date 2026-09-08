@@ -85,4 +85,70 @@ function balkenDaten(zeilenRoh, plotHoehePx, { alleZeilen = false } = {}) {
   return { balken, achsenTicks, max, plotHoehePx };
 }
 
-module.exports = { nizeMax, achse, balkenDaten };
+// Feste, validierte Farb-Reihenfolge fuer bis zu 8 Kategorien (siehe
+// dataviz-Skill, references/palette.md) - nie pro Diagramm neu gemischt,
+// damit eine Kategorie in jedem Diagramm dieselbe Farbe traegt. Kategorie
+// 9+ faellt unter "Andere" (farbindex -1) statt eine neunte Farbe zu
+// erfinden.
+const KATEGORIE_FARBEN_HELL = [
+  '#2a78d6', // 1 blau
+  '#eb6834', // 2 orange
+  '#1baf7a', // 3 tuerkis
+  '#eda100', // 4 gelb
+  '#e87ba4', // 5 magenta
+  '#008300', // 6 gruen
+  '#4a3aa7', // 7 violett
+  '#e34948', // 8 rot
+];
+const AUSWERTUNG_MAX_KATEGORIEN = KATEGORIE_FARBEN_HELL.length;
+
+// Liefert den fertigen CSS-Farbwert (CSS-Variable mit Hex-Fallback fuers
+// Cache-Problem, siehe --chart-series-1/2 weiter oben im Code) fuer einen
+// Farbindex - 0..7 fuer die acht kategorialen Slots, -1 fuer "Andere".
+function kategorieFarbe(farbindex) {
+  if (farbindex === -1) return 'var(--chart-series-andere, #767672)';
+  return `var(--chart-series-${farbindex + 1}, ${KATEGORIE_FARBEN_HELL[farbindex]})`;
+}
+
+// monate: [{ title, werte: number[] }] (Stunden je Monat) - werte[i] gehoert
+// zu serien[i], gleiche Reihenfolge in jedem Monat, auch wenn eine Kategorie
+// in diesem Monat 0h hat. serien: [{ key, label, farbindex, farbe }], siehe
+// kategorieFarbe. Anders als balkenDaten werden Monate hier nie weggelassen -
+// die Zeitleiste soll Luecken (z. B. Sommerferien) zeigen, nicht verstecken.
+function kategorienBalkenDaten(monate, serien, plotHoehePx) {
+  const hatDaten = monate.some((m) => m.werte.some((w) => w > 0));
+  if (!hatDaten) return null;
+
+  const summen = monate.map((m) => m.werte.reduce((sum, w) => sum + w, 0));
+  const { max, ticks } = achse(Math.max(...summen));
+
+  const pixelHoehe = (wert) => {
+    if (!(wert > 0)) return 0;
+    return Math.max(2, Math.round((wert / max) * plotHoehePx));
+  };
+
+  const balken = monate.map((m) => {
+    const summe = m.werte.reduce((sum, w) => sum + w, 0);
+    let obenIndex = -1;
+    const segmente = m.werte.map((stunden, i) => {
+      const px = pixelHoehe(stunden);
+      if (px > 0) obenIndex = i;
+      return { key: serien[i].key, label: serien[i].label, farbe: serien[i].farbe, stunden, px };
+    });
+    if (obenIndex >= 0) segmente[obenIndex].obenAbgerundet = true;
+    return { title: m.title, summe, segmente };
+  });
+
+  const achsenTicks = ticks.map((wert) => ({ wert, bottomPx: Math.round((wert / max) * plotHoehePx) }));
+
+  return { balken, achsenTicks, max, plotHoehePx, serien };
+}
+
+module.exports = {
+  nizeMax,
+  achse,
+  balkenDaten,
+  kategorieFarbe,
+  kategorienBalkenDaten,
+  AUSWERTUNG_MAX_KATEGORIEN,
+};

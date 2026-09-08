@@ -108,21 +108,24 @@ erfasst und an die Schulleitung übermittelt werden können.
   per Klick auf die Spalte "Beginn" nach ältestem oder neuestem Datum zuerst
   sortieren; zusätzlich kann nach einem Datumsbereich (von/bis) und/oder einem
   Suchbegriff in der Beschreibung gefiltert werden.
-- **Grafische Auswertung** – das Dashboard zeigt ein einklappbares
-  Säulendiagramm "Zeiten je Kategorie" für das gewählte Schuljahr, je
-  Kategorie unterteilt in bereits synchronisierte und noch nicht
-  synchronisierte (Entwurf) Stunden, farblich unterschieden mit Legende.
-  Zwischen gestapelter und gruppierter Darstellung lässt sich per Reiter
-  umschalten. Reines HTML/CSS ohne Diagramm-Bibliothek; die Balken-Geometrie
-  berechnet `src/util/auswertung.js` (inklusive Mindesthöhe von 2px für sehr
-  kleine, aber von Null verschiedene Werte, damit sie nicht optisch
-  verschwinden). Kategorien ohne erfasste Zeit erscheinen nicht im Diagramm;
-  hat noch keine Kategorie irgendeine Zeit, bleibt der Abschnitt ganz
-  ausgeblendet. Ein zweites, ebenso einklappbares Säulendiagramm "Zeiten im
-  Schuljahresverlauf" zeigt dieselben Zeiten stattdessen über die zwölf
-  Monate des Schuljahres (August bis Juli) verteilt, damit erkennbar ist, zu
-  welcher Zeit im Schuljahr wie viel gearbeitet wurde; Monate ohne erfasste
-  Zeit bleiben dabei als sichtbare Lücke erhalten.
+- **Grafische Auswertung** – auf dem Dashboard über den Reiter "Auswertung"
+  erreichbar (daneben der Reiter "Neue Kategorie" fürs Anlegen), darunter zwei
+  Unterreiter mit je einem Säulendiagramm. "Zeiten je Kategorie" zeigt die
+  Zeiten des gewählten Schuljahres je Kategorie, unterteilt in bereits
+  synchronisierte und noch nicht synchronisierte (Entwurf) Stunden, farblich
+  unterschieden mit Legende; Kategorien ohne erfasste Zeit erscheinen nicht im
+  Diagramm. "Zeiten im Schuljahresverlauf" zeigt dieselben Zeiten stattdessen
+  über die zwölf Monate des Schuljahres (August bis Juli) verteilt, dort
+  farblich nach Kategorie unterschieden (bis zu acht Kategorien mit fester,
+  Delta-E-validierter Farbzuordnung je Kategorie, weitere fallen unter
+  "Andere"), damit erkennbar ist, zu welcher Zeit im Schuljahr wie viel
+  gearbeitet wurde; Monate ohne erfasste Zeit bleiben als sichtbare Lücke
+  erhalten. Beide Diagramme lassen sich zwischen gestapelter und gruppierter
+  Darstellung per Reiter umschalten. Reines HTML/CSS ohne Diagramm-Bibliothek;
+  die Balken-Geometrie berechnet `src/util/auswertung.js` (inklusive
+  Mindesthöhe von 2px für sehr kleine, aber von Null verschiedene Werte,
+  damit sie nicht optisch verschwinden). Hat noch keine Kategorie irgendeine
+  Zeit, bleibt der Reiter "Auswertung" ganz ausgeblendet.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – Standardansicht ist eine Kachel je Lehrkraft mit den
