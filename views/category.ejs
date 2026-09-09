@@ -175,6 +175,7 @@
           <p class="hint">
             Zeiten lassen sich beim Erfassen/Nachtragen einem Unterprojekt zuordnen (sonst landen sie im auffangenden Unterprojekt) und nachträglich über das Aktion-Menü einem anderen zuordnen.
           </p>
+          <div class="table-scroll">
           <table class="entries-table" style="margin-bottom: 12px;">
             <tbody>
               <% unterprojekte.forEach(up => { %>
@@ -200,6 +201,7 @@
               <% }) %>
             </tbody>
           </table>
+          </div>
           <p class="hint">
             Beim Löschen bleiben die erfassten Zeiten erhalten: sie wandern in das
             auffangende Unterprojekt – oder werden wieder unzugeordnet, wenn es

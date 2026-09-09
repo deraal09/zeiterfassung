@@ -53,6 +53,7 @@
         Lehrkraft ihn annimmt. Solange dafür noch keine Zeiten erfasst
         wurden, lässt sich die Verknüpfung noch per neuem Vorschlag ändern.
       </p>
+      <div class="table-scroll">
       <table class="entries-table">
         <thead><tr><th>Schuljahr</th><th>Ausgleichsstunden</th><th>Faktor</th><th>Zeitstunden</th><th>Kategorie</th><th></th></tr></thead>
         <tbody>
@@ -142,11 +143,13 @@
           <% }) %>
         </tbody>
       </table>
+      </div>
       <% if (zuweisungen.length === 0) { %><p class="empty-state">Noch keine Ausgleichsstunden zugewiesen.</p><% } %>
     </section>
 
     <section class="panel">
       <h2>Kategorien</h2>
+      <div class="table-scroll">
       <table class="entries-table">
         <thead>
           <tr>
@@ -178,6 +181,7 @@
           <% }) %>
         </tbody>
       </table>
+      </div>
       <% if (categories.length === 0) { %><p class="empty-state">Diese Lehrkraft hat noch keine (für dich sichtbare) Kategorie angelegt.</p><% } %>
       <% if (hiddenCategoryCount > 0) { %>
         <p class="hint" style="margin-top: 12px; margin-bottom: 0;">

@@ -142,6 +142,15 @@ erfasst und an die Schulleitung übermittelt werden können.
   bleibt inklusive aller Zeiten erhalten – der Admin kann sie bei Bedarf
   reaktivieren) oder, solange weder Zeiten noch eine
   Ausgleichsstunden-Verknüpfung daran hängen, vollständig löschen.
+- **Responsives Design (Smartphone)** – Navigation und Register-Buttons
+  brechen auf schmalen Bildschirmen um, statt seitlich abgeschnitten zu
+  werden. Die Tabelle "Erfasste Tätigkeiten" wird auf Smartphone-Breite
+  (≤ 640px) zu gestapelten, beschrifteten Karten je Eintrag – vor allem
+  das Aktion-Menü (Zuweisen/Löschen) lag zuvor als sechste Tabellenspalte
+  außerhalb des sichtbaren Bereichs. Die selteneren, informationsdichteren
+  Tabellen (Unterprojekte, Admin-Bereich) bleiben normale Tabellen und
+  scrollen bei Bedarf innerhalb ihres eigenen Rahmens, statt die ganze
+  Seite seitlich zu verschieben.
 - **Verschlüsselung der Tätigkeitsbeschreibungen** – die Beschreibungstexte in
   `time_entries` werden serverseitig mit AES-256-GCM verschlüsselt gespeichert
   (Schlüssel `ENCRYPTION_KEY`, siehe Konfiguration unten). Der Schutz gilt für

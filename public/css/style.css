@@ -121,11 +121,13 @@ a:hover { text-decoration: underline; }
   margin: 0 auto;
   padding: 12px 16px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  row-gap: 8px;
 }
 .brand { font-weight: 700; font-size: 1.1rem; color: var(--color-text); }
-.nav-links { display: flex; align-items: center; gap: 16px; }
+.nav-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .nav-user { color: var(--color-muted); font-size: 0.9rem; }
 
 .page-header {
@@ -289,6 +291,13 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 }
 .tab-button.active:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
 .tab-panel { margin-bottom: 0; }
+
+/* Datentabellen sind auf schmalen Bildschirmen leicht breiter als der
+   Viewport (Datum/Uhrzeit-Felder, mehrere Aktionen je Zeile). Ohne diesen
+   Rahmen wuerde nicht die Tabelle, sondern die ganze Seite waagerecht
+   scrollen - dann laeuft der Inhalt ueber den weissen Panel-Rahmen hinaus
+   und wirkt wie abgeschnitten (z. B. das Aktion-Menue). */
+.table-scroll { overflow-x: auto; }
 
 .entries-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
 .entries-table th, .entries-table td {
@@ -513,3 +522,47 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 }
 .saeulendiagramm-legende span { display: inline-flex; align-items: center; gap: 6px; }
 .saeulendiagramm-legende .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* Smartphone: die Tabelle "Erfasste Taetigkeiten" passt mit sechs Spalten
+   (zwei davon Datum+Uhrzeit) nicht nebeneinander auf einen schmalen
+   Bildschirm - vor allem das Aktion-Menue in der letzten Spalte lag dann
+   ausserhalb des sichtbaren Bereichs. Statt einer waagerecht scrollenden
+   Tabelle (leicht zu uebersehen) wird jede Zeile zu einer Karte mit
+   beschrifteten, gestapelten Feldern - das Aktion-Menue landet als normaler
+   Block am Ende der Karte, immer sichtbar. Die selteneren Tabellen
+   (Unterprojekte, Admin-Bereich) bleiben normale Tabellen und scrollen bei
+   Bedarf innerhalb ihres eigenen .table-scroll-Rahmens. */
+@media (max-width: 640px) {
+  .login-box { width: min(320px, 100%); }
+
+  .entries-table-aktivitaeten thead { display: none; }
+  .entries-table-aktivitaeten,
+  .entries-table-aktivitaeten tbody,
+  .entries-table-aktivitaeten tr,
+  .entries-table-aktivitaeten td {
+    display: block;
+    width: 100%;
+  }
+  .entries-table-aktivitaeten tr {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .entries-table-aktivitaeten tr:last-child { margin-bottom: 0; }
+  .entries-table-aktivitaeten td {
+    border-bottom: none;
+    padding: 6px 0;
+  }
+  .entries-table-aktivitaeten td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .entries-table-aktivitaeten td[data-label="Beschreibung"] input[type=text] { width: 100%; }
+  .entries-table-aktivitaeten td.entries-row-actions { display: flex; justify-content: flex-end; }
+}
