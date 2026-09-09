@@ -84,7 +84,14 @@ erfasst und an die Schulleitung übermittelt werden können.
   Datum, Uhrzeit oder Beschreibung speichert sofort beim Verlassen des
   Feldes, ganz ohne Speichern-Button – oder über das Aktion-Menü löschen. Ein
   bereits synchronisierter Eintrag gilt nach einer Korrektur wieder als
-  Entwurf, damit dem Admin kein veralteter Wert stehen bleibt.
+  Entwurf, damit dem Admin kein veralteter Wert stehen bleibt. Hängen
+  Änderungen an mehreren Feldern eines Eintrags zusammen (z. B. Bis-Datum UND
+  Bis-Uhrzeit müssen sich ändern, damit ein über Mitternacht laufender,
+  vergessener Eintrag wieder auf denselben Tag zurückfällt), speichert das
+  Formular erst, sobald keines dieser Felder mehr den Fokus hat – ein
+  Zwischenstand nach nur einer der beiden Änderungen würde sonst an der
+  eigenen Prüfung (Ende vor Beginn, oder länger als 24 Stunden) scheitern und
+  die andere Änderung mit verwerfen.
 - **CSV-Import und -Export** – mehrere nachzutragende Zeiten auf einmal per
   CSV-Datei hochladen (Spalten: Datum, Von, Bis, Beschreibung, optional
   Bis-Datum für Tätigkeiten über Mitternacht und Unterprojekt). Komma,
