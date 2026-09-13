@@ -54,12 +54,12 @@
           <tbody>
             <% alleFaktoren.forEach(f => { %>
               <tr>
-                <td><strong><%= f.schuljahr %></strong><%= f.schuljahr === schuljahr ? ' (laufend)' : '' %></td>
-                <td><%= f.zeitstunden_pro_woche %></td>
-                <td><%= f.schulwochen %></td>
-                <td><%= f.faktor.toFixed(2) %> h</td>
-                <td><%= f.zuweisungen %></td>
-                <td class="meta"><%= f.updated_at %><%= f.updated_by ? ` · ${f.updated_by}` : '' %></td>
+                <td data-label="Schuljahr"><strong><%= f.schuljahr %></strong><%= f.schuljahr === schuljahr ? ' (laufend)' : '' %></td>
+                <td data-label="Zeitstunden/Woche"><%= f.zeitstunden_pro_woche %></td>
+                <td data-label="Schulwochen"><%= f.schulwochen %></td>
+                <td data-label="Faktor"><%= f.faktor.toFixed(2) %> h</td>
+                <td data-label="Zuweisungen"><%= f.zuweisungen %></td>
+                <td class="meta" data-label="Zuletzt geändert"><%= f.updated_at %><%= f.updated_by ? ` · ${f.updated_by}` : '' %></td>
               </tr>
             <% }) %>
           </tbody>

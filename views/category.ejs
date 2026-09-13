@@ -180,17 +180,17 @@
             <tbody>
               <% unterprojekte.forEach(up => { %>
                 <tr>
-                  <td>
+                  <td data-label="Titel">
                     <form method="post" action="/unterprojekte/<%= up.id %>/rename" class="inline-form">
                       <%- include('partials/csrf') %>
                       <input type="text" name="title" value="<%= up.title %>" required>
                       <button type="submit" class="link-button">Umbenennen</button>
                     </form>
                   </td>
-                  <td class="meta">
+                  <td class="meta" data-label="Stunden">
                     <%= up.stunden.toFixed(2) %> h<% if (up.ist_auffang) { %> · nimmt Zeiten ohne eigene Zuordnung auf<% } %>
                   </td>
-                  <td>
+                  <td data-label="Aktion">
                     <form method="post" action="/unterprojekte/<%= up.id %>/delete" class="inline-form"
                           data-confirm="Unterprojekt &quot;<%= up.title %>&quot; löschen? Die erfassten Zeiten bleiben erhalten.">
                       <%- include('partials/csrf') %>

@@ -59,23 +59,23 @@
         <tbody>
           <% zuweisungen.forEach(z => { %>
             <tr>
-              <td><%= z.schuljahr %></td>
-              <td>
+              <td data-label="Schuljahr"><%= z.schuljahr %></td>
+              <td data-label="Ausgleichsstunden">
                 <form method="post" action="/admin/zuweisungen/<%= z.id %>/edit" class="inline-form">
                   <%- include('../partials/csrf') %>
                   <input type="number" step="0.25" min="0.25" name="ausgleichsstunden" value="<%= z.ausgleichsstunden %>" style="width: 80px;">
                   <button type="submit" class="link-button">Speichern</button>
                 </form>
               </td>
-              <td><%= z.faktor === null ? '–' : z.faktor %></td>
-              <td>
+              <td data-label="Faktor"><%= z.faktor === null ? '–' : z.faktor %></td>
+              <td data-label="Zeitstunden">
                 <% if (z.faktor) { %>
                   <%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> h
                 <% } else { %>
                   <span class="meta" title="Für dieses Schuljahr sind Zeitstunden pro Woche und Schulwochen noch nicht festgelegt.">Faktor fehlt</span>
                 <% } %>
               </td>
-              <td>
+              <td data-label="Kategorie">
                 <% if (z.category_title) { %>
                   <strong><%= z.category_title %></strong>
                   <% if (z.gesperrt) { %><p class="hint" style="margin: 4px 0 0;">fest, da bereits Zeiten erfasst</p><% } %>
@@ -124,7 +124,7 @@
                   <% } %>
                 <% } %>
               </td>
-              <td>
+              <td data-label="Aktion">
                 <% if (z.gesperrt) { %>
                   <p class="hint" style="margin: 0;">
                     Nicht mehr löschbar (Zeiten erfasst). Um die Zuweisung
@@ -160,18 +160,18 @@
         <tbody>
           <% categories.forEach(cat => { %>
             <tr class="<%= cat.archived ? 'archived' : '' %>">
-              <td><%= cat.title %></td>
-              <td><%= cat.schuljahr %></td>
-              <td>
+              <td data-label="Titel"><%= cat.title %></td>
+              <td data-label="Schuljahr"><%= cat.schuljahr %></td>
+              <td data-label="Benötigt">
                 <% if (cat.ziel.stunden !== null) { %>
                   <%= cat.ziel.stunden.toFixed(2) %> h
                 <% } else { %>
                   <span class="meta"><%= cat.ziel.quelle === 'kein-faktor' ? 'Faktor fehlt' : '–' %></span>
                 <% } %>
               </td>
-              <td><%= cat.syncedHours.toFixed(2) %> h</td>
-              <td><%= cat.unsyncedHours.toFixed(2) %> h</td>
-              <td>
+              <td data-label="Synchronisiert"><%= cat.syncedHours.toFixed(2) %> h</td>
+              <td data-label="Offen (ungemeldet)"><%= cat.unsyncedHours.toFixed(2) %> h</td>
+              <td data-label="Aktion">
                 <form method="post" action="/admin/categories/<%= cat.id %>/archive" class="inline-form">
                   <%- include('../partials/csrf') %>
                   <button type="submit" class="link-button"><%= cat.archived ? 'Reaktivieren' : 'Archivieren' %></button>

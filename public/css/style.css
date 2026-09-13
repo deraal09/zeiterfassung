@@ -320,16 +320,21 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
   overflow: hidden;
 }
 .unterprojekt-details:last-child { margin-bottom: 0; }
-.unterprojekt-details summary {
+/* Direkter Kindselektor (">") statt Nachfahren-Selektor: die Zeilen der
+   aufgeklappten Tabelle enthalten selbst ein <details class="aktion-menu">
+   mit eigenem <summary> (das Aktion-Menue je Eintrag) - ein Nachfahren-
+   Selektor wuerde dessen Summary mit demselben Hintergrund, Pfeil und
+   Fettdruck versehen wie die Gruppen-Ueberschrift. */
+.unterprojekt-details > summary {
   cursor: pointer;
   padding: 10px 14px;
   background: var(--color-bg);
   font-weight: 600;
   list-style: none;
 }
-.unterprojekt-details summary::-webkit-details-marker { display: none; }
-.unterprojekt-details summary::before { content: '▸'; display: inline-block; width: 1em; }
-.unterprojekt-details[open] summary::before { content: '▾'; }
+.unterprojekt-details > summary::-webkit-details-marker { display: none; }
+.unterprojekt-details > summary::before { content: '▸'; display: inline-block; width: 1em; }
+.unterprojekt-details[open] > summary::before { content: '▾'; }
 .unterprojekt-details .entries-table { margin-top: 0; }
 .unterprojekt-details .entries-table tr:last-child td { border-bottom: none; }
 
@@ -523,38 +528,38 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .saeulendiagramm-legende span { display: inline-flex; align-items: center; gap: 6px; }
 .saeulendiagramm-legende .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 
-/* Smartphone: die Tabelle "Erfasste Taetigkeiten" passt mit sechs Spalten
-   (zwei davon Datum+Uhrzeit) nicht nebeneinander auf einen schmalen
-   Bildschirm - vor allem das Aktion-Menue in der letzten Spalte lag dann
-   ausserhalb des sichtbaren Bereichs. Statt einer waagerecht scrollenden
-   Tabelle (leicht zu uebersehen) wird jede Zeile zu einer Karte mit
-   beschrifteten, gestapelten Feldern - das Aktion-Menue landet als normaler
-   Block am Ende der Karte, immer sichtbar. Die selteneren Tabellen
-   (Unterprojekte, Admin-Bereich) bleiben normale Tabellen und scrollen bei
-   Bedarf innerhalb ihres eigenen .table-scroll-Rahmens. */
+/* Smartphone: keine der Datentabellen (Erfasste Taetigkeiten, Unterprojekte,
+   Admin-Bereich) passt mit vier bis sechs Spalten nebeneinander auf einen
+   schmalen Bildschirm - die hinteren Spalten (z. B. das Aktion-Menue, die
+   Kategorie-Verknuepfung oder "Archivieren") lagen dann innerhalb des
+   .table-scroll-Rahmens ohne jedes Scroll-Indiz ausserhalb des sichtbaren
+   Bereichs und wirkten dadurch schlicht fehlend. Jede Zeile wird deshalb zu
+   einer Karte mit beschrifteten, gestapelten Feldern (data-label + ::before) -
+   jede Spalte landet als normaler, immer sichtbarer Block, ganz ohne
+   waagerechtes Scrollen. */
 @media (max-width: 640px) {
   .login-box { width: min(320px, 100%); }
 
-  .entries-table-aktivitaeten thead { display: none; }
-  .entries-table-aktivitaeten,
-  .entries-table-aktivitaeten tbody,
-  .entries-table-aktivitaeten tr,
-  .entries-table-aktivitaeten td {
+  .entries-table thead { display: none; }
+  .entries-table,
+  .entries-table tbody,
+  .entries-table tr,
+  .entries-table td {
     display: block;
     width: 100%;
   }
-  .entries-table-aktivitaeten tr {
+  .entries-table tr {
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     padding: 10px 12px;
     margin-bottom: 10px;
   }
-  .entries-table-aktivitaeten tr:last-child { margin-bottom: 0; }
-  .entries-table-aktivitaeten td {
+  .entries-table tr:last-child { margin-bottom: 0; }
+  .entries-table td {
     border-bottom: none;
     padding: 6px 0;
   }
-  .entries-table-aktivitaeten td[data-label]::before {
+  .entries-table td[data-label]::before {
     content: attr(data-label);
     display: block;
     font-size: 0.75rem;
@@ -563,6 +568,7 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
     text-transform: uppercase;
     margin-bottom: 2px;
   }
-  .entries-table-aktivitaeten td[data-label="Beschreibung"] input[type=text] { width: 100%; }
-  .entries-table-aktivitaeten td.entries-row-actions { display: flex; justify-content: flex-end; }
+  .entries-table td[data-label] input[type=text],
+  .entries-table td[data-label] input[type=number] { width: 100%; }
+  .entries-table td.entries-row-actions { display: flex; justify-content: flex-end; }
 }
