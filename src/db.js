@@ -100,6 +100,18 @@ function initDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Gesamtkontingent an Ausgleichsstunden je Schuljahr, vom Admin gepflegt -
+    -- unabhaengig vom Faktor (der die Umrechnung in Zeitstunden regelt, nicht
+    -- die insgesamt verfuegbare Menge). Zeigt an, wie viel vom Schuljahr-Budget
+    -- bereits ueber alle Lehrkraefte hinweg vergeben ist (Summe aller
+    -- Zuweisungen dieses Schuljahres, live berechnet statt hier gespeichert).
+    CREATE TABLE IF NOT EXISTS schuljahr_kontingente (
+      schuljahr TEXT PRIMARY KEY,
+      kontingent_ausgleichsstunden REAL NOT NULL,
+      updated_by TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     -- Unterprojekte gliedern die Zeiten INNERHALB einer Kategorie weiter
     -- (z. B. "Kurs A", "Kurs B"). Rein optional - eine Kategorie ohne
     -- Unterprojekte funktioniert unveraendert wie bisher. Sobald das erste

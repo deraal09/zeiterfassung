@@ -12,6 +12,7 @@ const ERROR_MESSAGES = {
   'keine-kategorie': 'Bitte eine Kategorie dieser Lehrkraft auswaehlen.',
   'kein-faktor': 'Bitte zuerst Zeitstunden pro Woche und Schulwochen fuer dieses Schuljahr festlegen.',
   'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
+  'ungueltiges-kontingent': 'Bitte ein gueltiges Gesamtkontingent (Ausgleichsstunden) eingeben.',
   'ungueltiges-schuljahr': 'Bitte ein Schuljahr in der Schreibweise 2026/27 angeben.',
   'schuljahr-passt-nicht': 'Die Kategorie gehoert zu einem anderen Schuljahr als die Zuweisung.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
@@ -39,6 +40,23 @@ function faktorSettingsFuer(schuljahr) {
     schulwochen: row.schulwochen,
     faktor: row.zeitstunden_pro_woche * row.schulwochen,
   };
+}
+
+// Gesamtkontingent an Ausgleichsstunden fuer das Schuljahr - unabhaengig vom
+// Faktor (siehe Kommentar an schuljahr_kontingente in db.js).
+function kontingentFuer(schuljahr) {
+  return db
+    .prepare('SELECT kontingent_ausgleichsstunden FROM schuljahr_kontingente WHERE schuljahr=?')
+    .get(schuljahr);
+}
+
+// Summe aller vergebenen Ausgleichsstunden eines Schuljahres, unabhaengig
+// davon, ob die Zuweisung bereits mit einer Kategorie verknuepft ist -
+// "vergeben" bedeutet hier "vom Admin zugewiesen", nicht "abgerechnet".
+function vergebenFuer(schuljahr) {
+  return db
+    .prepare('SELECT COALESCE(SUM(ausgleichsstunden),0) as summe FROM zuweisungen WHERE schuljahr=?')
+    .get(schuljahr).summe;
 }
 
 router.get('/', requireAdmin, (req, res) => {
@@ -81,6 +99,8 @@ router.get('/', requireAdmin, (req, res) => {
     faktorSettings: faktorSettingsFuer(schuljahr),
     alleFaktoren,
     faktorFehlt,
+    kontingent: kontingentFuer(schuljahr),
+    vergeben: vergebenFuer(schuljahr),
     error: ERROR_MESSAGES[req.query.error] || null,
   });
 });
@@ -184,6 +204,25 @@ router.post('/faktor', requireAdmin, (req, res) => {
        updated_by=excluded.updated_by,
        updated_at=excluded.updated_at`
   ).run(schuljahr, zeitstunden, schulwochen, req.session.user.username);
+
+  res.redirect('/admin');
+});
+
+router.post('/kontingent', requireAdmin, (req, res) => {
+  const schuljahr = req.body.schuljahr || aktuellesSchuljahr();
+  if (!istSchuljahr(schuljahr)) return res.redirect('/admin?error=ungueltiges-schuljahr');
+
+  const kontingent = parseNumber(req.body.kontingent_ausgleichsstunden);
+  if (!(kontingent >= 0)) return res.redirect('/admin?error=ungueltiges-kontingent');
+
+  db.prepare(
+    `INSERT INTO schuljahr_kontingente (schuljahr, kontingent_ausgleichsstunden, updated_by, updated_at)
+     VALUES (?,?,?,datetime('now'))
+     ON CONFLICT(schuljahr) DO UPDATE SET
+       kontingent_ausgleichsstunden=excluded.kontingent_ausgleichsstunden,
+       updated_by=excluded.updated_by,
+       updated_at=excluded.updated_at`
+  ).run(schuljahr, kontingent, req.session.user.username);
 
   res.redirect('/admin');
 });

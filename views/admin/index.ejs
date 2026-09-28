@@ -12,7 +12,42 @@
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
 
     <section class="panel">
-      <h2>Faktor <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+      <h2>Gesamtkontingent <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+      <p class="hint">
+        Wie viele Ausgleichsstunden für das Schuljahr insgesamt zur Verfügung
+        stehen – rein informativ, vergibt aber weiterhin nichts von selbst.
+      </p>
+      <% if (kontingent) { %>
+        <p class="progress-label">
+          <strong><%= vergeben %></strong> von <strong><%= kontingent.kontingent_ausgleichsstunden %></strong>
+          Ausgleichsstunden vergeben
+        </p>
+        <div class="progress">
+          <div class="progress-bar" style="width: <%= Math.min(100, (vergeben / kontingent.kontingent_ausgleichsstunden) * 100) %>%"></div>
+        </div>
+        <% if (vergeben > kontingent.kontingent_ausgleichsstunden) { %>
+          <p class="alert alert-error" style="margin-top: 12px;">
+            Das Kontingent ist um <%= vergeben - kontingent.kontingent_ausgleichsstunden %> Ausgleichsstunden überschritten.
+          </p>
+        <% } else { %>
+          <p class="hint" style="margin: 8px 0 0;">
+            <%= kontingent.kontingent_ausgleichsstunden - vergeben %> Ausgleichsstunden noch übrig.
+          </p>
+        <% } %>
+      <% } else { %>
+        <p class="hint">Für <%= schuljahr %> ist noch kein Gesamtkontingent festgelegt.</p>
+      <% } %>
+      <form method="post" action="/admin/kontingent" class="inline-form" style="margin-top: 12px;">
+        <%- include('../partials/csrf') %>
+        <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
+        <input type="number" step="0.25" min="0" name="kontingent_ausgleichsstunden" placeholder="Gesamtkontingent (Ausgleichsstunden)" value="<%= kontingent ? kontingent.kontingent_ausgleichsstunden : '' %>" required>
+        <button type="submit" class="btn btn-start">Speichern</button>
+      </form>
+    </section>
+
+    <details class="panel-details"<%= (!faktorSettings || faktorFehlt.length > 0) ? ' open' : '' %>>
+      <summary><h2>Faktor <span class="meta">Schuljahr <%= schuljahr %></span></h2></summary>
+      <div class="panel-details-body">
       <p class="hint">
         Gilt einheitlich für alle Lehrkräfte in diesem Schuljahr: benötigte
         Zeitstunden = Ausgleichsstunden × Zeitstunden pro Woche × Schulwochen.
@@ -66,7 +101,8 @@
         </table>
         </div>
       <% } %>
-    </section>
+      </div>
+    </details>
 
     <section class="panel">
       <h2>Ausgleichsstunden zuweisen</h2>

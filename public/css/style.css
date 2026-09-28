@@ -160,6 +160,27 @@ h1 .meta, h2 .meta {
   margin-bottom: 20px;
 }
 
+/* Einklappbares Panel (z. B. seltener gebrauchte Admin-Einstellungen) -
+   optisch wie .panel, aber per <details> ein-/ausklappbar; die Ueberschrift
+   im <summary> ist der Klick-Bereich. */
+.panel-details {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.panel-details > summary {
+  cursor: pointer;
+  padding: 20px;
+  list-style: none;
+}
+.panel-details > summary::-webkit-details-marker { display: none; }
+.panel-details > summary::before { content: '▸'; display: inline-block; width: 1em; color: var(--color-muted); }
+.panel-details[open] > summary::before { content: '▾'; }
+.panel-details > summary h2 { display: inline; margin-bottom: 0; }
+.panel-details-body { padding: 0 20px 20px; }
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
