@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Ausgleichsstunden-Übersicht – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <p><a href="/admin">&larr; Zur Übersicht</a></p>
+
+    <div class="page-header">
+      <h1>
+        Ausgleichsstunden – Übersicht
+        <% if (schuljahre.length > 1) { %>
+          <form method="get" action="/admin/uebersicht" class="inline-form schuljahr-wahl">
+            <label for="schuljahr-wahl" class="meta">Schuljahr</label>
+            <select id="schuljahr-wahl" name="schuljahr" data-submit-on-change>
+              <% schuljahre.forEach(sj => { %>
+                <option value="<%= sj %>" <%= sj === schuljahr ? 'selected' : '' %>>
+                  <%= sj %><%= sj === aktuellesSchuljahr ? ' (laufend)' : '' %>
+                </option>
+              <% }) %>
+            </select>
+            <noscript><button type="submit" class="btn">Wechseln</button></noscript>
+          </form>
+        <% } else { %>
+          <span class="meta">Schuljahr <%= schuljahr %></span>
+        <% } %>
+      </h1>
+    </div>
+
+    <% if (!faktorSettings) { %>
+      <p class="alert alert-error">
+        Für das Schuljahr <%= schuljahr %> sind noch keine Zeitstunden pro Woche
+        und Schulwochen festgelegt – die Spalte "Zeitstunden" bleibt deshalb
+        leer.
+      </p>
+    <% } %>
+
+    <div class="tabs" data-tabs>
+      <div class="tab-buttons" role="tablist">
+        <button type="button" class="tab-button active" data-tab-target="tab-uebersicht-kategorie">Pro Kategorie</button>
+        <button type="button" class="tab-button" data-tab-target="tab-uebersicht-person">Pro Person</button>
+      </div>
+
+      <div id="tab-uebersicht-kategorie" data-tab-panel>
+        <section class="panel">
+          <h2>Vergebene Ausgleichsstunden je Kategorie</h2>
+          <p class="hint">
+            Zuweisungen ohne Kategorie-Verknüpfung laufen je Lehrkraft unter
+            "– nicht verknüpft –", damit die Summe hier mit der Summe je
+            Person übereinstimmt.
+          </p>
+          <% if (proKategorie.length === 0) { %>
+            <p class="empty-state">Für <%= schuljahr %> sind noch keine Ausgleichsstunden vergeben.</p>
+          <% } else { %>
+            <div class="table-scroll">
+            <table class="entries-table">
+              <thead>
+                <tr><th>Lehrkraft</th><th>Kategorie</th><th>Ausgleichsstunden</th><th>Zeitstunden</th></tr>
+              </thead>
+              <tbody>
+                <% proKategorie.forEach(row => { %>
+                  <tr>
+                    <td data-label="Lehrkraft"><%= row.display_name %> <span class="meta">(<%= row.username %>)</span></td>
+                    <td data-label="Kategorie"><%= row.kategorie_titel || '– nicht verknüpft –' %></td>
+                    <td data-label="Ausgleichsstunden"><%= row.summe %></td>
+                    <td data-label="Zeitstunden"><%= row.zeitstunden !== null ? row.zeitstunden.toFixed(2) + ' h' : '–' %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Gesamt</strong></td>
+                  <td></td>
+                  <td data-label="Ausgleichsstunden"><strong><%= gesamtKategorie %></strong></td>
+                  <td data-label="Zeitstunden">
+                    <strong><%= faktorSettings ? (gesamtKategorie * faktorSettings.faktor).toFixed(2) + ' h' : '–' %></strong>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+            </div>
+          <% } %>
+        </section>
+      </div>
+
+      <div id="tab-uebersicht-person" data-tab-panel hidden>
+        <section class="panel">
+          <h2>Vergebene Ausgleichsstunden je Lehrkraft</h2>
+          <p class="hint">
+            "Verknüpft" zählt Zuweisungen mit einer Kategorie, "offen" noch
+            nicht verknüpfte.
+          </p>
+          <% if (proPerson.length === 0) { %>
+            <p class="empty-state">Für <%= schuljahr %> sind noch keine Ausgleichsstunden vergeben.</p>
+          <% } else { %>
+            <div class="table-scroll">
+            <table class="entries-table">
+              <thead>
+                <tr><th>Lehrkraft</th><th>Ausgleichsstunden</th><th>davon verknüpft</th><th>davon offen</th><th>Zeitstunden</th></tr>
+              </thead>
+              <tbody>
+                <% proPerson.forEach(row => { %>
+                  <tr>
+                    <td data-label="Lehrkraft"><%= row.display_name %> <span class="meta">(<%= row.username %>)</span></td>
+                    <td data-label="Ausgleichsstunden"><%= row.summe %></td>
+                    <td data-label="davon verknüpft"><%= row.summe_verknuepft %></td>
+                    <td data-label="davon offen"><%= row.summe_offen %></td>
+                    <td data-label="Zeitstunden"><%= row.zeitstunden !== null ? row.zeitstunden.toFixed(2) + ' h' : '–' %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Gesamt</strong></td>
+                  <td data-label="Ausgleichsstunden"><strong><%= gesamtPerson %></strong></td>
+                  <td></td>
+                  <td></td>
+                  <td data-label="Zeitstunden">
+                    <strong><%= faktorSettings ? (gesamtPerson * faktorSettings.faktor).toFixed(2) + ' h' : '–' %></strong>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+            </div>
+          <% } %>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/tabs.js"></script>
+  <script src="/public/js/theme.js"></script>
+</body>
+</html>

@@ -85,6 +85,83 @@ router.get('/', requireAdmin, (req, res) => {
   });
 });
 
+// Alle Schuljahre, fuer die es ueberhaupt eine Zuweisung gibt - global über
+// alle Lehrkraefte, nicht nur die einer einzelnen (anders als schuljahreFuer
+// im Dashboard, das je Lehrkraft filtert). Das laufende Schuljahr ist immer
+// dabei, auch ganz ohne Zuweisungen, damit die Auswahl nie leer ist.
+function alleSchuljahreMitZuweisungen() {
+  const zeilen = db.prepare('SELECT DISTINCT schuljahr FROM zuweisungen').all().map((r) => r.schuljahr);
+  return [...new Set([...zeilen, aktuellesSchuljahr()])].filter(Boolean).sort().reverse();
+}
+
+// Tabellarische Uebersicht der vergebenen Ausgleichsstunden - einmal je
+// Kategorie, einmal je Lehrkraft, jeweils fuer ein wählbares Schuljahr.
+// Zuweisungen ohne Kategorie-Verknuepfung (category_id NULL) laufen in der
+// Kategorie-Tabelle unter einer Sammelzeile "– nicht verknüpft –" je
+// Lehrkraft, statt einfach zu fehlen - so ergibt die Summe beider Tabellen
+// fuer ein Schuljahr immer denselben Gesamtwert.
+router.get('/uebersicht', requireAdmin, (req, res) => {
+  const schuljahre = alleSchuljahreMitZuweisungen();
+  const gewaehlt = String(req.query.schuljahr || '');
+  const schuljahr = istSchuljahr(gewaehlt) && schuljahre.includes(gewaehlt) ? gewaehlt : aktuellesSchuljahr();
+  const faktorSettings = faktorSettingsFuer(schuljahr);
+
+  const proKategorie = db
+    .prepare(
+      `SELECT c.title as kategorie_titel, u.display_name, u.username,
+              SUM(z.ausgleichsstunden) as summe
+       FROM zuweisungen z
+       JOIN categories c ON c.id = z.category_id
+       JOIN users u ON u.id = z.user_id
+       WHERE z.schuljahr = ?
+       GROUP BY c.id
+       UNION ALL
+       SELECT NULL as kategorie_titel, u.display_name, u.username,
+              SUM(z.ausgleichsstunden) as summe
+       FROM zuweisungen z
+       JOIN users u ON u.id = z.user_id
+       WHERE z.schuljahr = ? AND z.category_id IS NULL
+       GROUP BY z.user_id
+       ORDER BY display_name COLLATE NOCASE, kategorie_titel COLLATE NOCASE`
+    )
+    .all(schuljahr, schuljahr)
+    .map((row) => ({
+      ...row,
+      zeitstunden: faktorSettings ? row.summe * faktorSettings.faktor : null,
+    }));
+
+  const proPerson = db
+    .prepare(
+      `SELECT u.display_name, u.username,
+              SUM(z.ausgleichsstunden) as summe,
+              SUM(CASE WHEN z.category_id IS NOT NULL THEN z.ausgleichsstunden ELSE 0 END) as summe_verknuepft,
+              SUM(CASE WHEN z.category_id IS NULL THEN z.ausgleichsstunden ELSE 0 END) as summe_offen
+       FROM zuweisungen z
+       JOIN users u ON u.id = z.user_id
+       WHERE z.schuljahr = ?
+       GROUP BY u.id
+       ORDER BY u.display_name COLLATE NOCASE`
+    )
+    .all(schuljahr)
+    .map((row) => ({
+      ...row,
+      zeitstunden: faktorSettings ? row.summe * faktorSettings.faktor : null,
+    }));
+
+  const gesamt = (zeilen) => zeilen.reduce((s, z) => s + z.summe, 0);
+
+  res.render('admin/uebersicht', {
+    schuljahr,
+    schuljahre,
+    aktuellesSchuljahr: aktuellesSchuljahr(),
+    faktorSettings,
+    proKategorie,
+    proPerson,
+    gesamtKategorie: gesamt(proKategorie),
+    gesamtPerson: gesamt(proPerson),
+  });
+});
+
 router.post('/faktor', requireAdmin, (req, res) => {
   // Frueher wurde immer das laufende Schuljahr geschrieben - ein Vorjahr
   // liess sich damit nicht mehr korrigieren und ein kommendes nicht

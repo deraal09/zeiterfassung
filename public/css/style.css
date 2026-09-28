@@ -307,6 +307,7 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
   font-size: 0.9rem;
 }
 .entries-table tr.archived { opacity: 0.55; }
+.entries-table tfoot td { border-top: 2px solid var(--color-border); border-bottom: none; }
 
 .empty-state { color: var(--color-muted); font-style: italic; }
 

@@ -144,6 +144,15 @@ erfasst und an die Schulleitung übermittelt werden können.
   je Kategorie werden synchronisierte und noch offene (ungemeldete) Stunden
   angezeigt. Die eigene Zeiterfassung bleibt über "Meine Zeiten" in der
   Navigation erreichbar.
+- **Tabellarische Übersicht der Ausgleichsstunden** – über den Button
+  "Tabellarische Übersicht" im Admin-Bereich, mit Schuljahr-Auswahl und zwei
+  Reitern: "Pro Kategorie" (eine Zeile je Kategorie, Zuweisungen ohne
+  Kategorie-Verknüpfung laufen je Lehrkraft unter "– nicht verknüpft –") und
+  "Pro Person" (eine Zeile je Lehrkraft, aufgeteilt in verknüpfte und offene
+  Ausgleichsstunden). Beide Tabellen zeigen zusätzlich die sich aus dem
+  Faktor des gewählten Schuljahres ergebenden Zeitstunden und enden mit
+  einer Gesamt-Zeile; die Summen beider Reiter stimmen für dasselbe
+  Schuljahr immer überein.
 - **Kategorien archivieren oder löschen** – die Lehrkraft kann eine eigene
   Kategorie jederzeit archivieren (verschwindet aus der eigenen Übersicht,
   bleibt inklusive aller Zeiten erhalten – der Admin kann sie bei Bedarf

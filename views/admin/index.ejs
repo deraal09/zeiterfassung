@@ -92,7 +92,10 @@
     </section>
 
     <section class="panel">
-      <h2>Übersicht</h2>
+      <div class="page-header" style="margin-bottom: 8px;">
+        <h2 style="margin-bottom: 0;">Übersicht</h2>
+        <a href="/admin/uebersicht" class="btn">Tabellarische Übersicht</a>
+      </div>
       <p class="hint">Vergebene Ausgleichsstunden je Lehrkraft, über alle Schuljahre summiert.</p>
       <% if (users.length === 0) { %>
         <p class="empty-state">Noch keine Lehrkräfte erfasst.</p>
