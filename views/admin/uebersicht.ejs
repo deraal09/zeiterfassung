@@ -40,15 +40,15 @@
 
     <div class="tabs" data-tabs>
       <div class="tab-buttons" role="tablist">
-        <button type="button" class="tab-button active" data-tab-target="tab-uebersicht-kategorie">Pro Kategorie</button>
+        <button type="button" class="tab-button active" data-tab-target="tab-uebersicht-kategorie">Pro Aufgabenbereich</button>
         <button type="button" class="tab-button" data-tab-target="tab-uebersicht-person">Pro Person</button>
       </div>
 
       <div id="tab-uebersicht-kategorie" data-tab-panel>
         <section class="panel">
-          <h2>Vergebene Ausgleichsstunden je Kategorie</h2>
+          <h2>Vergebene Ausgleichsstunden je Aufgabenbereich</h2>
           <p class="hint">
-            Zuweisungen ohne Kategorie-Verknüpfung laufen je Lehrkraft unter
+            Zuweisungen ohne Aufgabenbereichs-Verknüpfung laufen je Lehrkraft unter
             "– nicht verknüpft –", damit die Summe hier mit der Summe je
             Person übereinstimmt.
           </p>
@@ -58,13 +58,13 @@
             <div class="table-scroll">
             <table class="entries-table">
               <thead>
-                <tr><th>Lehrkraft</th><th>Kategorie</th><th>Ausgleichsstunden</th><th>Zeitstunden</th></tr>
+                <tr><th>Lehrkraft</th><th>Aufgabenbereich</th><th>Ausgleichsstunden</th><th>Zeitstunden</th></tr>
               </thead>
               <tbody>
                 <% proKategorie.forEach(row => { %>
                   <tr>
                     <td data-label="Lehrkraft"><%= row.display_name %> <span class="meta">(<%= row.username %>)</span></td>
-                    <td data-label="Kategorie"><%= row.kategorie_titel || '– nicht verknüpft –' %></td>
+                    <td data-label="Aufgabenbereich"><%= row.kategorie_titel || '– nicht verknüpft –' %></td>
                     <td data-label="Ausgleichsstunden"><%= row.summe %></td>
                     <td data-label="Zeitstunden"><%= row.zeitstunden !== null ? row.zeitstunden.toFixed(2) + ' h' : '–' %></td>
                   </tr>
@@ -90,7 +90,7 @@
         <section class="panel">
           <h2>Vergebene Ausgleichsstunden je Lehrkraft</h2>
           <p class="hint">
-            "Verknüpft" zählt Zuweisungen mit einer Kategorie, "offen" noch
+            "Verknüpft" zählt Zuweisungen mit einem Aufgabenbereich, "offen" noch
             nicht verknüpfte.
           </p>
           <% if (proPerson.length === 0) { %>

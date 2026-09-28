@@ -32,7 +32,7 @@ const ERROR_MESSAGES = {
   'keine-datei': 'Bitte eine CSV-Datei auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
   'unterprojekt-titel-fehlt': 'Bitte einen Titel fuer das Unterprojekt eingeben.',
-  'unterprojekt-nicht-gefunden': 'Das Unterprojekt gehoert nicht zu dieser Kategorie.',
+  'unterprojekt-nicht-gefunden': 'Das Unterprojekt gehoert nicht zu diesem Aufgabenbereich.',
   'auffang-nicht-loeschbar':
     'Dieses Unterprojekt nimmt die Zeiten ohne eigene Zuordnung auf und laesst sich nur loeschen, wenn es das letzte ist.',
 };
@@ -130,7 +130,7 @@ function insertManualEntry(cat, userId, { beschreibung, zeitraum, unterprojektId
 
 router.get('/categories/:id', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, req.session.user.id);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
 
   const laufender = db
     .prepare(
@@ -244,7 +244,7 @@ router.get('/categories/:id', requireAuth, (req, res) => {
 router.post('/categories/:id/start', requireAuth, (req, res) => {
   const userId = req.session.user.id;
   const cat = getOwnedCategory(req.params.id, userId);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
 
   const already = db.prepare('SELECT id FROM time_entries WHERE user_id=? AND end_time IS NULL').get(userId);
   if (already) return res.redirect(`/categories/${cat.id}?error=timer-laeuft`);
@@ -265,7 +265,7 @@ router.post('/categories/:id/start', requireAuth, (req, res) => {
 // angezeigt wird.
 router.get('/categories/:id/export', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, req.session.user.id);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
 
   const sort = req.query.sort === 'asc' ? 'ASC' : 'DESC';
   const von = (req.query.von || '').trim();
@@ -404,7 +404,7 @@ router.post('/entries/:id/delete', requireAuth, (req, res) => {
 router.post('/categories/:id/entries', requireAuth, (req, res) => {
   const userId = req.session.user.id;
   const cat = getOwnedCategory(req.params.id, userId);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
 
   const { beschreibung, datum, bis_datum, von, bis, unterprojekt_id } = req.body;
   if (!datum || !von || !bis) return res.redirect(`/categories/${cat.id}?error=felder-fehlen&formular=nachtragen`);
@@ -426,7 +426,7 @@ router.post('/categories/:id/entries', requireAuth, (req, res) => {
 router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), csrfSchutzNachUpload, (req, res) => {
   const userId = req.session.user.id;
   const cat = getOwnedCategory(req.params.id, userId);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
   if (!req.file) return res.redirect(`/categories/${cat.id}?error=keine-datei&formular=import`);
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
@@ -485,7 +485,7 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), cs
 // weil die offizielle Berechnung dann massgeblich ist.
 router.post('/categories/:id/ziel', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, req.session.user.id);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
   if (kategorieHatZuweisung(cat.id)) return res.redirect(`/categories/${cat.id}`);
 
   const wert = parseFloat(String(req.body.ziel_zeitstunden || '').replace(',', '.'));
@@ -501,7 +501,7 @@ router.post('/categories/:id/ziel', requireAuth, (req, res) => {
 // "Allgemein" zugeordnet - siehe Kommentar an db.js/unterprojekte.
 router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, req.session.user.id);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
 
   const title = (req.body.title || '').trim();
   if (!title) return res.redirect(`/categories/${cat.id}?error=unterprojekt-titel-fehlt&formular=unterprojekte`);
@@ -582,7 +582,7 @@ router.post('/unterprojekte/:id/delete', requireAuth, (req, res) => {
 
 router.post('/categories/:id/sichtbarkeit', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, req.session.user.id);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
 
   const sichtbar = req.body.sichtbar === 'on' ? 1 : 0;
   db.prepare('UPDATE categories SET visible_for_admin=? WHERE id=?').run(sichtbar, cat.id);

@@ -13,27 +13,28 @@ erfasst und an die Schulleitung übermittelt werden können.
   vorherigen Sperre verdoppelt deren Dauer. Eine erfolgreiche Anmeldung setzt
   den Zähler zurück, technische Fehler (z. B. LDAP nicht erreichbar) zählen
   nicht als Fehlversuch. Siehe `src/auth/login-ratelimit.js`.
-- **Schuljahr-Bezug** – alle Kategorien und Zuweisungen gehören zu einem
+- **Schuljahr-Bezug** – alle Aufgabenbereiche und Zuweisungen gehören zu einem
   Schuljahr (Format `YYYY/YY`, Wechsel jeweils zum 1. August). Mit dem neuen
   Schuljahr fangen alle wieder bei 0 an.
 - **Admin vergibt Ausgleichsstunden** – die Schulleitung weist einer Lehrkraft
   eine Anzahl Ausgleichsstunden zu (kein Titel nötig, korrigierbar). Die
   Lehrkraft wird darüber im Dashboard informiert. Optional kann der Admin
-  direkt eine Kategorie der Lehrkraft zur Verknüpfung vorschlagen.
-- **Verknüpfung per Vorschlag und Bestätigung** – eine Zuweisung mit einer
-  Kategorie zu verknüpfen ist immer ein zweiseitiger Vorgang: schlägt der
-  Admin eine Kategorie vor, muss die Lehrkraft sie annehmen oder ablehnen
-  (und stattdessen eine andere vorschlagen); schlägt die Lehrkraft eine
-  Kategorie vor, muss der Admin bestätigen. Solange für die (bestätigte)
-  Kategorie noch keine Zeiten erfasst wurden, lässt sich die Verknüpfung noch
-  per neuem Vorschlag ändern oder aufheben – sobald Zeiten erfasst sind, ist
-  sie fest, damit niemandem bereits geleistete Arbeit nachträglich entzogen
-  wird. Ohne jede Verknüpfung wird eine Kategorie einfach eigenständig für
-  die Zeiterfassung genutzt (mit dem eigenen Ziel, siehe unten).
+  direkt einen Aufgabenbereich der Lehrkraft zur Verknüpfung vorschlagen.
+- **Verknüpfung per Vorschlag und Bestätigung** – eine Zuweisung mit einem
+  Aufgabenbereich zu verknüpfen ist immer ein zweiseitiger Vorgang: schlägt
+  der Admin einen Aufgabenbereich vor, muss die Lehrkraft ihn annehmen oder
+  ablehnen (und stattdessen einen anderen vorschlagen); schlägt die
+  Lehrkraft einen Aufgabenbereich vor, muss der Admin bestätigen. Solange
+  für den (bestätigten) Aufgabenbereich noch keine Zeiten erfasst wurden,
+  lässt sich die Verknüpfung noch per neuem Vorschlag ändern oder aufheben –
+  sobald Zeiten erfasst sind, ist sie fest, damit niemandem bereits
+  geleistete Arbeit nachträglich entzogen wird. Ohne jede Verknüpfung wird
+  ein Aufgabenbereich einfach eigenständig für die Zeiterfassung genutzt
+  (mit dem eigenen Ziel, siehe unten).
 - **Fälschlich zugewiesene Ausgleichsstunden löschen** – der Admin kann eine
   Zuweisung wieder vollständig entfernen, solange dafür noch keine Zeiten
   erfasst wurden. Sind bereits Zeiten erfasst, ist Löschen nicht mehr
-  möglich – die Lehrkraft muss die Zeiten zuerst auf eine andere Kategorie
+  möglich – die Lehrkraft muss die Zeiten zuerst auf einen anderen Aufgabenbereich
   übertragen oder die Verknüpfung lösen (per Vorschlag "keine Verknüpfung",
   vom Admin anzunehmen).
 - **Faktor gilt zentral pro Schuljahr** – einmal vom Admin festgelegt, für
@@ -41,31 +42,33 @@ erfasst und an die Schulleitung übermittelt werden können.
   (z. B. 1,7 × 40 = 68 Zeitstunden je Ausgleichsstunde und Schuljahr).
   Ändert sich einer der beiden Werte, wirkt sich das sofort auf alle
   Zuweisungen dieses Schuljahres aus.
-- **Kategorien legt die Lehrkraft selbst an** – eigener freier Titel
+- **Aufgabenbereiche legt die Lehrkraft selbst an** – eigener freier Titel
   (z. B. "Administration Moodle"), optional mit einem eigenen vorläufigen
   Zeitstunden-Ziel (analog zur Admin-Eingabe). Eine neu zugewiesene
-  Ausgleichsstunden-Menge kann entweder mit einer bestehenden Kategorie
-  **verknüpft** (Vorschlag, siehe oben) oder direkt als neue Kategorie
-  **übernommen** werden (schlägt die neue Kategorie sofort zur Verknüpfung
-  vor). Sobald eine Zuweisung bestätigt verknüpft ist, ersetzt deren
-  offizielle Berechnung das eigene Ziel (das dann nicht mehr änderbar ist,
-  aber zur Erinnerung sichtbar bleibt).
-- **Kategorien sind privat, bis sie freigegeben werden** – der Admin sieht
-  eine Kategorie erst, wenn die Lehrkraft eine Zuweisung damit (bestätigt)
-  verknüpft (dann ist sie automatisch "offiziell") oder sie über einen Haken
-  auf der Kategorie-Seite explizit für den Admin sichtbar macht. Schlägt die
-  Lehrkraft eine Verknüpfung vor, wird der Kategorietitel für den Admin
-  vorab sichtbar, damit er den Vorschlag beurteilen kann.
-- **Umrechnung** – benötigte Zeitstunden einer Kategorie = Summe aller damit
-  verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird als
-  Balken angezeigt.
-- **Unterprojekte gliedern eine Kategorie optional weiter** – z. B. "Kurs A",
-  "Kurs B" innerhalb einer Kategorie, anlegbar im Reiter "Unterprojekte" auf
-  der Kategorie-Seite. Rein optional, kein Pflichtfeld: eine Kategorie ohne
-  Unterprojekte funktioniert unverändert flach. Sobald das erste Unterprojekt
-  angelegt wird, werden alle bis dahin nicht zugeordneten Zeiten automatisch
-  dem Unterprojekt "Allgemein" zugeordnet – ab dann hat jede Zeit dieser
-  Kategorie eins. Beim Start des Timers oder beim Nachtragen lässt sich das
+  Ausgleichsstunden-Menge kann entweder mit einem bestehenden Aufgabenbereich
+  **verknüpft** (Vorschlag, siehe oben) oder direkt als neuer Aufgabenbereich
+  **übernommen** werden (schlägt der neue Aufgabenbereich sofort zur
+  Verknüpfung vor). Sobald eine Zuweisung bestätigt verknüpft ist, ersetzt
+  deren offizielle Berechnung das eigene Ziel (das dann nicht mehr änderbar
+  ist, aber zur Erinnerung sichtbar bleibt).
+- **Aufgabenbereiche sind privat, bis sie freigegeben werden** – der Admin
+  sieht einen Aufgabenbereich erst, wenn die Lehrkraft eine Zuweisung damit
+  (bestätigt) verknüpft (dann ist er automatisch "offiziell") oder ihn über
+  einen Haken auf der Aufgabenbereichs-Seite explizit für den Admin sichtbar
+  macht. Schlägt die Lehrkraft eine Verknüpfung vor, wird der
+  Aufgabenbereichstitel für den Admin vorab sichtbar, damit er den Vorschlag
+  beurteilen kann.
+- **Umrechnung** – benötigte Zeitstunden eines Aufgabenbereichs = Summe aller
+  damit verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird
+  als Balken angezeigt.
+- **Unterprojekte gliedern einen Aufgabenbereich optional weiter** – z. B.
+  "Kurs A", "Kurs B" innerhalb eines Aufgabenbereichs, anlegbar im Reiter
+  "Unterprojekte" auf der Aufgabenbereichs-Seite. Rein optional, kein
+  Pflichtfeld: ein Aufgabenbereich ohne Unterprojekte funktioniert
+  unverändert flach. Sobald das erste Unterprojekt angelegt wird, werden
+  alle bis dahin nicht zugeordneten Zeiten automatisch dem Unterprojekt
+  "Allgemein" zugeordnet – ab dann hat jede Zeit dieses Aufgabenbereichs
+  eins. Beim Start des Timers oder beim Nachtragen lässt sich das
   Unterprojekt gleich mit auswählen (sonst "Allgemein"), und über das
   Aktion-Menü einer Zeile jederzeit einem anderen zuordnen. In der Tabelle
   "Erfasste Tätigkeiten" lässt sich jedes Unterprojekt einzeln auf- und
@@ -73,7 +76,7 @@ erfasst und an die Schulleitung übermittelt werden können.
   Kopfzeile – praktisch, um nur an einem Unterprojekt zu arbeiten und die
   übrigen auszublenden.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
-  drücken; die Zeit wird automatisch erfasst. Auf der Kategorie-Seite ist das
+  drücken; die Zeit wird automatisch erfasst. Auf der Aufgabenbereichs-Seite ist das
   die standardmäßig sichtbare Ansicht (Reiter "Erfassen"); "Zeit nachtragen"
   und "CSV-Import" sind eigene Reiter, die nur bei Bedarf geöffnet werden.
 - **Nachtragen** – vergessene Zeiten werden mit Datum, Von- und Bis-Uhrzeit
@@ -97,42 +100,44 @@ erfasst und an die Schulleitung übermittelt werden können.
   Bis-Datum für Tätigkeiten über Mitternacht und Unterprojekt). Komma,
   Semikolon, Tabulator und Pipe werden automatisch als Trennzeichen erkannt;
   Datum als `YYYY-MM-DD` oder `DD.MM.YYYY`. Ungültige Zeilen werden
-  übersprungen und gezählt, gültige trotzdem importiert. Hat eine Kategorie
+  übersprungen und gezählt, gültige trotzdem importiert. Hat ein Aufgabenbereich
   Unterprojekte, lässt sich beim Import zusätzlich eines aus einer Liste
   auswählen, das für alle Zeilen ohne eigene Unterprojekt-Spalte gilt – eine
   Spalte in der Datei hat für ihre Zeile trotzdem Vorrang. Umgekehrt lassen
-  sich die (aktuell gefilterten) Zeiten einer Kategorie als CSV-Datei
+  sich die (aktuell gefilterten) Zeiten eines Aufgabenbereichs als CSV-Datei
   exportieren – mit Semikolon als Trennzeichen, Komma als Dezimaltrennzeichen
   und UTF-8-BOM, damit Excel die Datei direkt korrekt öffnet.
 - **Schuljahr wechseln** – die Übersicht zeigt standardmäßig das laufende
   Schuljahr; über die Auswahl in der Überschrift lassen sich frühere
-  Schuljahre samt ihrer Kategorien und Zeiten wieder öffnen. Zuweisungen in
+  Schuljahre samt ihrer Aufgabenbereiche und Zeiten wieder öffnen. Zuweisungen in
   anderen Schuljahren werden darüber verlinkt, damit besonders noch nicht
-  verknüpfte nicht übersehen werden. Eine Zuweisung kann nur mit einer
-  Kategorie aus ihrem eigenen Schuljahr verknüpft werden – der Faktor hängt
-  am Schuljahr der Zuweisung, das Ziel wird über die Kategorie angezeigt.
+  verknüpfte nicht übersehen werden. Eine Zuweisung kann nur mit einem
+  Aufgabenbereich aus ihrem eigenen Schuljahr verknüpft werden – der Faktor
+  hängt am Schuljahr der Zuweisung, das Ziel wird über den Aufgabenbereich
+  angezeigt.
 - **Sortierung und Filter der erfassten Tätigkeiten** – die Tabelle lässt sich
   per Klick auf die Spalte "Beginn" nach ältestem oder neuestem Datum zuerst
   sortieren; zusätzlich kann nach einem Datumsbereich (von/bis) und/oder einem
   Suchbegriff in der Beschreibung gefiltert werden.
 - **Grafische Auswertung** – auf dem Dashboard über den Reiter "Auswertung"
-  erreichbar (daneben der Reiter "Neue Kategorie" fürs Anlegen), darunter zwei
-  Unterreiter mit je einem Säulendiagramm. "Zeiten je Kategorie" zeigt die
-  Zeiten des gewählten Schuljahres je Kategorie, unterteilt in bereits
-  synchronisierte und noch nicht synchronisierte (Entwurf) Stunden, farblich
-  unterschieden mit Legende; Kategorien ohne erfasste Zeit erscheinen nicht im
-  Diagramm. "Zeiten im Schuljahresverlauf" zeigt dieselben Zeiten stattdessen
-  über die zwölf Monate des Schuljahres (August bis Juli) verteilt, dort
-  farblich nach Kategorie unterschieden (bis zu acht Kategorien mit fester,
-  Delta-E-validierter Farbzuordnung je Kategorie, weitere fallen unter
+  erreichbar (daneben der Reiter "Neuen Aufgabenbereich" fürs Anlegen),
+  darunter zwei Unterreiter mit je einem Säulendiagramm. "Zeiten je
+  Aufgabenbereich" zeigt die Zeiten des gewählten Schuljahres je
+  Aufgabenbereich, unterteilt in bereits synchronisierte und noch nicht
+  synchronisierte (Entwurf) Stunden, farblich unterschieden mit Legende;
+  Aufgabenbereiche ohne erfasste Zeit erscheinen nicht im Diagramm. "Zeiten
+  im Schuljahresverlauf" zeigt dieselben Zeiten stattdessen über die zwölf
+  Monate des Schuljahres (August bis Juli) verteilt, dort farblich nach
+  Aufgabenbereich unterschieden (bis zu acht Aufgabenbereiche mit fester,
+  Delta-E-validierter Farbzuordnung je Aufgabenbereich, weitere fallen unter
   "Andere"), damit erkennbar ist, zu welcher Zeit im Schuljahr wie viel
   gearbeitet wurde; Monate ohne erfasste Zeit bleiben als sichtbare Lücke
   erhalten. Beide Diagramme lassen sich zwischen gestapelter und gruppierter
   Darstellung per Reiter umschalten. Reines HTML/CSS ohne Diagramm-Bibliothek;
   die Balken-Geometrie berechnet `src/util/auswertung.js` (inklusive
   Mindesthöhe von 2px für sehr kleine, aber von Null verschiedene Werte,
-  damit sie nicht optisch verschwinden). Hat noch keine Kategorie irgendeine
-  Zeit, bleibt der Reiter "Auswertung" ganz ausgeblendet.
+  damit sie nicht optisch verschwinden). Hat noch kein Aufgabenbereich
+  irgendeine Zeit, bleibt der Reiter "Auswertung" ganz ausgeblendet.
 - **Synchronisierung** – Lehrkräfte übermitteln ihre erfassten Zeiten per Button
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – für einen Admin-Account ist das der Startpunkt nach der
@@ -141,29 +146,30 @@ erfasst und an die Schulleitung übermittelt werden können.
   insgesamt vergebenen Ausgleichsstunden und noch nicht verknüpften
   Zuweisungen; ein Klick öffnet die Detailseite. Dort werden Lehrkräfte per
   Live-Suche aus dem LDAP gesucht und bekommen Ausgleichsstunden zugewiesen;
-  je Kategorie werden synchronisierte und noch offene (ungemeldete) Stunden
+  je Aufgabenbereich werden synchronisierte und noch offene (ungemeldete) Stunden
   angezeigt. Die eigene Zeiterfassung bleibt über "Meine Zeiten" in der
   Navigation erreichbar.
 - **Tabellarische Übersicht der Ausgleichsstunden** – über den Button
   "Tabellarische Übersicht" im Admin-Bereich, mit Schuljahr-Auswahl und zwei
-  Reitern: "Pro Kategorie" (eine Zeile je Kategorie, Zuweisungen ohne
-  Kategorie-Verknüpfung laufen je Lehrkraft unter "– nicht verknüpft –") und
+  Reitern: "Pro Aufgabenbereich" (eine Zeile je Aufgabenbereich, Zuweisungen
+  ohne Aufgabenbereichs-Verknüpfung laufen je Lehrkraft unter
+  "– nicht verknüpft –") und
   "Pro Person" (eine Zeile je Lehrkraft, aufgeteilt in verknüpfte und offene
   Ausgleichsstunden). Beide Tabellen zeigen zusätzlich die sich aus dem
   Faktor des gewählten Schuljahres ergebenden Zeitstunden und enden mit
   einer Gesamt-Zeile; die Summen beider Reiter stimmen für dasselbe
   Schuljahr immer überein.
-- **Kategorien archivieren oder löschen** – die Lehrkraft kann eine eigene
-  Kategorie jederzeit archivieren (verschwindet aus der eigenen Übersicht,
-  bleibt inklusive aller Zeiten erhalten – der Admin kann sie bei Bedarf
-  reaktivieren) oder, solange weder Zeiten noch eine
+- **Aufgabenbereiche archivieren oder löschen** – die Lehrkraft kann einen
+  eigenen Aufgabenbereich jederzeit archivieren (verschwindet aus der
+  eigenen Übersicht, bleibt inklusive aller Zeiten erhalten – der Admin kann
+  ihn bei Bedarf reaktivieren) oder, solange weder Zeiten noch eine
   Ausgleichsstunden-Verknüpfung daran hängen, vollständig löschen.
 - **Responsives Design (Smartphone)** – Navigation und Register-Buttons
   brechen auf schmalen Bildschirmen um, statt seitlich abgeschnitten zu
   werden. Jede Datentabelle der App (Erfasste Tätigkeiten, Unterprojekte,
   Admin-Bereich) wird auf Smartphone-Breite (≤ 640px) zu gestapelten,
   beschrifteten Karten je Zeile – vorher lagen hintere Spalten (Aktion-Menü,
-  Kategorie-Verknüpfung, Archivieren/Löschen) innerhalb eines seitlich
+  Aufgabenbereichs-Verknüpfung, Archivieren/Löschen) innerhalb eines seitlich
   scrollenden Rahmens ohne jedes Scroll-Indiz außerhalb des sichtbaren
   Bereichs. Ab Tablet-Breite bleiben es normale Tabellen.
 - **Verschlüsselung der Tätigkeitsbeschreibungen** – die Beschreibungstexte in
@@ -215,8 +221,8 @@ ein Fehler stillschweigend Daten kostet:
   Schema tragen: eine Migration, die in eine zwischenzeitlich entfernte Spalte
   schreibt, bricht den Start jeder älteren Installation ab.
 - **Verschlüsselung** – Roundtrip sowie das Verhalten bei unlesbaren Werten.
-- **Zuweisung ↔ Kategorie** – der Vorschlag/Bestätigen-Ablauf und die Sperre,
-  sobald für eine Kategorie Zeiten erfasst wurden.
+- **Zuweisung ↔ Aufgabenbereich** – der Vorschlag/Bestätigen-Ablauf und die
+  Sperre, sobald für einen Aufgabenbereich Zeiten erfasst wurden.
 - **Eingabeprüfung von Datum und Uhrzeit** sowie die Berechnung der benötigten
   Zeitstunden.
 - **Ratelimit und Redirect-Ziele** – die beiden Stellen, an denen eine zu
@@ -347,7 +353,7 @@ vorhanden):** Statt weiter am Service-Account zu debuggen, kann
 `LDAP_BIND_USER_TEMPLATE` gesetzt werden (Direkt-Bind-Modus) – dann bindet
 jede Anmeldung direkt mit der eigenen Kennung der Lehrkraft, ganz ohne
 Service-Account. `LDAP_BIND_DN`/`LDAP_BIND_PASSWORD` werden dann ignoriert
-(nur noch für die LDAP-Suche im Admin-Bereich beim Zuweisen von Kategorien
-an noch nicht eingeloggte Lehrkräfte relevant – Lehrkräfte, die sich schon
+(nur noch für die LDAP-Suche im Admin-Bereich beim Zuweisen von
+Aufgabenbereichen an noch nicht eingeloggte Lehrkräfte relevant – Lehrkräfte, die sich schon
 einmal angemeldet haben, tauchen unabhängig davon in der normalen
 Admin-Übersicht auf).

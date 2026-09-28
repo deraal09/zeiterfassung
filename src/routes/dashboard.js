@@ -15,14 +15,14 @@ const { balkenDaten, kategorienBalkenDaten, kategorieFarbe, AUSWERTUNG_MAX_KATEG
 const AUSWERTUNG_PLOT_HOEHE_PX = 200;
 
 const ERROR_MESSAGES = {
-  'titel-fehlt': 'Bitte einen Titel fuer die Kategorie eingeben.',
-  'keine-kategorie': 'Bitte eine Kategorie auswaehlen.',
+  'titel-fehlt': 'Bitte einen Titel fuer den Aufgabenbereich eingeben.',
+  'keine-kategorie': 'Bitte einen Aufgabenbereich auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Schulleitung vor.',
-  'vorschlag-ungueltig': 'Die vorgeschlagene Kategorie existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
+  'vorschlag-ungueltig': 'Der vorgeschlagene Aufgabenbereich existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
   'kategorie-nicht-loeschbar':
-    'Diese Kategorie hat bereits erfasste Zeiten oder eine Ausgleichsstunden-Verknuepfung und laesst sich deshalb nicht loeschen - nur archivieren.',
+    'Dieser Aufgabenbereich hat bereits erfasste Zeiten oder eine Ausgleichsstunden-Verknuepfung und laesst sich deshalb nicht loeschen - nur archivieren.',
 };
 
 // Eine Kategorie laesst sich nur endgueltig loeschen, solange nichts an ihr

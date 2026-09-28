@@ -22,7 +22,7 @@
           Das Ziel steht noch nicht fest: Für das Schuljahr dieser Zuweisung hat die Schulleitung
           Zeitstunden pro Woche und Schulwochen noch nicht festgelegt.
         <% } else { %>
-          Für diese Kategorie ist noch kein Ziel hinterlegt.
+          Für diesen Aufgabenbereich ist noch kein Ziel hinterlegt.
         <% } %>
       </p>
     <% } %>
@@ -36,7 +36,7 @@
     </form>
     <% if (hatZuweisung) { %>
       <p class="hint" style="margin-top: 4px;">
-        Diese Kategorie ist bereits mit zugewiesenen Ausgleichsstunden verknüpft und dadurch automatisch für den Admin sichtbar.
+        Dieser Aufgabenbereich ist bereits mit zugewiesenen Ausgleichsstunden verknüpft und dadurch automatisch für den Admin sichtbar.
       </p>
     <% } %>
 
@@ -159,7 +159,7 @@
         <hr>
         <h2>Zeiten als CSV exportieren</h2>
         <p class="hint">
-          Exportiert die aktuell unten gefilterten Zeiten dieser Kategorie
+          Exportiert die aktuell unten gefilterten Zeiten dieses Aufgabenbereichs
           (Beginn, Ende, Dauer, Beschreibung, Unterprojekt, Status) als
           CSV-Datei zum Öffnen in Excel.
         </p>
@@ -209,7 +209,7 @@
           </p>
         <% } else { %>
           <p class="hint">
-            Noch keine Unterprojekte angelegt. Damit lassen sich die Zeiten dieser Kategorie z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
+            Noch keine Unterprojekte angelegt. Damit lassen sich die Zeiten dieses Aufgabenbereichs z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
           </p>
         <% } %>
         <form method="post" action="/categories/<%= category.id %>/unterprojekte" class="inline-form">

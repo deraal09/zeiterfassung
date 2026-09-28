@@ -70,10 +70,11 @@
         <h2>Meine Ausgleichsstunden-Zuweisungen <span class="meta">Schuljahr <%= schuljahr %></span></h2>
         <p class="hint">
           Von der Schulleitung zugewiesene Ausgleichsstunden. Verknüpfe sie mit
-          einer eigenen Kategorie oder übernimm sie als neue Kategorie – ein
-          Vorschlag muss immer von der Schulleitung bestätigt werden, bevor er
-          gilt. Solange für die Kategorie noch keine Zeiten erfasst wurden,
-          lässt sich die Verknüpfung noch per neuem Vorschlag ändern.
+          einem eigenen Aufgabenbereich oder übernimm sie als neuen
+          Aufgabenbereich – ein Vorschlag muss immer von der Schulleitung
+          bestätigt werden, bevor er gilt. Solange für den Aufgabenbereich
+          noch keine Zeiten erfasst wurden, lässt sich die Verknüpfung noch
+          per neuem Vorschlag ändern.
         </p>
         <% zuweisungen.forEach(z => { %>
           <div class="zuweisung-item">
@@ -132,7 +133,7 @@
                 <% if (!z.category_id) { %>
                   <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
                     <%- include('partials/csrf') %>
-                    <input type="text" name="title" placeholder="Titel für neue Kategorie (optional)">
+                    <input type="text" name="title" placeholder="Titel für neuen Aufgabenbereich (optional)">
                     <button type="submit" class="btn btn-start">Übernehmen</button>
                   </form>
                 <% } %>
@@ -146,7 +147,7 @@
     <section class="panel">
       <div class="tabs" data-tabs>
         <div class="tab-buttons" role="tablist">
-          <button type="button" class="tab-button active" data-tab-target="tab-neue-kategorie">Neue Kategorie</button>
+          <button type="button" class="tab-button active" data-tab-target="tab-neue-kategorie">Neuen Aufgabenbereich</button>
           <% /* auswertung und auswertungZeitleiste beruhen auf denselben Zeiteintraegen
                 (nur einmal je Kategorie, einmal je Monat gruppiert) und sind daher immer
                 gemeinsam null oder gemeinsam gesetzt - ein Guard auf auswertung reicht. */ %>
@@ -156,7 +157,7 @@
         </div>
 
         <div id="tab-neue-kategorie" data-tab-panel>
-          <h2>Neue Kategorie anlegen <span class="meta">für <%= schuljahr %></span></h2>
+          <h2>Neuen Aufgabenbereich anlegen <span class="meta">für <%= schuljahr %></span></h2>
           <form method="post" action="/categories" class="inline-form">
             <%- include('partials/csrf') %>
             <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
@@ -170,14 +171,14 @@
           <div id="tab-auswertung" data-tab-panel hidden>
             <div class="tabs" data-tabs>
               <div class="tab-buttons" role="tablist">
-                <button type="button" class="tab-button active" data-tab-target="tab-auswertung-kategorie">Zeiten je Kategorie</button>
+                <button type="button" class="tab-button active" data-tab-target="tab-auswertung-kategorie">Zeiten je Aufgabenbereich</button>
                 <button type="button" class="tab-button" data-tab-target="tab-auswertung-zeitleiste">Zeiten im Schuljahresverlauf</button>
               </div>
 
               <div id="tab-auswertung-kategorie" data-tab-panel>
-                <h2>Zeiten je Kategorie <span class="meta">Schuljahr <%= schuljahr %></span></h2>
+                <h2>Zeiten je Aufgabenbereich <span class="meta">Schuljahr <%= schuljahr %></span></h2>
                 <p class="hint">
-                  Alle erfassten Zeiten dieses Schuljahres im Überblick, je Kategorie
+                  Alle erfassten Zeiten dieses Schuljahres im Überblick, je Aufgabenbereich
                   unterteilt in bereits synchronisierte und noch nicht synchronisierte
                   (Entwurf) Stunden. Noch unklar, ob gestapelt oder gruppiert
                   übersichtlicher ist? Einfach umschalten und vergleichen.
@@ -204,7 +205,7 @@
                 <h2>Zeiten im Schuljahresverlauf <span class="meta">Schuljahr <%= schuljahr %></span></h2>
                 <p class="hint">
                   Alle erfassten Zeiten dieses Schuljahres nach Monat, farblich nach
-                  Kategorie unterschieden. Monate ohne erfasste Zeit erscheinen als
+                  Aufgabenbereich unterschieden. Monate ohne erfasste Zeit erscheinen als
                   Lücke.
                 </p>
                 <div class="tabs" data-tabs>
@@ -228,7 +229,7 @@
     </section>
 
     <% if (categories.length === 0) { %>
-      <p class="empty-state">Noch keine Kategorien für <%= schuljahr %> angelegt.</p>
+      <p class="empty-state">Noch keine Aufgabenbereiche für <%= schuljahr %> angelegt.</p>
     <% } %>
 
     <div class="card-grid">
@@ -250,13 +251,13 @@
           </a>
           <div class="card-actions">
             <form method="post" action="/categories/<%= cat.id %>/archive" class="inline-form"
-                  data-confirm="Kategorie &quot;<%= cat.title %>&quot; archivieren? Sie verschwindet dann aus dieser Übersicht, bleibt aber inklusive aller Zeiten erhalten.">
+                  data-confirm="Aufgabenbereich &quot;<%= cat.title %>&quot; archivieren? Er verschwindet dann aus dieser Übersicht, bleibt aber inklusive aller Zeiten erhalten.">
               <%- include('partials/csrf') %>
               <button type="submit" class="link-button">Archivieren</button>
             </form>
             <% if (cat.loeschbar) { %>
               <form method="post" action="/categories/<%= cat.id %>/delete" class="inline-form"
-                    data-confirm="Kategorie &quot;<%= cat.title %>&quot; endgültig löschen?">
+                    data-confirm="Aufgabenbereich &quot;<%= cat.title %>&quot; endgültig löschen?">
                 <%- include('partials/csrf') %>
                 <button type="submit" class="link-button link-button-danger">Löschen</button>
               </form>

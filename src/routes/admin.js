@@ -9,18 +9,18 @@ const { zielZeitstunden } = require('../util/stunden');
 const ERROR_MESSAGES = {
   'ungueltige-eingabe': 'Bitte eine gueltige Anzahl Ausgleichsstunden eingeben.',
   'kein-benutzer': 'Bitte zuerst eine Lehrkraft aus der LDAP-Suche auswaehlen.',
-  'keine-kategorie': 'Bitte eine Kategorie dieser Lehrkraft auswaehlen.',
+  'keine-kategorie': 'Bitte einen Aufgabenbereich dieser Lehrkraft auswaehlen.',
   'kein-faktor': 'Bitte zuerst Zeitstunden pro Woche und Schulwochen fuer dieses Schuljahr festlegen.',
   'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
   'ungueltiges-kontingent': 'Bitte ein gueltiges Gesamtkontingent (Ausgleichsstunden) eingeben.',
   'ungueltiges-schuljahr': 'Bitte ein Schuljahr in der Schreibweise 2026/27 angeben.',
-  'schuljahr-passt-nicht': 'Die Kategorie gehoert zu einem anderen Schuljahr als die Zuweisung.',
+  'schuljahr-passt-nicht': 'Der Aufgabenbereich gehoert zu einem anderen Schuljahr als die Zuweisung.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Lehrkraft vor.',
-  'vorschlag-ungueltig': 'Die vorgeschlagene Kategorie existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
+  'vorschlag-ungueltig': 'Der vorgeschlagene Aufgabenbereich existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
   'benutzer-nicht-leer':
-    'Dieses Konto laesst sich nicht entfernen: es hat bereits Zuweisungen, Kategorien oder erfasste Zeiten, oder es war schon einmal angemeldet.',
-  'nicht-loeschbar': 'Fuer diese Zuweisung sind bereits Zeiten erfasst - sie kann nicht mehr geloescht werden. Bitte die Lehrkraft bitten, die Zeiten auf eine andere Kategorie zu uebertragen oder die Verknuepfung zu loesen.',
+    'Dieses Konto laesst sich nicht entfernen: es hat bereits Zuweisungen, Aufgabenbereiche oder erfasste Zeiten, oder es war schon einmal angemeldet.',
+  'nicht-loeschbar': 'Fuer diese Zuweisung sind bereits Zeiten erfasst - sie kann nicht mehr geloescht werden. Bitte die Lehrkraft bitten, die Zeiten auf einen anderen Aufgabenbereich zu uebertragen oder die Verknuepfung zu loesen.',
 };
 
 function parseNumber(value) {
@@ -453,7 +453,7 @@ router.post('/users/:id/delete', requireAdmin, (req, res) => {
 
 router.post('/categories/:id/archive', requireAdmin, (req, res) => {
   const cat = db.prepare('SELECT * FROM categories WHERE id=?').get(req.params.id);
-  if (!cat) return res.status(404).render('error', { message: 'Kategorie nicht gefunden.' });
+  if (!cat) return res.status(404).render('error', { message: 'Aufgabenbereich nicht gefunden.' });
   db.prepare('UPDATE categories SET archived = CASE archived WHEN 1 THEN 0 ELSE 1 END WHERE id=?').run(cat.id);
   res.redirect(`/admin/users/${cat.user_id}`);
 });
