@@ -14,10 +14,14 @@
           <%- include('csrf') %>
           <button type="submit" class="link-button">Abmelden</button>
         </form>
+        <%- include('pwa-install') %>
         <%- include('theme-toggle') %>
       </nav>
     <% } else { %>
-      <%- include('theme-toggle') %>
+      <div class="nav-links">
+        <%- include('pwa-install') %>
+        <%- include('theme-toggle') %>
+      </div>
     <% } %>
   </div>
 </header>

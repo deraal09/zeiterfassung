@@ -46,12 +46,25 @@ module.exports = [
       globals: {
         document: 'readonly',
         window: 'readonly',
+        navigator: 'readonly',
         localStorage: 'readonly',
         fetch: 'readonly',
         setInterval: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
         Date: 'readonly',
+      },
+    },
+  },
+  {
+    // Der Service Worker laeuft in seinem eigenen Browser-Kontext (weder
+    // Node noch Window) - "self" ist dort der Worker selbst.
+    files: ['public/sw.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: {
+        self: 'readonly',
+        fetch: 'readonly',
       },
     },
   },

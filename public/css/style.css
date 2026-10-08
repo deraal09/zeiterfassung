@@ -442,7 +442,23 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .theme-toggle button:first-child { border-left: none; }
 .theme-toggle button:hover { color: var(--color-text); }
 .theme-toggle button.active { background: var(--color-primary); color: #fff; }
-.login-page .theme-toggle { position: absolute; top: 16px; right: 16px; }
+.login-page-toolbar { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 8px; }
+
+#pwa-install-button { font-size: 0.85rem; padding: 6px 10px; }
+
+.pwa-install-dialog {
+  max-width: 420px;
+  width: calc(100% - 32px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 20px;
+}
+.pwa-install-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+.pwa-install-dialog h2 { margin-top: 0; }
+.pwa-install-dialog-body ol { padding-left: 20px; margin: 12px 0; }
+.pwa-install-dialog-body li { margin-bottom: 6px; }
 
 /* Beginn und Ende eines Eintrags bestehen aus Datum + Uhrzeit. Beide Felder
    stehen in einer Zelle, damit sich auch eine Taetigkeit ueber Mitternacht

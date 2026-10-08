@@ -25,6 +25,15 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
+// Der Service Worker muss aus dem Wurzelverzeichnis ausgeliefert werden,
+// sonst beschraenkt der Browser seinen Scope auf /public/ und er koennte
+// nur Unterseiten dort, nicht aber die eigentliche App kontrollieren.
+app.get('/sw.js', (req, res) => {
+  res.set('Content-Type', 'application/javascript; charset=UTF-8');
+  res.set('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(__dirname, 'public', 'sw.js'));
+});
+
 app.use(
   session({
     store: new FileStore({ path: path.join(__dirname, 'data', 'sessions'), logFn: () => {} }),

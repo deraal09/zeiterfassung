@@ -1,6 +1,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="/public/css/style.css">
+
+<%# PWA: installierbar unter Android, Windows und Linux (Chrome/Edge) ueber %>
+<%# das Manifest + den Service Worker, siehe public/js/pwa.js. iOS liest %>
+<%# weder Manifest noch beforeinstallprompt - dort zaehlen nur die %>
+<%# apple-touch-icon/apple-mobile-web-app-* Angaben plus die manuelle %>
+<%# "Zum Home-Bildschirm"-Anleitung im Installieren-Dialog. %>
+<link rel="manifest" href="/public/manifest.webmanifest">
+<meta name="theme-color" content="#2563eb">
+<link rel="icon" type="image/png" sizes="32x32" href="/public/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/public/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Zeiterfassung">
 <script nonce="<%= cspNonce %>">
   // Vor dem ersten Rendern anwenden, damit kein falsches Theme aufblitzt.
   (function () {
