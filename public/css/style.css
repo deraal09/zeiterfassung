@@ -610,3 +610,58 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
   .entries-table td[data-label] input[type=number] { width: 100%; }
   .entries-table td.entries-row-actions { display: flex; justify-content: flex-end; }
 }
+
+/* Bedienbarkeit auf dem Smartphone.
+   - Tippflaechen mindestens ca. 44 px hoch (Apple/Google-Richtlinie); vorher
+     waren Navigationslinks, Link-Buttons, Theme-Umschalter und Tabs nur
+     13-34 px hoch und liessen sich mit dem Daumen kaum treffen.
+   - Eingabefelder mit mindestens 16 px Schrift: iOS-Safari zoomt sonst beim
+     Fokussieren automatisch in die Seite und verschiebt das Layout.
+   - Formulare duerfen nie breiter als der Bildschirm werden: Eingabefelder
+     haben von Haus aus eine Mindestbreite (ca. 20 Zeichen), die in einer
+     Flex-Zeile ohne min-width:0 nicht schrumpft und Buttons aus dem Rand
+     schiebt. Deshalb brechen Formularzeilen um und Felder/Buttons nutzen
+     die volle Breite. */
+@media (max-width: 640px) {
+  input[type=text], input[type=password], input[type=number], input[type=date], input[type=time], select,
+  .entries-table input[type=text],
+  .entries-table input[type=date],
+  .entries-table input[type=time] {
+    font-size: 16px;
+    min-height: 44px;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .btn { min-height: 44px; padding: 10px 16px; }
+  .link-button { min-height: 44px; padding: 0 6px; }
+  .aktion-menu-content .link-button { padding: 10px 8px; }
+  .tab-button { min-height: 44px; }
+  summary { min-height: 44px; display: flex; align-items: center; }
+  .panel-details > summary { display: flex; }
+
+  input[type=checkbox] { width: 22px; height: 22px; flex-shrink: 0; }
+  .checkbox { min-height: 44px; gap: 10px; }
+
+  .inline-form { flex-wrap: wrap; max-width: 100%; }
+  .inline-form > input:not([type=hidden]),
+  .inline-form > select { flex: 1 1 100%; }
+  .entry-form > input,
+  .entry-form > select,
+  .entry-form > .btn { flex: 1 1 100%; }
+  .entry-form > .inline-form { flex: 1 1 100%; }
+
+  .zuweisung-item select { flex: 1 1 100%; }
+
+  .topbar-inner { row-gap: 4px; }
+  .brand { display: inline-block; padding: 10px 0; }
+  .nav-links { gap: 0 14px; }
+  .nav-links > a,
+  .nav-links .inline-form > .link-button { display: inline-flex; align-items: center; min-height: 44px; }
+  .nav-user { display: inline-flex; align-items: center; min-height: 44px; }
+  #pwa-install-button { font-size: 0.9rem; padding: 10px 12px; }
+  .theme-toggle button { padding: 0 10px; min-height: 44px; font-size: 0.9rem; }
+  .login-page-toolbar { gap: 8px; }
+
+  main > p > a:only-child { display: inline-block; padding: 12px 0; }
+}
