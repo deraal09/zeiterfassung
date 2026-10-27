@@ -229,6 +229,10 @@ h1 .meta, h2 .meta {
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
+/* Der Textblock muss schrumpfen und umbrechen duerfen, sonst sprengt eine lange
+   Beschreibung ohne Leerzeichen das Banner (und auf dem Smartphone den Bildschirm). */
+.timer-banner > div { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+main { overflow-wrap: break-word; }
 .live-timer { font-variant-numeric: tabular-nums; font-weight: 600; margin-left: 8px; }
 
 .btn {
