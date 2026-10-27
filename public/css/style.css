@@ -267,7 +267,11 @@ main { overflow-wrap: break-word; }
 .entries-table input[type=date],
 .entries-table input[type=time] { padding: 5px 8px; font-size: 0.85rem; }
 
-.inline-form { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.inline-form { display: inline-flex; align-items: center; gap: 8px; margin: 0; flex-wrap: wrap; max-width: 100%; }
+/* Ein Auswahlfeld ist sonst so breit wie sein laengster Eintrag (z. B. ein langer
+   Unterprojekt-Name) und schiebt die Zeile aus dem Rahmen. */
+.inline-form > input:not([type=hidden]),
+.inline-form > select { min-width: 0; max-width: 100%; }
 .entry-form { display: flex; flex-wrap: wrap; gap: 8px; }
 .entry-form input { flex: 1 1 160px; }
 .assign-form { display: flex; flex-direction: column; gap: 10px; max-width: 480px; }
