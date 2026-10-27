@@ -453,6 +453,8 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .login-page-toolbar { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 8px; }
 
 #pwa-install-button { font-size: 0.85rem; padding: 6px 10px; }
+/* .btn setzt display und wuerde sonst das hidden-Attribut aushebeln. */
+#pwa-install-button[hidden] { display: none; }
 
 .pwa-install-dialog {
   max-width: 420px;
