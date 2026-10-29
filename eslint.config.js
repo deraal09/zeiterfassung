@@ -48,6 +48,7 @@ module.exports = [
         window: 'readonly',
         navigator: 'readonly',
         localStorage: 'readonly',
+        sessionStorage: 'readonly',
         fetch: 'readonly',
         setInterval: 'readonly',
         setTimeout: 'readonly',

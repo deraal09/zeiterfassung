@@ -71,10 +71,11 @@ erfasst und an die Schulleitung übermittelt werden können.
   eins. Beim Start des Timers oder beim Nachtragen lässt sich das
   Unterprojekt gleich mit auswählen (sonst "Allgemein"), und über das
   Aktion-Menü einer Zeile jederzeit einem anderen zuordnen. In der Tabelle
-  "Erfasste Tätigkeiten" lässt sich jedes Unterprojekt einzeln auf- und
-  zuklappen, mit seiner Gesamtzeit (Summe aller zugeordneten Zeiten) in der
-  Kopfzeile – praktisch, um nur an einem Unterprojekt zu arbeiten und die
-  übrigen auszublenden.
+  "Erfasste Tätigkeiten" sind alle Unterprojekte zunächst **eingeklappt** und
+  zeigen nur ihre Gesamtzeit (Summe aller zugeordneten Zeiten) in der
+  Kopfzeile; zum Ansehen und Bearbeiten wird das jeweilige Unterprojekt
+  aufgeklappt. Aufgeklappte bleiben im selben Browser-Tab offen, auch wenn
+  sich die Seite nach einer Änderung neu lädt.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
   drücken; die Zeit wird automatisch erfasst. Auf der Aufgabenbereichs-Seite ist das
   die standardmäßig sichtbare Ansicht (Reiter "Erfassen"); "Zeit nachtragen"

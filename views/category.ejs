@@ -246,7 +246,7 @@
 
       <% gruppen.forEach(g => { %>
         <% if (g.title) { %>
-          <details class="unterprojekt-details" open>
+          <details class="unterprojekt-details" data-merken="<%= category.id %>:<%= g.title %>">
             <summary><%= g.title %> <span class="meta"><%= g.stunden.toFixed(2) %> h</span></summary>
             <%- include('partials/entries-table', { entries: g.entries, filter, unterprojekte }) %>
           </details>
@@ -260,6 +260,7 @@
   <script src="/public/js/theme.js"></script>
   <script src="/public/js/forms.js"></script>
   <script src="/public/js/tabs.js"></script>
+  <script src="/public/js/details-merken.js"></script>
   <script src="/public/js/pwa.js"></script>
 </body>
 </html>

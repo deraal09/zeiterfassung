@@ -669,6 +669,7 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
   .tab-button { min-height: 44px; }
   summary { min-height: 44px; display: flex; align-items: center; }
   .panel-details > summary { display: flex; }
+  .unterprojekt-details > summary { align-items: baseline; gap: 8px; }
 
   input[type=checkbox] { width: 22px; height: 22px; flex-shrink: 0; }
   .checkbox { min-height: 44px; gap: 10px; }
