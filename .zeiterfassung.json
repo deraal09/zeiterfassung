@@ -1,4 +1,6 @@
 {
-  "aufgabenbereich": "Zeiterfassung Entwicklung",
+  "aufgabenbereich": "IT-Systeme",
+  "unterprojekt": "Zeiterfassung",
+  "anlegen": false,
   "beschreibung": "Claude Code: {projekt}"
 }
