@@ -139,3 +139,28 @@ test('repariert krumme Zeitstempel, erfindet aber keine Daten', () => {
 
   assert.equal(zeilen[2].start_time, '2026-09-02 08:00:00', 'gueltige Werte bleiben unveraendert');
 });
+
+test('Bestand ohne external_id bekommt Spalte und eindeutigen Index (API-Abgleich)', () => {
+  frischeUmgebung();
+  const { db, initDb } = ladeSrc('db');
+  initDb();
+
+  // Zustand vor Einfuehrung der API nachstellen.
+  db.exec('DROP INDEX idx_time_entries_external');
+  db.exec('ALTER TABLE time_entries DROP COLUMN external_id');
+  assert.ok(!SPALTEN(db, 'time_entries').includes('external_id'));
+
+  assert.doesNotThrow(() => initDb());
+  assert.ok(SPALTEN(db, 'time_entries').includes('external_id'), 'Spalte wurde ergaenzt');
+
+  db.prepare("INSERT INTO users (username, display_name) VALUES ('anna','Anna'), ('bernd','Bernd')").run();
+  db.prepare("INSERT INTO categories (user_id,title,schuljahr) VALUES (1,'A','2026/27'), (2,'B','2026/27')").run();
+  const neu = db.prepare(
+    "INSERT INTO time_entries (category_id,user_id,beschreibung,start_time,external_id) VALUES (?,?,'x','2026-10-08 09:00:00',?)"
+  );
+  neu.run(1, 1, 'k1');
+  neu.run(2, 2, 'k1');
+  assert.throws(() => neu.run(1, 1, 'k1'), /UNIQUE/, 'derselbe Schluessel ist je Benutzer nur einmal erlaubt');
+  neu.run(1, 1, null);
+  assert.doesNotThrow(() => neu.run(1, 1, null), 'Eintraege ohne Schluessel duerfen mehrfach vorkommen');
+});

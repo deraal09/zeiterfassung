@@ -21,6 +21,12 @@ app.set('trust proxy', 1);
 app.use(nonceMiddleware);
 app.use(helmetMiddleware);
 
+// REST-API: Bearer-Token statt Session und CSRF-Token (siehe routes/api.js).
+// Muss vor Session- und CSRF-Middleware stehen, damit API-Aufrufe weder
+// Sessions anlegen noch am CSRF-Schutz scheitern. Eigener Body-Parser mit
+// groesserem Limit, weil ein Sammelabgleich bis zu 200 Eintraege enthaelt.
+app.use('/api/v1', express.json({ limit: '1mb' }), require('./src/routes/api'));
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use('/public', express.static(path.join(__dirname, 'public')));
@@ -56,6 +62,7 @@ app.use(csrfMiddleware);
 app.use('/', require('./src/routes/auth'));
 app.use('/', require('./src/routes/dashboard'));
 app.use('/', require('./src/routes/categories'));
+app.use('/', require('./src/routes/tokens'));
 app.use('/admin', require('./src/routes/admin'));
 
 app.use((req, res) => {
@@ -63,6 +70,17 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
+  // Fehler des JSON-Parsers der API treten vor dem API-Router auf und landen
+  // deshalb hier - sie sollen als JSON beantwortet werden, nicht als HTML.
+  if (req.originalUrl.startsWith('/api/')) {
+    const kaputt = err && err.type === 'entity.parse.failed';
+    return res.status(kaputt ? 400 : 500).json({
+      fehler: {
+        code: kaputt ? 'ungueltige-anfrage' : 'serverfehler',
+        nachricht: kaputt ? 'Der Anfragekoerper ist kein gueltiges JSON.' : 'Ein Fehler ist aufgetreten.',
+      },
+    });
+  }
   console.error(err);
   res.status(500).render('error', { message: 'Ein Fehler ist aufgetreten.' });
 });

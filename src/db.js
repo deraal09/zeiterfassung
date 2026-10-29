@@ -166,6 +166,21 @@ function initDb() {
       ausgefuehrt_am TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Persoenliche API-Zugaenge (siehe routes/api.js): ein Token gehoert genau
+    -- einer Lehrkraft und gibt nur Zugriff auf deren eigene Zeiten. Gespeichert
+    -- wird nur der SHA-256-Hash - das Token selbst wird einmalig bei der
+    -- Erstellung angezeigt und ist danach nicht mehr auslesbar.
+    CREATE TABLE IF NOT EXISTS api_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      token_prefix TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_used_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
+
     CREATE TABLE IF NOT EXISTS login_ratelimit (
       schluessel TEXT PRIMARY KEY,
       fehlversuche INTEGER NOT NULL DEFAULT 0,
@@ -328,6 +343,18 @@ function initDb() {
   if (!timeEntryColumns.includes('unterprojekt_id')) {
     db.exec('ALTER TABLE time_entries ADD COLUMN unterprojekt_id INTEGER REFERENCES unterprojekte(id) ON DELETE SET NULL');
   }
+
+  // Migration fuer Datenbanken vor Einfuehrung der API: external_id ist der
+  // vom aufrufenden Programm vergebene, stabile Schluessel eines Eintrags
+  // (z. B. eine Claude-Code-Sitzung). Er macht den Abgleich wiederholbar -
+  // derselbe Schluessel legt keinen zweiten Eintrag an, sondern aktualisiert
+  // den vorhandenen. Eindeutig nur je Benutzer und nur, wenn gesetzt.
+  if (!timeEntryColumns.includes('external_id')) {
+    db.exec('ALTER TABLE time_entries ADD COLUMN external_id TEXT');
+  }
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_time_entries_external ON time_entries(user_id, external_id) WHERE external_id IS NOT NULL'
+  );
 
   // Migration fuer Datenbanken vor Einfuehrung des Zaehlerverfalls beim
   // Login-Ratelimit: ohne den Zeitpunkt des letzten Fehlversuchs liesse sich

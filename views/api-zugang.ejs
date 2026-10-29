@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>API-Zugang – Zeiterfassung</title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <%- include('partials/nav') %>
+  <main class="container">
+    <p><a href="/">&larr; Zur Übersicht</a></p>
+    <h1>API-Zugang</h1>
+    <p class="hint">
+      Mit einem persönlichen Zugang können Programme in deinem Namen Zeiten
+      lesen und eintragen – zum Beispiel der Abgleich mit deinen
+      Claude-Code-Sitzungen. Ein Zugang gilt nur für <strong>deine</strong>
+      Aufgabenbereiche und Zeiten, nicht für den Admin-Bereich.
+    </p>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+
+    <% if (neuesToken) { %>
+      <section class="panel">
+        <h2>Neuer Zugang erstellt</h2>
+        <p class="alert alert-error">
+          Das Token wird <strong>nur jetzt</strong> angezeigt und lässt sich
+          später nicht mehr auslesen. Bitte jetzt sicher ablegen.
+        </p>
+        <p class="meta">Token (ein Klick markiert alles):</p>
+        <p class="token-box"><%= neuesToken %></p>
+        <p class="meta">Einrichtung, z. B. in der Shell-Konfiguration:</p>
+        <pre class="code-block">export ZEITERFASSUNG_URL="<%= basisUrl %>"
+export ZEITERFASSUNG_TOKEN="<%= neuesToken %>"</pre>
+      </section>
+    <% } %>
+
+    <section class="panel">
+      <h2>Neuen Zugang erstellen</h2>
+      <form method="post" action="/api-zugang" class="inline-form">
+        <%- include('partials/csrf') %>
+        <input type="text" name="name" placeholder="Name, z. B. Laptop Claude Code" maxlength="100" required>
+        <button type="submit" class="btn btn-start">Erstellen</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Deine Zugänge</h2>
+      <% if (tokens.length === 0) { %>
+        <p class="empty-state">Noch kein Zugang erstellt.</p>
+      <% } else { %>
+        <div class="table-scroll">
+        <table class="entries-table">
+          <thead><tr><th>Name</th><th>Token</th><th>Erstellt</th><th>Zuletzt benutzt</th><th></th></tr></thead>
+          <tbody>
+            <% tokens.forEach(t => { %>
+              <tr>
+                <td data-label="Name"><%= t.name %></td>
+                <td data-label="Token"><code><%= t.token_prefix %>…</code></td>
+                <td data-label="Erstellt"><%= t.created_at %></td>
+                <td data-label="Zuletzt benutzt"><%= t.last_used_at || 'noch nie' %></td>
+                <td data-label="Aktion">
+                  <form method="post" action="/api-zugang/<%= t.id %>/widerrufen" class="inline-form"
+                        data-confirm="Zugang &quot;<%= t.name %>&quot; widerrufen? Programme mit diesem Token verlieren sofort den Zugriff.">
+                    <%- include('partials/csrf') %>
+                    <button type="submit" class="link-button link-button-danger">Widerrufen</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <h2>So nutzt du den Zugang</h2>
+      <p class="hint">
+        Die Schnittstelle liegt unter <code><%= basisUrl %>/api/v1</code>. Jeder
+        Aufruf trägt den Header <code>Authorization: Bearer &lt;Token&gt;</code>.
+        Beschreibung aller Funktionen und das Werkzeug für den Abgleich mit
+        Claude Code stehen in der README (Abschnitt "API").
+      </p>
+    </section>
+  </main>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>

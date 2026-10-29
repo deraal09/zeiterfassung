@@ -57,6 +57,13 @@ module.exports = [
     },
   },
   {
+    // Kommandozeilenwerkzeuge und Tests laufen unter Node (>= 22) und nutzen dessen fetch.
+    files: ['tools/**/*.js', 'test/**/*.js'],
+    languageOptions: {
+      globals: { fetch: 'readonly' },
+    },
+  },
+  {
     // Der Service Worker laeuft in seinem eigenen Browser-Kontext (weder
     // Node noch Window) - "self" ist dort der Worker selbst.
     files: ['public/sw.js'],

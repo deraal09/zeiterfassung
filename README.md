@@ -181,6 +181,130 @@ erfasst und an die Schulleitung übermittelt werden können.
   wird. Bestehende, noch unverschlüsselte Einträge werden beim ersten Start
   nach dem Update automatisch verschlüsselt (Migration in `src/db.js`).
 
+## API
+
+Neben der Weboberfläche gibt es eine REST-API unter `/api/v1`, die in **beide
+Richtungen** arbeitet: Programme können eigene Aufgabenbereiche und Zeiten
+**lesen** und Zeiten **eintragen, ändern, löschen** oder per Timer erfassen.
+Gedacht ist sie vor allem für den Abgleich mit Claude-Code-Sitzungen (siehe
+unten), taugt aber für jedes Skript.
+
+### Zugang
+
+Jede Lehrkraft erstellt sich ihre Zugänge selbst: im Dashboard auf
+**API-Zugang**, Namen vergeben, **Erstellen**. Das Token (`zt_…`) wird nur
+dieses eine Mal angezeigt – gespeichert wird lediglich ein Hash. Ein Zugang
+gilt ausschließlich für die **eigenen** Aufgabenbereiche und Zeiten (nie für den
+Admin-Bereich oder andere Personen) und lässt sich jederzeit widerrufen. Wie
+ein Passwort behandeln und nur über HTTPS verwenden.
+
+Jeder Aufruf trägt den Header `Authorization: Bearer <Token>`; die API nutzt
+weder Cookies noch CSRF-Token. Anfragen und Antworten sind JSON.
+
+### Endpunkte
+
+| Methode und Pfad | Zweck |
+| --- | --- |
+| `GET /me` | Konto, laufendes Schuljahr, Serverzeit, ob ein Timer läuft |
+| `GET /aufgabenbereiche?schuljahr=2026/27\|alle&archiviert=1` | eigene Aufgabenbereiche samt Unterprojekten und erfassten Stunden (Standard: laufendes Schuljahr, ohne archivierte) |
+| `POST /aufgabenbereiche` `{titel, schuljahr?}` | legt einen Aufgabenbereich an – oder liefert den gleichnamigen des Schuljahres zurück (`angelegt: false`) |
+| `GET /eintraege?aufgabenbereich_id=&von=&bis=&quelle=&external_id=&limit=&offset=` | Zeiten lesen (`von`/`bis` als Datum, inklusive) |
+| `GET /eintraege/:id` | ein Eintrag |
+| `POST /eintraege` | abgeschlossenen Eintrag anlegen (siehe unten) |
+| `POST /eintraege/abgleich` `{eintraege: [...]}` | bis zu 200 Einträge auf einmal, jeder mit `external_id` |
+| `PATCH /eintraege/:id` | `beschreibung`, `beginn`, `ende`, `unterprojekt(_id)` ändern |
+| `DELETE /eintraege/:id` | Eintrag löschen |
+| `GET /timer`, `POST /timer/start`, `POST /timer/stop` | laufende Erfassung (wie der Start/Stopp-Button) |
+
+Ein Eintrag besteht aus `aufgabenbereich_id`, `beginn`, `ende` und optional
+`beschreibung`, `unterprojekt` (Titel) oder `unterprojekt_id` und `external_id`:
+
+```bash
+curl -X POST "$ZEITERFASSUNG_URL/api/v1/eintraege" \
+  -H "Authorization: Bearer $ZEITERFASSUNG_TOKEN" -H "Content-Type: application/json" \
+  -d '{"aufgabenbereich_id": 3, "beschreibung": "Moodle-Kurs gebaut",
+       "beginn": "2026-10-08 09:00", "ende": "2026-10-08 10:30"}'
+```
+
+- **Zeitangaben:** entweder `YYYY-MM-DD HH:MM` in Serverzeit (wie in der
+  Oberfläche) oder ISO 8601 mit Zone (`2026-10-08T07:30:00Z`), die in die
+  Serverzeit umgerechnet wird. Einträge sind minutengenau, höchstens 24 Stunden
+  lang, das Ende muss nach dem Beginn liegen.
+- **Wiederholbar (`external_id`):** ein selbst vergebener, stabiler Schlüssel je
+  Eintrag. Derselbe Schlüssel legt keinen zweiten Eintrag an, sondern
+  aktualisiert den vorhandenen (`status`: `angelegt`, `aktualisiert` oder
+  `unveraendert`) – so lässt sich ein Abgleich beliebig oft wiederholen. Der
+  Schlüssel ist nur je Benutzer eindeutig.
+- **Unterprojekte:** eine unbekannte Angabe ist ein Fehler (`422`), kein stilles
+  Umbuchen. Ohne Angabe gilt wie in der Oberfläche das Auffang-Unterprojekt
+  "Allgemein".
+- **Status:** per API angelegte Einträge haben die Quelle `api` und sind – wie
+  nachgetragene Zeiten – zunächst Entwurf, bis sie synchronisiert werden
+  (oder sofort, wenn "Automatisch synchronisieren" aktiv ist). Ändert sich ein
+  bereits synchronisierter Eintrag, wird er wieder zum Entwurf.
+- **Fehler** kommen als `{"fehler": {"code": "...", "nachricht": "..."}}` mit
+  passendem HTTP-Status (`401` Token, `404` unbekannt oder fremd, `409` Timer-
+  Konflikt, `422` ungültige Eingabe).
+
+### Claude-Code-Sitzungen mit der Zeiterfassung abgleichen
+
+`tools/claude-zeit.js` liest die lokalen Verläufe von Claude Code
+(`~/.claude/projects/…`), fasst die Aktivität je Sitzung zu Arbeitsblöcken
+zusammen und trägt sie über die API ein. Es läuft auf dem eigenen Rechner und
+kommt ohne zusätzliche Pakete aus (Node ≥ 22). Übertragen werden nur Beginn,
+Ende und eine kurze Beschreibung – **nie der Inhalt der Chats**.
+
+1. **Zugang einrichten** – Token wie oben erstellen und in der Shell setzen
+   (oder in `~/.claude/settings.json` unter `"env"`):
+
+   ```bash
+   export ZEITERFASSUNG_URL="https://zeit.example.de"
+   export ZEITERFASSUNG_TOKEN="zt_…"
+   node tools/claude-zeit.js status        # Verbindung testen
+   ```
+
+2. **Projekt zuordnen** – im Projektordner eine Datei `.zeiterfassung.json`
+   anlegen. Der Aufgabenbereich wird bei Bedarf automatisch angelegt:
+
+   ```json
+   { "aufgabenbereich": "Medienkonzept", "unterprojekt": "Kurs B",
+     "beschreibung": "Claude Code: {projekt}", "anlegen": true }
+   ```
+
+   `unterprojekt` (muss existieren), `beschreibung` und `anlegen` sind
+   optional; statt eines Titels geht auch die numerische ID.
+
+3. **Abgleichen** – erst ansehen, dann eintragen:
+
+   ```bash
+   node tools/claude-zeit.js abgleich --trocken     # nur anzeigen
+   node tools/claude-zeit.js abgleich               # eintragen
+   ```
+
+   Weitere Optionen: `--seit JJJJ-MM-TT` (Standard: 14 Tage), `--pause 15`
+   (Minuten ohne Aktivität, ab denen ein neuer Block beginnt), `--min 1`
+   (kürzere Blöcke ignorieren), `--alle` (jedes Projekt mit
+   `.zeiterfassung.json`), `--projekt <pfad>`, `--aufgabenbereich`,
+   `--unterprojekt`. Mit `bereiche` und `status` lassen sich Aufgabenbereiche
+   und die Verbindung prüfen. Blöcke über Mitternacht werden je Tag geteilt.
+
+Weil jeder Block einen stabilen Schlüssel trägt (`claude-code:<Sitzung>:<Beginn>`),
+darf der Abgleich beliebig oft laufen: Bereits eingetragene Zeiten bleiben
+unverändert, eine fortgesetzte Sitzung aktualisiert ihren Eintrag.
+
+**Automatisch nach jeder Sitzung** (optional) – als Hook in
+`~/.claude/settings.json`; Claude Code startet ihn im Projektordner:
+
+```json
+{ "hooks": { "SessionEnd": [ { "hooks": [
+    { "type": "command", "command": "node /pfad/zur/zeiterfassung/tools/claude-zeit.js abgleich" }
+] } ] } }
+```
+
+**Als Skill** – `tools/claude-code-skill/SKILL.md` nach
+`~/.claude/skills/zeiterfassung/SKILL.md` kopieren und den Pfad darin anpassen;
+danach genügt in einem Claude-Code-Chat `/zeiterfassung`.
+
 ## Technik
 
 - Node.js ≥ 22, Express, EJS (serverseitiges Rendering, kein Build-Schritt nötig)
@@ -197,6 +321,10 @@ erfasst und an die Schulleitung übermittelt werden können.
   Sitzung; ohne gültiges Token weist der Server die Anfrage mit 403 ab. Damit
   kann eine fremde Seite nicht im Namen einer angemeldeten Lehrkraft Zeiten
   löschen oder Zuweisungen ändern.
+- **API-Zugänge** – persönliche Tokens (256 Bit Zufall), in der Datenbank nur
+  als Hash abgelegt und widerrufbar. Ein Token erreicht nur die eigenen Zeiten
+  der jeweiligen Lehrkraft; die API ist bewusst von Session und Admin-Bereich
+  getrennt (siehe `src/routes/api.js`).
 - **Sicherheits-Header** (`helmet`) – unter anderem eine
   Content-Security-Policy: Skripte laufen nur aus eigenen Dateien und aus dem
   einen Inline-Block, der die Nonce des jeweiligen Aufrufs trägt. Skripte in
@@ -225,6 +353,10 @@ ein Fehler stillschweigend Daten kostet:
   Sperre, sobald für einen Aufgabenbereich Zeiten erfasst wurden.
 - **Eingabeprüfung von Datum und Uhrzeit** sowie die Berechnung der benötigten
   Zeitstunden.
+- **API** – Anmeldung per Token, Trennung der Konten, Wiederholbarkeit über
+  `external_id`, Umrechnung von Zeitzonen und die Fehlerfälle; dazu die Logik
+  des Claude-Code-Abgleichs (Blockbildung, Mitternachtsteilung, stabile
+  Schlüssel).
 - **Ratelimit und Redirect-Ziele** – die beiden Stellen, an denen eine zu
   lasche Regel direkt ausnutzbar wäre.
 - **Schuljahres-Logik** – Wechsel am 1. August und die Prüfung der

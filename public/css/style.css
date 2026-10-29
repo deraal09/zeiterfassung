@@ -453,6 +453,26 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
 .login-page-toolbar { position: absolute; top: 16px; right: 16px; display: flex; align-items: center; gap: 8px; }
 
 #pwa-install-button { font-size: 0.85rem; padding: 6px 10px; }
+
+.token-box {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 4px 0 12px;
+  word-break: break-all;
+  user-select: all;
+}
+.code-block {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 4px 0 12px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
 /* .btn setzt display und wuerde sonst das hidden-Attribut aushebeln. */
 #pwa-install-button[hidden] { display: none; }
 
