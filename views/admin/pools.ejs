@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Pools – Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <%- include('../partials/admin-subnav', { aktiv: 'pools', pfad: '/admin/pools' }) %>
+
+    <div class="page-header">
+      <h1>Pools <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+      <a href="/admin/druck/uebersicht?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn" target="_blank" rel="noopener">Übersicht aller Pools drucken</a>
+    </div>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <% if (ok) { %><p class="alert alert-success"><%= ok %></p><% } %>
+
+    <section class="panel">
+      <h2>Neuen Pool anlegen</h2>
+      <p class="hint">
+        Ein Pool ist ein Topf an Ausgleichsstunden für dieses Schuljahr. Aus ihm
+        kann nie mehr vergeben werden, als er enthält.
+      </p>
+      <form method="post" action="/admin/pools" class="entry-form">
+        <%- include('../partials/csrf') %>
+        <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
+        <input type="text" name="name" placeholder="Name, z. B. Digitalisierung" maxlength="100" required>
+        <input type="number" name="stunden" step="0.25" min="0.25" placeholder="Ausgleichsstunden im Pool" required>
+        <button type="submit" class="btn btn-start">Anlegen</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Pools <span class="meta"><%= gesamt.anzahl %> · zusammen <%= zahl(gesamt.stunden) %> h</span></h2>
+      <% if (pools.length === 0) { %>
+        <p class="empty-state">Für <%= schuljahr %> gibt es noch keinen Pool.</p>
+      <% } else { %>
+        <% pools.forEach(p => { %>
+          <form id="pool-edit-<%= p.id %>" method="post" action="/admin/pools/<%= p.id %>/edit">
+            <%- include('../partials/csrf') %>
+          </form>
+        <% }) %>
+        <div class="table-scroll">
+        <table class="entries-table">
+          <thead><tr><th>Pool</th><th>Ausgleichsstunden</th><th>Vergeben</th><th>Frei</th><th>Unterschrift</th><th></th></tr></thead>
+          <tbody>
+            <% pools.forEach(p => { %>
+              <tr>
+                <td data-label="Pool"><input type="text" class="eingabe-breit" name="name" form="pool-edit-<%= p.id %>" value="<%= p.name %>" maxlength="100" required aria-label="Name"></td>
+                <td data-label="Ausgleichsstunden"><input type="number" name="stunden" form="pool-edit-<%= p.id %>" value="<%= p.stunden %>" step="0.25" min="<%= Math.max(0.25, p.vergeben) %>" required aria-label="Ausgleichsstunden" style="width: 110px;"></td>
+                <td data-label="Vergeben"><%= zahl(p.vergeben) %> h</td>
+                <td data-label="Frei"><%= zahl(p.frei) %> h</td>
+                <td data-label="Unterschrift">
+                  <% if (p.dokument) { %><a href="/admin/dokumente/<%= p.dokument.id %>/datei" target="_blank" rel="noopener">vorhanden</a><% } else { %><span class="meta">fehlt</span><% } %>
+                </td>
+                <td data-label="Aktion">
+                  <div class="entries-row-actions">
+                    <button type="submit" form="pool-edit-<%= p.id %>" class="link-button">Speichern</button>
+                    <a href="/admin/pools/<%= p.id %>">Details</a>
+                    <a href="/admin/druck/pool/<%= p.id %>" target="_blank" rel="noopener">Drucken</a>
+                    <% if (p.anzahlZuweisungen === 0 && !p.dokument) { %>
+                      <form method="post" action="/admin/pools/<%= p.id %>/delete" class="inline-form"
+                            data-confirm="Pool &quot;<%= p.name %>&quot; wirklich löschen?">
+                        <%- include('../partials/csrf') %>
+                        <button type="submit" class="link-button link-button-danger">Löschen</button>
+                      </form>
+                    <% } %>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        </div>
+      <% } %>
+    </section>
+
+    <% if (quellen.length > 0) { %>
+      <details class="panel-details" id="uebernehmen"<%= (uebernehmenOffen || pools.length === 0) ? ' open' : '' %>>
+        <summary><h2>Aus einem anderen Schuljahr übernehmen</h2></summary>
+        <div class="panel-details-body">
+          <p class="hint">
+            Kopiert Pools (mit ihren Stunden) und Bereiche nach <strong><%= schuljahr %></strong>.
+            Optional auch die Zuweisungen der Lehrkräfte – dann ohne Verknüpfung zu
+            Aufgabenbereichen und nur, soweit sie in den Pool passen. Bereits Vorhandenes
+            wird nie überschrieben; die Stunden lassen sich danach anpassen.
+          </p>
+          <form method="post" action="/admin/schuljahr/uebernehmen" class="entry-form">
+            <%- include('../partials/csrf') %>
+            <input type="hidden" name="nach" value="<%= schuljahr %>">
+            <select name="von" aria-label="Quell-Schuljahr">
+              <% quellen.forEach(q => { %><option value="<%= q %>"><%= q %></option><% }) %>
+            </select>
+            <label class="checkbox"><input type="checkbox" name="mit_zuweisungen" value="1"> auch Zuweisungen übernehmen</label>
+            <button type="submit" class="btn">Übernehmen</button>
+          </form>
+        </div>
+      </details>
+    <% } %>
+  </main>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>

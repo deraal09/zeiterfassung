@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Bereich <%= bereich.name %> – Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <%- include('../partials/admin-subnav', { aktiv: 'bereiche', pfad: '/admin/bereiche' }) %>
+    <p><a href="/admin/bereiche?schuljahr=<%= encodeURIComponent(schuljahr) %>">&larr; Alle Bereiche</a></p>
+
+    <div class="page-header">
+      <h1>Bereich <%= bereich.name %> <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+      <a href="/admin/druck/bereich/<%= bereich.id %>" class="btn" target="_blank" rel="noopener">Drucken / PDF</a>
+    </div>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <% if (ok) { %><p class="alert alert-success"><%= ok %></p><% } %>
+
+    <section class="panel">
+      <form method="post" action="/admin/bereiche/<%= bereich.id %>/edit" class="entry-form">
+        <%- include('../partials/csrf') %>
+        <input type="hidden" name="zurueck" value="detail">
+        <input type="text" name="name" value="<%= bereich.name %>" maxlength="100" required aria-label="Name">
+        <button type="submit" class="btn">Umbenennen</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Zugeordnete Ausgleichsstunden</h2>
+      <% if (zuweisungen.length === 0) { %>
+        <p class="empty-state">Diesem Bereich sind noch keine Ausgleichsstunden zugeordnet.</p>
+      <% } else { %>
+        <div class="table-scroll">
+        <table class="entries-table">
+          <thead><tr><th>Lehrkraft</th><th>Pool</th><th>Ausgleichsstunden</th><% if (faktor) { %><th>Zeitstunden</th><% } %></tr></thead>
+          <tbody>
+            <% zuweisungen.forEach(z => { %>
+              <tr>
+                <td data-label="Lehrkraft"><a href="/admin/users/<%= z.user_id %>?schuljahr=<%= encodeURIComponent(schuljahr) %>"><%= z.display_name %></a> <span class="meta">(<%= z.username %>)</span></td>
+                <td data-label="Pool"><%= z.pool_name || '–' %></td>
+                <td data-label="Ausgleichsstunden"><%= zahl(z.ausgleichsstunden) %></td>
+                <% if (faktor) { %><td data-label="Zeitstunden"><%= zahl(z.zeitstunden) %> h</td><% } %>
+              </tr>
+            <% }) %>
+          </tbody>
+          <tfoot>
+            <tr><td><strong>Summe</strong></td><td></td><td data-label="Ausgleichsstunden"><strong><%= zahl(summe) %></strong></td><% if (faktor) { %><td data-label="Zeitstunden"><strong><%= zahl(summe * faktor) %> h</strong></td><% } %></tr>
+          </tfoot>
+        </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <h2>Unterschriebener Ausdruck</h2>
+      <p class="hint">Ausdrucken, von Schulleitung und ÖPR unterschreiben lassen und den Scan (PDF, JPG oder PNG) hier hochladen. Zuordnung: Schuljahr <%= schuljahr %>.</p>
+      <%- include('../partials/admin-dokument-upload', { art: 'bereich', zielId: bereich.id, dokSchuljahr: schuljahr, quelle: 'detail' }) %>
+      <%- include('../partials/admin-dokument-liste', { dateien: dokumente }) %>
+    </section>
+  </main>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>

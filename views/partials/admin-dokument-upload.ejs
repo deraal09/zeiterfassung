@@ -1,0 +1,12 @@
+<%# Upload eines unterschriebenen Scans oder Fotos (PDF, JPG, PNG). %>
+<%# Erwartet: art ('pool'|'bereich'|'uebersicht'), zielId (oder null), %>
+<%# dokSchuljahr und quelle ('dokumente' fuehrt zur Dokumenten-Seite zurueck). %>
+<form method="post" action="/admin/dokumente" enctype="multipart/form-data" class="upload-form">
+  <%- include('csrf') %>
+  <input type="hidden" name="art" value="<%= art %>">
+  <input type="hidden" name="ziel_id" value="<%= zielId === null || zielId === undefined ? '' : zielId %>">
+  <input type="hidden" name="schuljahr" value="<%= dokSchuljahr %>">
+  <input type="hidden" name="quelle" value="<%= typeof quelle !== 'undefined' ? quelle : '' %>">
+  <input type="file" name="datei" accept="application/pdf,image/jpeg,image/png" required aria-label="Unterschriebenes Dokument (PDF, JPG oder PNG)">
+  <button type="submit" class="btn">Hochladen</button>
+</form>

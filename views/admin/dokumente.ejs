@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Dokumente – Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <%- include('../partials/admin-subnav', { aktiv: 'dokumente', pfad: '/admin/dokumente' }) %>
+
+    <h1>Unterschriebene Dokumente <span class="meta">Schuljahr <%= schuljahr %> · <%= status.vorhanden %> von <%= status.noetig %></span></h1>
+    <p class="hint">
+      Je Pool, je Bereich und für die Gesamtübersicht: Drucken, von Schulleitung und ÖPR
+      unterschreiben lassen, Scan oder Foto (PDF, JPG, PNG, bis <%= maxMb %> MB) hochladen.
+      Die Dokumente gehören zum gewählten Schuljahr.
+    </p>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <% if (ok) { %><p class="alert alert-success"><%= ok %></p><% } %>
+
+    <%
+      const zeilen = [
+        { name: 'Übersicht aller Pools', art: 'uebersicht', id: null, dokument: status.uebersicht, druck: `/admin/druck/uebersicht?schuljahr=${encodeURIComponent(schuljahr)}` },
+        ...status.proPool.map(p => ({ name: `Pool ${p.name}`, art: 'pool', id: p.id, dokument: p.dokument, druck: `/admin/druck/pool/${p.id}` })),
+        ...status.proBereich.map(b => ({ name: `Bereich ${b.name}`, art: 'bereich', id: b.id, dokument: b.dokument, druck: `/admin/druck/bereich/${b.id}` })),
+      ];
+    %>
+    <section class="panel">
+      <h2>Was unterschrieben werden muss</h2>
+      <div class="table-scroll">
+      <table class="entries-table">
+        <thead><tr><th>Ausdruck</th><th>Stand</th><th>Drucken</th><th>Unterschriebenen Scan hochladen</th></tr></thead>
+        <tbody>
+          <% zeilen.forEach(z => { %>
+            <tr>
+              <td data-label="Ausdruck"><strong><%= z.name %></strong></td>
+              <td data-label="Stand">
+                <% if (z.dokument) { %>
+                  <a href="/admin/dokumente/<%= z.dokument.id %>/datei" target="_blank" rel="noopener">vorhanden</a>
+                  <span class="meta">(<%= z.dokument.hochgeladen_am.slice(0, 10) %>)</span>
+                <% } else { %>
+                  <span class="meta">fehlt</span>
+                <% } %>
+              </td>
+              <td data-label="Drucken"><a href="<%= z.druck %>" target="_blank" rel="noopener">Drucken / PDF</a></td>
+              <td data-label="Hochladen">
+                <%- include('../partials/admin-dokument-upload', { art: z.art, zielId: z.id, dokSchuljahr: schuljahr, quelle: 'dokumente' }) %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Alle hochgeladenen Dateien <span class="meta"><%= dateien.length %></span></h2>
+      <%- include('../partials/admin-dokument-liste', { dateien, zeigeZiel: true }) %>
+    </section>
+  </main>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>

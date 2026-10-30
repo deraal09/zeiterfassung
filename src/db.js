@@ -61,6 +61,50 @@ function initDb() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Pools: getrennte Toepfe an Ausgleichsstunden je Schuljahr (z. B.
+    -- "Schulentwicklung", "Digitalisierung"). Jede Zuweisung gehoert zu genau
+    -- einem Pool, und aus einem Pool kann nie mehr vergeben werden, als er
+    -- enthaelt (siehe util/pools.js). Name je Schuljahr eindeutig.
+    CREATE TABLE IF NOT EXISTS pools (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr TEXT NOT NULL,
+      name TEXT NOT NULL,
+      stunden REAL NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_pools_name ON pools(schuljahr, name COLLATE NOCASE);
+
+    -- Bereiche: organisatorische Gliederung der Personen, die Ausgleichsstunden
+    -- erhalten (z. B. eine Abteilung), ebenfalls je Schuljahr anpassbar. Nicht
+    -- zu verwechseln mit den Aufgabenbereichen (Tabelle categories), die die
+    -- Lehrkraefte selbst fuer ihre Zeiterfassung anlegen.
+    CREATE TABLE IF NOT EXISTS bereiche (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr TEXT NOT NULL,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_bereiche_name ON bereiche(schuljahr, name COLLATE NOCASE);
+
+    -- Unterschriebene Ausdrucke (Scan oder Foto) zu einem Pool, einem Bereich
+    -- oder der Gesamtuebersicht eines Schuljahres. Die Datei liegt unter einem
+    -- Zufallsnamen im Upload-Ordner (siehe routes/admin-dokumente.js), der
+    -- urspruengliche Name dient nur der Anzeige. ziel_id verweist je nach art
+    -- auf pools.id oder bereiche.id (bei 'uebersicht' NULL).
+    CREATE TABLE IF NOT EXISTS admin_dokumente (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schuljahr TEXT NOT NULL,
+      art TEXT NOT NULL,
+      ziel_id INTEGER,
+      dateiname TEXT NOT NULL,
+      datei TEXT NOT NULL UNIQUE,
+      mime TEXT NOT NULL,
+      groesse INTEGER NOT NULL,
+      hochgeladen_von TEXT,
+      hochgeladen_am TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_admin_dokumente_schuljahr ON admin_dokumente(schuljahr);
+
     -- Zuweisungen: Admin vergibt Ausgleichsstunden fuer ein Schuljahr an
     -- eine Lehrkraft, zunaechst ohne Kategorie (category_id NULL =
     -- "offen"/noch nicht verknuepft). Der Faktor steht NICHT hier, sondern
@@ -82,6 +126,8 @@ function initDb() {
       category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
       vorschlag_category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
       vorschlag_von TEXT,
+      pool_id INTEGER REFERENCES pools(id),
+      bereich_id INTEGER REFERENCES bereiche(id) ON DELETE SET NULL,
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -100,11 +146,10 @@ function initDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- Gesamtkontingent an Ausgleichsstunden je Schuljahr, vom Admin gepflegt -
-    -- unabhaengig vom Faktor (der die Umrechnung in Zeitstunden regelt, nicht
-    -- die insgesamt verfuegbare Menge). Zeigt an, wie viel vom Schuljahr-Budget
-    -- bereits ueber alle Lehrkraefte hinweg vergeben ist (Summe aller
-    -- Zuweisungen dieses Schuljahres, live berechnet statt hier gespeichert).
+    -- Frueheres Gesamtkontingent je Schuljahr. Abgeloest durch die Pools (ein
+    -- Gesamtpool ist die Summe seiner Pools); die Tabelle bleibt nur, damit die
+    -- Migration 'pools-aus-kontingent' bestehende Werte in einen Pool
+    -- uebernehmen kann. Wird nicht mehr beschrieben.
     CREATE TABLE IF NOT EXISTS schuljahr_kontingente (
       schuljahr TEXT PRIMARY KEY,
       kontingent_ausgleichsstunden REAL NOT NULL,
@@ -335,6 +380,45 @@ function initDb() {
   if (!zuweisungColumnsFuerVorschlag.includes('vorschlag_von')) {
     db.exec('ALTER TABLE zuweisungen ADD COLUMN vorschlag_von TEXT');
   }
+
+  // Migration fuer Datenbanken vor Einfuehrung der Pools und Bereiche: die
+  // Tabellen pools/bereiche entstehen oben, hier fehlen nur die Spalten an den
+  // Zuweisungen. Bisherige Zuweisungen wandern je Schuljahr in einen Pool
+  // "Allgemein". Dessen Stundenzahl ist das bisherige Gesamtkontingent des
+  // Schuljahres, mindestens aber die Summe der Zuweisungen - sonst waere der
+  // Pool von Anfang an ueberzogen, obwohl sich nichts geaendert hat.
+  const zuweisungColumnsFuerPools = db.prepare('PRAGMA table_info(zuweisungen)').all().map((c) => c.name);
+  if (!zuweisungColumnsFuerPools.includes('pool_id')) {
+    db.exec('ALTER TABLE zuweisungen ADD COLUMN pool_id INTEGER REFERENCES pools(id)');
+  }
+  if (!zuweisungColumnsFuerPools.includes('bereich_id')) {
+    db.exec('ALTER TABLE zuweisungen ADD COLUMN bereich_id INTEGER REFERENCES bereiche(id) ON DELETE SET NULL');
+  }
+  einmalig('pools-aus-kontingent', () => {
+    const jahre = db
+      .prepare(
+        `SELECT schuljahr FROM zuweisungen WHERE pool_id IS NULL
+         UNION SELECT schuljahr FROM schuljahr_kontingente`
+      )
+      .all()
+      .map((r) => r.schuljahr);
+    for (const schuljahr of jahre) {
+      const kontingent = db
+        .prepare('SELECT kontingent_ausgleichsstunden AS k FROM schuljahr_kontingente WHERE schuljahr=?')
+        .get(schuljahr);
+      const summe = db
+        .prepare('SELECT COALESCE(SUM(ausgleichsstunden),0) AS s FROM zuweisungen WHERE schuljahr=? AND pool_id IS NULL')
+        .get(schuljahr).s;
+      const stunden = Math.max(kontingent ? kontingent.k : 0, summe);
+      const info = db
+        .prepare("INSERT OR IGNORE INTO pools (schuljahr, name, stunden) VALUES (?, 'Allgemein', ?)")
+        .run(schuljahr, stunden);
+      const pool = info.changes
+        ? { id: info.lastInsertRowid }
+        : db.prepare("SELECT id FROM pools WHERE schuljahr=? AND name='Allgemein' COLLATE NOCASE").get(schuljahr);
+      db.prepare('UPDATE zuweisungen SET pool_id=? WHERE schuljahr=? AND pool_id IS NULL').run(pool.id, schuljahr);
+    }
+  });
 
   // Migration fuer Datenbanken vor Einfuehrung der Unterprojekte: die neue
   // unterprojekte-Tabelle wird oben bereits per CREATE TABLE IF NOT EXISTS

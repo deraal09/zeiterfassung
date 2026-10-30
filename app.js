@@ -7,6 +7,7 @@ const FileStore = require('session-file-store')(session);
 const config = require('./src/config');
 const { initDb } = require('./src/db');
 const { csrfMiddleware } = require('./src/middleware/csrf');
+const { adminKontext } = require('./src/middleware/admin-kontext');
 const { nonceMiddleware, helmetMiddleware } = require('./src/middleware/security');
 
 initDb();
@@ -15,6 +16,11 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', 1);
+
+// Zahlen in deutscher Schreibweise (Komma, hoechstens zwei Nachkommastellen)
+// fuer alle Ansichten.
+app.locals.zahl = (wert) =>
+  (Math.round(Number(wert) * 100) / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 });
 
 // Vor allem anderen, damit auch Fehlerseiten und statische Dateien die
 // Sicherheits-Header tragen.
@@ -58,12 +64,15 @@ app.use((req, res, next) => {
 // Nach der Session (braucht req.session) und nach express.urlencoded (liest
 // das Token aus req.body) - siehe middleware/csrf.js.
 app.use(csrfMiddleware);
+app.use(adminKontext);
 
 app.use('/', require('./src/routes/auth'));
 app.use('/', require('./src/routes/dashboard'));
 app.use('/', require('./src/routes/categories'));
 app.use('/', require('./src/routes/tokens'));
 app.use('/admin', require('./src/routes/admin'));
+app.use('/admin', require('./src/routes/admin-pools'));
+app.use('/admin', require('./src/routes/admin-dokumente'));
 
 app.use((req, res) => {
   res.status(404).render('error', { message: 'Seite nicht gefunden.' });

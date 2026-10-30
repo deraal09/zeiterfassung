@@ -2,9 +2,11 @@ const router = require('express').Router();
 const { db } = require('../db');
 const { requireAdmin } = require('../middleware/auth');
 const ldap = require('../ldap');
-const { aktuellesSchuljahr, istSchuljahr } = require('../util/schuljahr');
+const { aktuellesSchuljahr, istSchuljahr, schuljahrVerschoben } = require('../util/schuljahr');
 const { vorschlagen, annehmen, ablehnen, istGesperrt } = require('../util/zuweisungen');
 const { zielZeitstunden } = require('../util/stunden');
+const { gesamtPool, poolsMitStand, poolsFuerAuswahl, pruefeZuweisung, bereicheListe, bereicheMitStand } = require('../util/pools');
+const { dokumentStatus } = require('../util/dokumente');
 
 const ERROR_MESSAGES = {
   'ungueltige-eingabe': 'Bitte eine gueltige Anzahl Ausgleichsstunden eingeben.',
@@ -12,7 +14,11 @@ const ERROR_MESSAGES = {
   'keine-kategorie': 'Bitte einen Aufgabenbereich dieser Lehrkraft auswaehlen.',
   'kein-faktor': 'Bitte zuerst Zeitstunden pro Woche und Schulwochen fuer dieses Schuljahr festlegen.',
   'ungueltiger-faktor': 'Bitte gueltige Zeitstunden pro Woche und Schulwochen eingeben.',
-  'ungueltiges-kontingent': 'Bitte ein gueltiges Gesamtkontingent (Ausgleichsstunden) eingeben.',
+  'pool-fehlt': 'Bitte einen Pool auswaehlen - jede vergebene Ausgleichsstunde muss einem Pool zugeordnet sein.',
+  'pool-unbekannt': 'Der ausgewaehlte Pool existiert nicht.',
+  'pool-schuljahr': 'Der Pool gehoert zu einem anderen Schuljahr als die Zuweisung.',
+  'pool-voll': 'Im ausgewaehlten Pool sind nicht genug Ausgleichsstunden uebrig.',
+  'bereich-ungueltig': 'Der ausgewaehlte Bereich existiert nicht oder gehoert zu einem anderen Schuljahr.',
   'ungueltiges-schuljahr': 'Bitte ein Schuljahr in der Schreibweise 2026/27 angeben.',
   'schuljahr-passt-nicht': 'Der Aufgabenbereich gehoert zu einem anderen Schuljahr als die Zuweisung.',
   'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
@@ -42,77 +48,128 @@ function faktorSettingsFuer(schuljahr) {
   };
 }
 
-// Gesamtkontingent an Ausgleichsstunden fuer das Schuljahr - unabhaengig vom
-// Faktor (siehe Kommentar an schuljahr_kontingente in db.js).
-function kontingentFuer(schuljahr) {
-  return db
-    .prepare('SELECT kontingent_ausgleichsstunden FROM schuljahr_kontingente WHERE schuljahr=?')
-    .get(schuljahr);
+// Meldungstext zu ?error=...; bei einem vollen Pool nennt er zusaetzlich, wie
+// viel dort noch frei ist (?frei=...), damit die Korrektur nicht geraten werden muss.
+function fehlerMeldung(query) {
+  const text = ERROR_MESSAGES[query.error];
+  if (!text) return null;
+  const frei = parseFloat(query.frei);
+  if (query.error === 'pool-voll' && Number.isFinite(frei)) {
+    return `${text} Es ${frei === 1 ? 'ist' : 'sind'} nur noch ${frei.toLocaleString('de-DE')} Ausgleichsstunden frei.`;
+  }
+  return text;
 }
 
-// Summe aller vergebenen Ausgleichsstunden eines Schuljahres, unabhaengig
-// davon, ob die Zuweisung bereits mit einer Kategorie verknuepft ist -
-// "vergeben" bedeutet hier "vom Admin zugewiesen", nicht "abgerechnet".
-function vergebenFuer(schuljahr) {
-  return db
-    .prepare('SELECT COALESCE(SUM(ausgleichsstunden),0) as summe FROM zuweisungen WHERE schuljahr=?')
-    .get(schuljahr).summe;
+// Gemeinsame Pruefung fuer das Vergeben neuer Ausgleichsstunden (Seite
+// "Zuweisen" und Lehrkraft-Seite): Stunden, Faktor, Pool samt Restmenge und
+// Bereich. Gibt { ok: true, werte } oder { ok: false, fehler, frei } zurueck;
+// geschrieben wird erst danach, damit bei einem Fehler nichts halb angelegt ist.
+function pruefeNeueZuweisung(body) {
+  const h = parseNumber(body.ausgleichsstunden);
+  if (!(h > 0)) return { ok: false, fehler: 'ungueltige-eingabe' };
+
+  const schuljahr = istSchuljahr(body.schuljahr) ? body.schuljahr : aktuellesSchuljahr();
+  if (faktorSettingsFuer(schuljahr) === null) return { ok: false, fehler: 'kein-faktor' };
+
+  const pool = pruefeZuweisung({ poolId: Number(body.pool_id) || null, schuljahr, stunden: h });
+  if (!pool.ok) return { ok: false, fehler: pool.fehler, frei: pool.frei };
+
+  let bereichId = null;
+  if (body.bereich_id) {
+    const bereich = db.prepare('SELECT id FROM bereiche WHERE id=? AND schuljahr=?').get(Number(body.bereich_id), schuljahr);
+    if (!bereich) return { ok: false, fehler: 'bereich-ungueltig' };
+    bereichId = bereich.id;
+  }
+  return { ok: true, werte: { h, schuljahr, poolId: pool.pool.id, bereichId } };
 }
 
+function fehlerUrl(basis, ergebnis, schuljahr) {
+  const teile = [`error=${ergebnis.fehler}`];
+  if (ergebnis.frei !== undefined) teile.push(`frei=${ergebnis.frei}`);
+  if (schuljahr) teile.push(`schuljahr=${encodeURIComponent(schuljahr)}`);
+  return `${basis}?${teile.join('&')}`;
+}
+
+// Startseite des Admin-Bereichs: wenige Kennzahlen und Kacheln zu den
+// Ansichten, damit jede Aufgabe mit einem Klick erreichbar ist, ohne dass die
+// Seite selbst voll wird. Das Schuljahr kommt aus ?schuljahr (siehe
+// middleware/admin-kontext.js).
 router.get('/', requireAdmin, (req, res) => {
-  // summe_ausgleichsstunden zaehlt ueber alle Schuljahre - fuer die
-  // Standardansicht (Kacheln) reicht diese grobe Zahl, Details gibt es auf
-  // der Lehrkraft-Seite je Schuljahr.
+  const schuljahr = res.locals.adminSchuljahr;
+  const zaehle = (sql) => db.prepare(sql).get(schuljahr).n;
+  const faktor = faktorSettingsFuer(schuljahr);
+
+  res.render('admin/index', {
+    schuljahr,
+    gesamt: gesamtPool(schuljahr),
+    pools: poolsMitStand(schuljahr),
+    anzahlBereiche: zaehle('SELECT COUNT(*) AS n FROM bereiche WHERE schuljahr=?'),
+    anzahlLehrkraefte: zaehle('SELECT COUNT(DISTINCT user_id) AS n FROM zuweisungen WHERE schuljahr=?'),
+    offeneZuweisungen: zaehle('SELECT COUNT(*) AS n FROM zuweisungen WHERE schuljahr=? AND category_id IS NULL'),
+    dokumente: dokumentStatus(schuljahr),
+    naechstesSchuljahr: schuljahrVerschoben(schuljahr, 1),
+    faktorSettings: faktor,
+    error: fehlerMeldung(req.query),
+  });
+});
+
+// Alle Lehrkraefte mit ihren vergebenen Ausgleichsstunden im gewaehlten
+// Schuljahr (Kachelansicht, jede Kachel fuehrt zur Detailseite).
+router.get('/lehrkraefte', requireAdmin, (req, res) => {
+  const schuljahr = res.locals.adminSchuljahr;
   const users = db
     .prepare(
       `SELECT u.*,
-        (SELECT COUNT(*) FROM zuweisungen z WHERE z.user_id=u.id AND z.category_id IS NULL) as offene_zuweisungen,
-        (SELECT COALESCE(SUM(z.ausgleichsstunden),0) FROM zuweisungen z WHERE z.user_id=u.id) as summe_ausgleichsstunden
+        (SELECT COUNT(*) FROM zuweisungen z WHERE z.user_id=u.id AND z.schuljahr=? AND z.category_id IS NULL) AS offene_zuweisungen,
+        (SELECT COALESCE(SUM(z.ausgleichsstunden),0) FROM zuweisungen z WHERE z.user_id=u.id AND z.schuljahr=?) AS summe_ausgleichsstunden,
+        (SELECT COUNT(*) FROM zuweisungen z WHERE z.user_id=u.id) AS alle_zuweisungen
        FROM users u ORDER BY u.display_name COLLATE NOCASE`
     )
-    .all();
-  const schuljahr = aktuellesSchuljahr();
+    .all(schuljahr, schuljahr);
+  res.render('admin/lehrkraefte', { schuljahr, users, error: fehlerMeldung(req.query) });
+});
 
-  // Alle gepflegten Schuljahre, damit sich ein Vorjahr korrigieren und ein
-  // kommendes vorbereiten laesst.
+// Formular zum Vergeben von Ausgleichsstunden: Person, Stunden, Pool (mit
+// Anzeige, wie viel dort schon vergeben und noch frei ist) und Bereich.
+router.get('/zuweisen', requireAdmin, (req, res) => {
+  const schuljahr = res.locals.adminSchuljahr;
+  res.render('admin/zuweisen', {
+    schuljahr,
+    pools: poolsFuerAuswahl(schuljahr),
+    bereiche: bereicheListe(schuljahr),
+    faktorSettings: faktorSettingsFuer(schuljahr),
+    error: fehlerMeldung(req.query),
+  });
+});
+
+// Faktor-Pflege (frueher Teil der Startseite): pro Schuljahr Zeitstunden je
+// Woche x Schulwochen.
+router.get('/faktor', requireAdmin, (req, res) => {
+  const schuljahr = res.locals.adminSchuljahr;
   const alleFaktoren = db
     .prepare(
-      `SELECT sf.*, sf.zeitstunden_pro_woche * sf.schulwochen as faktor,
-              (SELECT COUNT(*) FROM zuweisungen z WHERE z.schuljahr = sf.schuljahr) as zuweisungen
+      `SELECT sf.*, sf.zeitstunden_pro_woche * sf.schulwochen AS faktor,
+              (SELECT COUNT(*) FROM zuweisungen z WHERE z.schuljahr = sf.schuljahr) AS zuweisungen
        FROM schuljahr_faktoren sf ORDER BY sf.schuljahr DESC`
     )
     .all();
-
   // Schuljahre mit Zuweisungen, fuer die noch kein Faktor gepflegt ist -
   // dort steht das Stundenziel sonst stillschweigend auf "unbekannt".
   const faktorFehlt = db
     .prepare(
-      `SELECT z.schuljahr, COUNT(*) as zuweisungen FROM zuweisungen z
+      `SELECT z.schuljahr, COUNT(*) AS zuweisungen FROM zuweisungen z
        LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        WHERE sf.schuljahr IS NULL GROUP BY z.schuljahr ORDER BY z.schuljahr DESC`
     )
     .all();
-
-  res.render('admin/index', {
-    users,
+  res.render('admin/faktor', {
     schuljahr,
     faktorSettings: faktorSettingsFuer(schuljahr),
     alleFaktoren,
     faktorFehlt,
-    kontingent: kontingentFuer(schuljahr),
-    vergeben: vergebenFuer(schuljahr),
-    error: ERROR_MESSAGES[req.query.error] || null,
+    error: fehlerMeldung(req.query),
   });
 });
-
-// Alle Schuljahre, fuer die es ueberhaupt eine Zuweisung gibt - global über
-// alle Lehrkraefte, nicht nur die einer einzelnen (anders als schuljahreFuer
-// im Dashboard, das je Lehrkraft filtert). Das laufende Schuljahr ist immer
-// dabei, auch ganz ohne Zuweisungen, damit die Auswahl nie leer ist.
-function alleSchuljahreMitZuweisungen() {
-  const zeilen = db.prepare('SELECT DISTINCT schuljahr FROM zuweisungen').all().map((r) => r.schuljahr);
-  return [...new Set([...zeilen, aktuellesSchuljahr()])].filter(Boolean).sort().reverse();
-}
 
 // Tabellarische Uebersicht der vergebenen Ausgleichsstunden - einmal je
 // Kategorie, einmal je Lehrkraft, jeweils fuer ein wählbares Schuljahr.
@@ -121,9 +178,8 @@ function alleSchuljahreMitZuweisungen() {
 // Lehrkraft, statt einfach zu fehlen - so ergibt die Summe beider Tabellen
 // fuer ein Schuljahr immer denselben Gesamtwert.
 router.get('/uebersicht', requireAdmin, (req, res) => {
-  const schuljahre = alleSchuljahreMitZuweisungen();
-  const gewaehlt = String(req.query.schuljahr || '');
-  const schuljahr = istSchuljahr(gewaehlt) && schuljahre.includes(gewaehlt) ? gewaehlt : aktuellesSchuljahr();
+  const schuljahr = res.locals.adminSchuljahr;
+  const schuljahre = res.locals.adminSchuljahre;
   const faktorSettings = faktorSettingsFuer(schuljahr);
 
   const proKategorie = db
@@ -175,6 +231,10 @@ router.get('/uebersicht', requireAdmin, (req, res) => {
     schuljahre,
     aktuellesSchuljahr: aktuellesSchuljahr(),
     faktorSettings,
+    gesamt: gesamtPool(schuljahr),
+    pools: poolsMitStand(schuljahr),
+    bereiche: bereicheMitStand(schuljahr),
+    dokumente: dokumentStatus(schuljahr),
     proKategorie,
     proPerson,
     gesamtKategorie: gesamt(proKategorie),
@@ -187,12 +247,12 @@ router.post('/faktor', requireAdmin, (req, res) => {
   // liess sich damit nicht mehr korrigieren und ein kommendes nicht
   // vorbereiten.
   const schuljahr = req.body.schuljahr || aktuellesSchuljahr();
-  if (!istSchuljahr(schuljahr)) return res.redirect('/admin?error=ungueltiges-schuljahr');
+  if (!istSchuljahr(schuljahr)) return res.redirect('/admin/faktor?error=ungueltiges-schuljahr');
 
   const zeitstunden = parseNumber(req.body.zeitstunden);
   const schulwochen = parseNumber(req.body.schulwochen);
   if (!(zeitstunden > 0) || !(schulwochen > 0)) {
-    return res.redirect('/admin?error=ungueltiger-faktor');
+    return res.redirect(`/admin/faktor?error=ungueltiger-faktor&schuljahr=${encodeURIComponent(schuljahr)}`);
   }
 
   db.prepare(
@@ -205,26 +265,7 @@ router.post('/faktor', requireAdmin, (req, res) => {
        updated_at=excluded.updated_at`
   ).run(schuljahr, zeitstunden, schulwochen, req.session.user.username);
 
-  res.redirect('/admin');
-});
-
-router.post('/kontingent', requireAdmin, (req, res) => {
-  const schuljahr = req.body.schuljahr || aktuellesSchuljahr();
-  if (!istSchuljahr(schuljahr)) return res.redirect('/admin?error=ungueltiges-schuljahr');
-
-  const kontingent = parseNumber(req.body.kontingent_ausgleichsstunden);
-  if (!(kontingent >= 0)) return res.redirect('/admin?error=ungueltiges-kontingent');
-
-  db.prepare(
-    `INSERT INTO schuljahr_kontingente (schuljahr, kontingent_ausgleichsstunden, updated_by, updated_at)
-     VALUES (?,?,?,datetime('now'))
-     ON CONFLICT(schuljahr) DO UPDATE SET
-       kontingent_ausgleichsstunden=excluded.kontingent_ausgleichsstunden,
-       updated_by=excluded.updated_by,
-       updated_at=excluded.updated_at`
-  ).run(schuljahr, kontingent, req.session.user.username);
-
-  res.redirect('/admin');
+  res.redirect(`/admin/faktor?schuljahr=${encodeURIComponent(schuljahr)}`);
 });
 
 router.get('/ldap-search', requireAdmin, async (req, res) => {
@@ -293,14 +334,24 @@ router.get('/users/:id', requireAdmin, (req, res) => {
     .prepare(
       `SELECT z.*, sf.zeitstunden_pro_woche * sf.schulwochen as faktor,
               c.title as category_title, vc.title as vorschlag_category_title,
+              p.name AS pool_name, b.name AS bereich_name,
               EXISTS(SELECT 1 FROM time_entries te WHERE te.category_id = z.category_id) as gesperrt
        FROM zuweisungen z
        LEFT JOIN schuljahr_faktoren sf ON sf.schuljahr = z.schuljahr
        LEFT JOIN categories c ON c.id = z.category_id
        LEFT JOIN categories vc ON vc.id = z.vorschlag_category_id
-       WHERE z.user_id=? ORDER BY z.created_at DESC`
+       LEFT JOIN pools p ON p.id = z.pool_id
+       LEFT JOIN bereiche b ON b.id = z.bereich_id
+       WHERE z.user_id=? ORDER BY z.schuljahr DESC, z.created_at DESC`
     )
-    .all(teacher.id);
+    .all(teacher.id)
+    // Je Zuweisung die Pools und Bereiche IHRES Schuljahres; bei den Pools
+    // gilt als frei, was ohne diese eine Zuweisung noch uebrig waere.
+    .map((z) => ({
+      ...z,
+      poolOptionen: poolsFuerAuswahl(z.schuljahr, z),
+      bereichOptionen: bereicheListe(z.schuljahr),
+    }));
 
   const zaehleFuerTeacher = (tabelle) =>
     db.prepare(`SELECT COUNT(*) as c FROM ${tabelle} WHERE user_id=?`).get(teacher.id).c;
@@ -317,8 +368,10 @@ router.get('/users/:id', requireAdmin, (req, res) => {
     categories,
     hiddenCategoryCount,
     zuweisungen,
-    aktuellesSchuljahr: aktuellesSchuljahr(),
-    error: ERROR_MESSAGES[req.query.error] || null,
+    schuljahr: res.locals.adminSchuljahr,
+    pools: poolsFuerAuswahl(res.locals.adminSchuljahr),
+    bereiche: bereicheListe(res.locals.adminSchuljahr),
+    error: fehlerMeldung(req.query),
   });
 });
 
@@ -326,13 +379,10 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   const teacher = db.prepare('SELECT * FROM users WHERE id=?').get(req.params.id);
   if (!teacher) return res.status(404).render('error', { message: 'Lehrkraft nicht gefunden.' });
 
-  const h = parseNumber(req.body.ausgleichsstunden);
-  if (!(h > 0)) return res.redirect(`/admin/users/${teacher.id}?error=ungueltige-eingabe`);
-
-  const schuljahr = aktuellesSchuljahr();
-  if (faktorSettingsFuer(schuljahr) === null) {
-    return res.redirect(`/admin/users/${teacher.id}?error=kein-faktor`);
-  }
+  const zurueck = `/admin/users/${teacher.id}`;
+  const pruefung = pruefeNeueZuweisung(req.body);
+  if (!pruefung.ok) return res.redirect(fehlerUrl(zurueck, pruefung, req.body.schuljahr));
+  const { h, schuljahr, poolId, bereichId } = pruefung.werte;
 
   // Verknuepfung mit einer Kategorie der Lehrkraft ist optional - der Admin
   // kann direkt eine Kategorie vorschlagen, muss aber nicht (dann erledigt
@@ -348,21 +398,44 @@ router.post('/users/:id/zuweisungen', requireAdmin, (req, res) => {
   }
 
   db.prepare(
-    'INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, vorschlag_category_id, vorschlag_von, created_by) VALUES (?,?,?,?,?,?)'
-  ).run(teacher.id, schuljahr, h, vorschlagCategoryId, vorschlagCategoryId ? 'admin' : null, req.session.user.username);
+    `INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, pool_id, bereich_id, vorschlag_category_id, vorschlag_von, created_by)
+     VALUES (?,?,?,?,?,?,?,?)`
+  ).run(teacher.id, schuljahr, h, poolId, bereichId, vorschlagCategoryId, vorschlagCategoryId ? 'admin' : null, req.session.user.username);
 
-  res.redirect(`/admin/users/${teacher.id}`);
+  res.redirect(`${zurueck}?schuljahr=${encodeURIComponent(schuljahr)}`);
 });
 
+// Aendert Stunden, Pool und Bereich einer Zuweisung. Auch hier gilt die
+// Grenze des Pools - die bisherigen Stunden dieser Zuweisung zaehlen dabei
+// nicht doppelt (ausserId).
 router.post('/zuweisungen/:id/edit', requireAdmin, (req, res) => {
   const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=?').get(req.params.id);
   if (!zuweisung) return res.status(404).render('error', { message: 'Zuweisung nicht gefunden.' });
 
+  const zurueck = `/admin/users/${zuweisung.user_id}`;
   const h = parseNumber(req.body.ausgleichsstunden);
-  if (!(h > 0)) return res.redirect(`/admin/users/${zuweisung.user_id}?error=ungueltige-eingabe`);
+  if (!(h > 0)) return res.redirect(fehlerUrl(zurueck, { fehler: 'ungueltige-eingabe' }, zuweisung.schuljahr));
 
-  db.prepare('UPDATE zuweisungen SET ausgleichsstunden=? WHERE id=?').run(h, zuweisung.id);
-  res.redirect(`/admin/users/${zuweisung.user_id}`);
+  const poolId = req.body.pool_id ? Number(req.body.pool_id) : zuweisung.pool_id;
+  const pool = pruefeZuweisung({ poolId, schuljahr: zuweisung.schuljahr, stunden: h, ausserId: zuweisung.id });
+  if (!pool.ok) return res.redirect(fehlerUrl(zurueck, pool, zuweisung.schuljahr));
+
+  let bereichId = null;
+  if (req.body.bereich_id) {
+    const bereich = db
+      .prepare('SELECT id FROM bereiche WHERE id=? AND schuljahr=?')
+      .get(Number(req.body.bereich_id), zuweisung.schuljahr);
+    if (!bereich) return res.redirect(fehlerUrl(zurueck, { fehler: 'bereich-ungueltig' }, zuweisung.schuljahr));
+    bereichId = bereich.id;
+  }
+
+  db.prepare('UPDATE zuweisungen SET ausgleichsstunden=?, pool_id=?, bereich_id=? WHERE id=?').run(
+    h,
+    pool.pool.id,
+    bereichId,
+    zuweisung.id
+  );
+  res.redirect(`${zurueck}?schuljahr=${encodeURIComponent(zuweisung.schuljahr)}`);
 });
 
 // Schlaegt eine (neue oder geaenderte) Verknuepfung vor - wird erst wirksam,
@@ -448,7 +521,7 @@ router.post('/users/:id/delete', requireAdmin, (req, res) => {
   if (!unberuehrt) return res.redirect(`/admin/users/${teacher.id}?error=benutzer-nicht-leer`);
 
   db.prepare('DELETE FROM users WHERE id=?').run(teacher.id);
-  res.redirect('/admin');
+  res.redirect('/admin/lehrkraefte');
 });
 
 router.post('/categories/:id/archive', requireAdmin, (req, res) => {
@@ -458,9 +531,16 @@ router.post('/categories/:id/archive', requireAdmin, (req, res) => {
   res.redirect(`/admin/users/${cat.user_id}`);
 });
 
+// Vergibt Ausgleichsstunden an eine Person (auch an eine noch nicht erfasste -
+// sie wird dabei angelegt) aus einem Pool. Erst pruefen, dann schreiben: ein
+// Fehler (z. B. voller Pool) darf kein verwaistes Konto hinterlassen.
 router.post('/assign', requireAdmin, (req, res) => {
-  const { username, displayName, email, ausgleichsstunden } = req.body;
-  if (!username) return res.redirect('/admin?error=kein-benutzer');
+  const { username, displayName, email } = req.body;
+  const schuljahr = istSchuljahr(req.body.schuljahr) ? req.body.schuljahr : aktuellesSchuljahr();
+  if (!username) return res.redirect(fehlerUrl('/admin/zuweisen', { fehler: 'kein-benutzer' }, schuljahr));
+
+  const pruefung = pruefeNeueZuweisung({ ...req.body, schuljahr });
+  if (!pruefung.ok) return res.redirect(fehlerUrl('/admin/zuweisen', pruefung, schuljahr));
 
   let user = db.prepare('SELECT * FROM users WHERE username = ? COLLATE NOCASE').get(username);
   if (!user) {
@@ -470,22 +550,12 @@ router.post('/assign', requireAdmin, (req, res) => {
     user = db.prepare('SELECT * FROM users WHERE id=?').get(info.lastInsertRowid);
   }
 
-  const h = parseNumber(ausgleichsstunden);
-  if (!(h > 0)) return res.redirect(`/admin/users/${user.id}?error=ungueltige-eingabe`);
+  const { h, poolId, bereichId } = pruefung.werte;
+  db.prepare(
+    'INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, pool_id, bereich_id, created_by) VALUES (?,?,?,?,?,?)'
+  ).run(user.id, schuljahr, h, poolId, bereichId, req.session.user.username);
 
-  const schuljahr = aktuellesSchuljahr();
-  if (faktorSettingsFuer(schuljahr) === null) {
-    return res.redirect(`/admin/users/${user.id}?error=kein-faktor`);
-  }
-
-  db.prepare('INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden, created_by) VALUES (?,?,?,?)').run(
-    user.id,
-    schuljahr,
-    h,
-    req.session.user.username
-  );
-
-  res.redirect(`/admin/users/${user.id}`);
+  res.redirect(`/admin/users/${user.id}?schuljahr=${encodeURIComponent(schuljahr)}`);
 });
 
 module.exports = router;

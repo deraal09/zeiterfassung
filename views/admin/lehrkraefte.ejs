@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Lehrkräfte – Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <%- include('../partials/admin-subnav', { aktiv: 'lehrkraefte', pfad: '/admin/lehrkraefte' }) %>
+
+    <div class="page-header">
+      <h1>Lehrkräfte <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+      <a href="/admin/zuweisen?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn btn-start">Ausgleichsstunden zuweisen</a>
+    </div>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+
+    <% if (users.length === 0) { %>
+      <p class="empty-state">Noch keine Lehrkräfte erfasst.</p>
+    <% } %>
+    <div class="card-grid">
+      <% users.forEach(u => { %>
+        <a class="card" href="/admin/users/<%= u.id %>?schuljahr=<%= encodeURIComponent(schuljahr) %>">
+          <h2><%= u.display_name %></h2>
+          <p class="meta"><%= u.username %></p>
+          <p class="progress-label"><strong><%= zahl(u.summe_ausgleichsstunden) %></strong> Ausgleichsstunden in <%= schuljahr %></p>
+          <% if (u.offene_zuweisungen > 0) { %>
+            <p class="hint" style="margin: 0;">
+              <%= u.offene_zuweisungen %> noch nicht verknüpfte Zuweisung<%= u.offene_zuweisungen === 1 ? '' : 'en' %>
+            </p>
+          <% } %>
+        </a>
+      <% }) %>
+    </div>
+  </main>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>

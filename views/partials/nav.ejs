@@ -25,3 +25,20 @@
     <% } %>
   </div>
 </header>
+<% if (user && user.isAdmin && typeof poolBadge !== 'undefined' && poolBadge) { %>
+  <%# Gesamtpool des gewaehlten Schuljahres - auf jeder Seite oben rechts. %>
+  <div class="pool-leiste">
+    <a class="pool-badge" href="/admin/pools?schuljahr=<%= encodeURIComponent(poolBadge.schuljahr) %>"
+       title="Zu den Pools des Schuljahres <%= poolBadge.schuljahr %>">
+      <% if (poolBadge.anzahl === 0) { %>
+        <span class="pool-badge-label">Gesamtpool <%= poolBadge.schuljahr %></span>
+        <strong>noch kein Pool angelegt</strong>
+      <% } else { %>
+        <span class="pool-badge-label">Gesamtpool <%= poolBadge.schuljahr %></span>
+        <strong><%= zahl(poolBadge.stunden) %> h</strong>
+        <span class="pool-badge-teil"><%= zahl(poolBadge.vergeben) %> vergeben</span>
+        <span class="pool-badge-teil"><%= zahl(poolBadge.frei) %> frei</span>
+      <% } %>
+    </a>
+  </div>
+<% } %>

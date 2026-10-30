@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Pool <%= pool.name %> – Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <%- include('../partials/admin-subnav', { aktiv: 'pools', pfad: '/admin/pools' }) %>
+    <p><a href="/admin/pools?schuljahr=<%= encodeURIComponent(schuljahr) %>">&larr; Alle Pools</a></p>
+
+    <div class="page-header">
+      <h1>Pool <%= pool.name %> <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+      <a href="/admin/druck/pool/<%= pool.id %>" class="btn" target="_blank" rel="noopener">Drucken / PDF</a>
+    </div>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <% if (ok) { %><p class="alert alert-success"><%= ok %></p><% } %>
+
+    <section class="panel">
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-wert"><%= zahl(pool.stunden) %> h</span><span class="stat-label">im Pool</span></div>
+        <div class="stat"><span class="stat-wert"><%= zahl(pool.vergeben) %> h</span><span class="stat-label">vergeben</span></div>
+        <div class="stat"><span class="stat-wert"><%= zahl(pool.frei) %> h</span><span class="stat-label">noch frei</span></div>
+      </div>
+      <div class="progress"><div class="progress-bar" style="width: <%= pool.stunden > 0 ? Math.min(100, (pool.vergeben / pool.stunden) * 100) : 0 %>%"></div></div>
+
+      <form method="post" action="/admin/pools/<%= pool.id %>/edit" class="entry-form" style="margin-top: 12px;">
+        <%- include('../partials/csrf') %>
+        <input type="hidden" name="zurueck" value="detail">
+        <input type="text" name="name" value="<%= pool.name %>" maxlength="100" required aria-label="Name">
+        <input type="number" name="stunden" value="<%= pool.stunden %>" step="0.25" min="<%= Math.max(0.25, pool.vergeben) %>" required aria-label="Ausgleichsstunden im Pool">
+        <button type="submit" class="btn">Speichern</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Vergeben aus diesem Pool</h2>
+      <% if (zuweisungen.length === 0) { %>
+        <p class="empty-state">Aus diesem Pool ist noch nichts vergeben.</p>
+      <% } else { %>
+        <div class="table-scroll">
+        <table class="entries-table">
+          <thead><tr><th>Lehrkraft</th><th>Bereich</th><th>Ausgleichsstunden</th><% if (faktor) { %><th>Zeitstunden</th><% } %></tr></thead>
+          <tbody>
+            <% zuweisungen.forEach(z => { %>
+              <tr>
+                <td data-label="Lehrkraft"><a href="/admin/users/<%= z.user_id %>?schuljahr=<%= encodeURIComponent(schuljahr) %>"><%= z.display_name %></a> <span class="meta">(<%= z.username %>)</span></td>
+                <td data-label="Bereich"><%= z.bereich_name || '–' %></td>
+                <td data-label="Ausgleichsstunden"><%= zahl(z.ausgleichsstunden) %></td>
+                <% if (faktor) { %><td data-label="Zeitstunden"><%= zahl(z.zeitstunden) %> h</td><% } %>
+              </tr>
+            <% }) %>
+          </tbody>
+          <tfoot>
+            <tr><td><strong>Summe</strong></td><td></td><td data-label="Ausgleichsstunden"><strong><%= zahl(pool.vergeben) %></strong></td><% if (faktor) { %><td data-label="Zeitstunden"><strong><%= zahl(pool.vergeben * faktor) %> h</strong></td><% } %></tr>
+          </tfoot>
+        </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <h2>Unterschriebener Ausdruck</h2>
+      <p class="hint">Ausdrucken, von Schulleitung und ÖPR unterschreiben lassen und den Scan (PDF, JPG oder PNG) hier hochladen. Zuordnung: Schuljahr <%= schuljahr %>.</p>
+      <%- include('../partials/admin-dokument-upload', { art: 'pool', zielId: pool.id, dokSchuljahr: schuljahr, quelle: 'detail' }) %>
+      <%- include('../partials/admin-dokument-liste', { dateien: dokumente }) %>
+    </section>
+  </main>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>

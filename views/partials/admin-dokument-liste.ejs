@@ -1,0 +1,32 @@
+<%# Liste hochgeladener Dateien. Erwartet: dateien; optional zeigeZiel. %>
+<% const mitZiel = typeof zeigeZiel !== 'undefined' && zeigeZiel; %>
+<% if (dateien.length === 0) { %>
+  <p class="empty-state">Noch kein unterschriebenes Dokument hochgeladen.</p>
+<% } else { %>
+  <div class="table-scroll">
+  <table class="entries-table">
+    <thead><tr><th>Hochgeladen</th><% if (mitZiel) { %><th>Zu</th><% } %><th>Datei</th><th>Von</th><th></th></tr></thead>
+    <tbody>
+      <% dateien.forEach(d => { %>
+        <tr>
+          <td data-label="Hochgeladen"><%= d.hochgeladen_am %></td>
+          <% if (mitZiel) { %><td data-label="Zu"><%= d.zielName %></td><% } %>
+          <td data-label="Datei"><%= d.dateiname %> <span class="meta">(<%= zahl(d.groesse / 1024) %> KB)</span></td>
+          <td data-label="Von"><%= d.hochgeladen_von || '–' %></td>
+          <td data-label="Aktion">
+            <div class="entries-row-actions">
+              <a href="/admin/dokumente/<%= d.id %>/datei" target="_blank" rel="noopener">Ansehen</a>
+              <a href="/admin/dokumente/<%= d.id %>/datei?download=1">Herunterladen</a>
+              <form method="post" action="/admin/dokumente/<%= d.id %>/loeschen" class="inline-form"
+                    data-confirm="Dokument &quot;<%= d.dateiname %>&quot; wirklich löschen?">
+                <%- include('csrf') %>
+                <button type="submit" class="link-button link-button-danger">Löschen</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  </div>
+<% } %>

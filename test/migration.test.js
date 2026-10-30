@@ -164,3 +164,30 @@ test('Bestand ohne external_id bekommt Spalte und eindeutigen Index (API-Abgleic
   neu.run(1, 1, null);
   assert.doesNotThrow(() => neu.run(1, 1, null), 'Eintraege ohne Schluessel duerfen mehrfach vorkommen');
 });
+
+test('bisherige Zuweisungen und das Gesamtkontingent werden zu einem Pool "Allgemein"', () => {
+  frischeUmgebung();
+  const { db, initDb } = ladeSrc('db');
+  initDb();
+
+  // Zustand vor Einfuehrung der Pools nachstellen: Zuweisungen ohne Pool, ein
+  // Gesamtkontingent fuer ein Jahr, fuer ein anderes keines.
+  db.prepare("INSERT INTO users (username, display_name) VALUES ('anna','Anna')").run();
+  const zuweise = db.prepare("INSERT INTO zuweisungen (user_id, schuljahr, ausgleichsstunden) VALUES (1,?,?)");
+  zuweise.run('2025/26', 2);
+  zuweise.run('2025/26', 3);
+  zuweise.run('2026/27', 5);
+  db.prepare("INSERT INTO schuljahr_kontingente (schuljahr, kontingent_ausgleichsstunden) VALUES ('2025/26', 40), ('2026/27', 4)").run();
+  db.prepare("DELETE FROM schema_migrationen WHERE name='pools-aus-kontingent'").run();
+
+  assert.doesNotThrow(() => initDb());
+
+  const pool = (jahr) => db.prepare('SELECT * FROM pools WHERE schuljahr=?').get(jahr);
+  assert.equal(pool('2025/26').name, 'Allgemein');
+  assert.equal(pool('2025/26').stunden, 40, 'das bisherige Gesamtkontingent wird zum Pool');
+  assert.equal(pool('2026/27').stunden, 5, 'ein zu kleines Kontingent wuerde den Pool ueberziehen - es gilt mindestens die vergebene Summe');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM zuweisungen WHERE pool_id IS NULL').get().n, 0, 'jede Zuweisung hat einen Pool');
+
+  assert.doesNotThrow(() => initDb(), 'ein weiterer Start legt nichts doppelt an');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM pools').get().n, 2);
+});

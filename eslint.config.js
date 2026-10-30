@@ -61,7 +61,7 @@ module.exports = [
     // Kommandozeilenwerkzeuge und Tests laufen unter Node (>= 22) und nutzen dessen fetch.
     files: ['tools/**/*.js', 'test/**/*.js'],
     languageOptions: {
-      globals: { fetch: 'readonly' },
+      globals: { fetch: 'readonly', FormData: 'readonly', Blob: 'readonly', URLSearchParams: 'readonly' },
     },
   },
   {

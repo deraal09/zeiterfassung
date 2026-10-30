@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <%# Der Titel wird vom Browser als Dateiname vorgeschlagen, wenn "Als PDF speichern" gewaehlt wird. %>
+  <title><%= dateiname %></title>
+  <link rel="stylesheet" href="/public/css/druck.css">
+</head>
+<body>
+  <div class="werkzeug">
+    <a href="<%= zurueck %>">&larr; Zurück</a>
+    <span class="werkzeug-hinweis">Im Druckdialog "Als PDF speichern" wählen oder direkt drucken.</span>
+    <button type="button" id="drucken" class="knopf">Drucken / Als PDF speichern</button>
+  </div>
+
+  <main class="blatt">
+    <header class="kopf">
+      <p class="kopf-zeile">Ausgleichsstunden · Schuljahr <%= schuljahr %></p>
+      <h1><%= titel %></h1>
+    </header>
+
+    <table class="kennzahlen">
+      <tbody>
+        <% kennzahlen.forEach(([label, wert]) => { %>
+          <tr><th scope="row"><%= label %></th><td><%= wert %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <% tabellen.forEach(t => { %>
+      <section class="abschnitt">
+        <h2><%= t.ueberschrift %></h2>
+        <% if (t.zeilen.length === 0) { %>
+          <p class="leer"><%= t.leer %></p>
+        <% } else { %>
+          <table class="daten">
+            <thead>
+              <tr>
+                <% t.spalten.forEach((s, i) => { %><th class="<%= t.zahlenspalten.includes(i) ? 'zahl' : '' %>"><%= s %></th><% }) %>
+              </tr>
+            </thead>
+            <tbody>
+              <% t.zeilen.forEach(z => { %>
+                <tr><% z.forEach((wert, i) => { %><td class="<%= t.zahlenspalten.includes(i) ? 'zahl' : '' %>"><%= wert %></td><% }) %></tr>
+              <% }) %>
+            </tbody>
+            <% if (t.summe) { %>
+              <tfoot>
+                <tr><% t.summe.forEach((wert, i) => { %><td class="<%= t.zahlenspalten.includes(i) ? 'zahl' : '' %>"><%= wert %></td><% }) %></tr>
+              </tfoot>
+            <% } %>
+          </table>
+        <% } %>
+      </section>
+    <% }) %>
+
+    <footer class="fuss">
+      <div class="unterschriften">
+        <div class="unterschrift">
+          <div class="linie"></div>
+          <strong>Schulleitung</strong>
+          <span>Datum, Unterschrift</span>
+        </div>
+        <div class="unterschrift">
+          <div class="linie"></div>
+          <strong>ÖPR (Örtlicher Personalrat)</strong>
+          <span>Datum, Unterschrift</span>
+        </div>
+      </div>
+      <p class="stand">Erstellt am <%= stand %></p>
+    </footer>
+  </main>
+  <script src="/public/js/druck.js"></script>
+</body>
+</html>

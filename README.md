@@ -143,23 +143,60 @@ erfasst und an die Schulleitung übermittelt werden können.
   an die Admin-Ansicht; optional per Checkbox automatisch nach jedem Stopp/Eintrag.
 - **Admin-Bereich** – für einen Admin-Account ist das der Startpunkt nach der
   Anmeldung (nicht die eigene Zeiterfassung, die für die Schulleitung nur
-  zweitrangig ist): Standardansicht ist eine Kachel je Lehrkraft mit den
-  insgesamt vergebenen Ausgleichsstunden und noch nicht verknüpften
-  Zuweisungen; ein Klick öffnet die Detailseite. Dort werden Lehrkräfte per
-  Live-Suche aus dem LDAP gesucht und bekommen Ausgleichsstunden zugewiesen;
-  je Aufgabenbereich werden synchronisierte und noch offene (ungemeldete) Stunden
-  angezeigt. Die eigene Zeiterfassung bleibt über "Meine Zeiten" in der
-  Navigation erreichbar.
-- **Tabellarische Übersicht der Ausgleichsstunden** – über den Button
-  "Tabellarische Übersicht" im Admin-Bereich, mit Schuljahr-Auswahl und zwei
-  Reitern: "Pro Aufgabenbereich" (eine Zeile je Aufgabenbereich, Zuweisungen
-  ohne Aufgabenbereichs-Verknüpfung laufen je Lehrkraft unter
-  "– nicht verknüpft –") und
-  "Pro Person" (eine Zeile je Lehrkraft, aufgeteilt in verknüpfte und offene
-  Ausgleichsstunden). Beide Tabellen zeigen zusätzlich die sich aus dem
+  zweitrangig ist; sie bleibt über "Meine Zeiten" erreichbar). Die Startseite
+  zeigt nur das Nötigste: den Gesamtpool mit einem Balken je Pool und ein paar
+  Kacheln (Lehrkräfte, Bereiche, Übersicht & Druck, Dokumente, Faktor,
+  nächstes Schuljahr). Eine Unternavigation oben (Start · Pools · Bereiche ·
+  Lehrkräfte · Zuweisen · Übersicht · Dokumente · Faktor) führt von jeder
+  Admin-Seite mit einem Klick zu jeder Ansicht und behält das gewählte
+  Schuljahr bei. **Oben rechts steht auf jeder Seite der Gesamtpool** des
+  gewählten Schuljahres (Stunden insgesamt, vergeben, frei).
+- **Pools** – getrennte Töpfe an Ausgleichsstunden je Schuljahr (z. B.
+  "Digitalisierung", "Schulentwicklung"). Der Gesamtpool ist die Summe aller
+  Pools. **Jede vergebene Ausgleichsstunde muss einem Pool zugeordnet sein**;
+  bei der Auswahl zeigt die Seite sofort, wie viele Stunden dort schon
+  vergeben und wie viele noch frei sind, und **es lässt sich nie mehr
+  vergeben, als der Pool enthält** – das gilt beim Zuweisen, beim Ändern der
+  Stunden und beim Wechsel in einen anderen Pool und wird auf dem Server
+  erzwungen (nicht nur im Formular). Ein Pool lässt sich nicht unter das
+  bereits Vergebene verkleinern und erst löschen, wenn nichts mehr aus ihm
+  vergeben ist. Bisherige Gesamtkontingente und Zuweisungen werden beim Update
+  automatisch in einen Pool "Allgemein" je Schuljahr überführt.
+- **Bereiche** – gliedern die Personen, die Ausgleichsstunden erhalten (z. B.
+  nach Abteilung). Jede Zuweisung kann einem Bereich zugeordnet werden (optional);
+  eine Person kann dadurch in verschiedenen Bereichen vorkommen. Nicht zu
+  verwechseln mit den *Aufgaben*bereichen, die die Lehrkräfte selbst für ihre
+  Zeiterfassung anlegen.
+- **Pools und Bereiche gelten je Schuljahr** und sind pro Jahr anpassbar. Für
+  ein neues Jahr lassen sie sich aus einem anderen übernehmen ("Aus einem
+  anderen Schuljahr übernehmen" auf der Pool-Seite oder die Kachel "Nächstes
+  Schuljahr"): Pools mit ihren Stunden, Bereiche und auf Wunsch auch die
+  Zuweisungen der Lehrkräfte (ohne Verknüpfung zu Aufgabenbereichen und nur,
+  soweit sie in den Pool passen). Bereits Vorhandenes wird nie überschrieben,
+  der Vorgang lässt sich wiederholen.
+- **Druckansichten mit Unterschriftsfeldern** – für jeden Pool, jeden Bereich
+  und eine Übersicht aller Pools gibt es eine eigene Druckseite (A4, immer
+  hell, auch im Dunkelmodus). Unten stehen links ein Feld für die
+  **Schulleitung** und rechts eines für den **ÖPR (Örtlicher Personalrat)**.
+  "Drucken / PDF" öffnet den Druckdialog des Browsers; dort lässt sich
+  drucken oder "Als PDF speichern" wählen (der Seitentitel dient als
+  Dateiname). Bewusst ohne serverseitige PDF-Bibliothek: kein zusätzliches
+  Paket, das auf dem Server erst installiert werden müsste.
+- **Unterschriebene Dokumente** – der Scan oder das Foto (PDF, JPG, PNG, bis
+  15 MB) wird zum jeweiligen Pool, Bereich oder zur Gesamtübersicht
+  hochgeladen und gehört zum Schuljahr; die Seite "Dokumente" zeigt je
+  Ausdruck, ob die Unterschrift schon vorliegt ("1 von 7"). Der Dateityp wird
+  am Inhalt erkannt (nicht am Namen), die Dateien liegen unter Zufallsnamen in
+  `data/uploads/` und sind nur für Admins abrufbar. Mehrere Uploads zum selben
+  Ziel sind möglich (neuer Scan nach Korrektur), es zählt der letzte. Pools und
+  Bereiche mit hinterlegtem Dokument lassen sich nicht löschen. **Das Verzeichnis
+  `data/uploads/` gehört mit in die Datensicherung** (wie die Datenbank).
+- **Übersicht der Ausgleichsstunden** – Reiter "Pools" (mit Druck und Upload der
+  Gesamtübersicht), "Pro Bereich", "Pro Person" und "Pro Aufgabenbereich" für
+  ein wählbares Schuljahr. Die Tabellen zeigen zusätzlich die sich aus dem
   Faktor des gewählten Schuljahres ergebenden Zeitstunden und enden mit
-  einer Gesamt-Zeile; die Summen beider Reiter stimmen für dasselbe
-  Schuljahr immer überein.
+  einer Gesamt-Zeile; die Summen von "Pro Person" und "Pro Aufgabenbereich"
+  stimmen für dasselbe Schuljahr immer überein.
 - **Aufgabenbereiche archivieren oder löschen** – die Lehrkraft kann einen
   eigenen Aufgabenbereich jederzeit archivieren (verschwindet aus der
   eigenen Übersicht, bleibt inklusive aller Zeiten erhalten – der Admin kann
@@ -358,6 +395,10 @@ ein Fehler stillschweigend Daten kostet:
   `external_id`, Umrechnung von Zeitzonen und die Fehlerfälle; dazu die Logik
   des Claude-Code-Abgleichs (Blockbildung, Mitternachtsteilung, stabile
   Schlüssel).
+- **Pools, Bereiche, Druck und Upload** – die Pool-Grenze (Anlegen, Ändern,
+  Wechsel; auch über die HTTP-Routen), die Übernahme ins nächste Schuljahr, die
+  Druckseiten samt Unterschriftsfeldern sowie der Upload (Typprüfung am Inhalt,
+  Größenlimit, CSRF, Zugriffsschutz).
 - **Ratelimit und Redirect-Ziele** – die beiden Stellen, an denen eine zu
   lasche Regel direkt ausnutzbar wäre.
 - **Schuljahres-Logik** – Wechsel am 1. August und die Prüfung der

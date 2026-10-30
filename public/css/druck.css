@@ -1,0 +1,89 @@
+/* Druckansichten (Pool, Bereich, Gesamtuebersicht). Bewusst eigenstaendig und
+   immer hell: das Hauptstylesheet kennt einen Dunkelmodus, bei dem der Text
+   hell und der Hintergrund dunkel waere - gedruckt wuerde heller Text auf
+   weissem Papier (Hintergruende druckt der Browser standardmaessig nicht). */
+@page { size: A4; margin: 18mm 18mm 20mm; }
+
+* { box-sizing: border-box; }
+html { color-scheme: light; }
+body {
+  margin: 0;
+  background: #e9ecf1;
+  color: #000;
+  font: 11pt/1.4 "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.werkzeug {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid #cdd3dc;
+}
+.werkzeug a { color: #1d4ed8; text-decoration: none; padding: 10px 0; }
+.werkzeug-hinweis { color: #5b6573; font-size: 0.9rem; flex: 1 1 220px; }
+.knopf {
+  background: #2563eb;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 11px 18px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+.knopf:hover { background: #1d4ed8; }
+
+/* Das Blatt: auf dem Bildschirm eine A4-Vorschau, im Druck der reine Inhalt.
+   Die Mindesthoehe schiebt die Unterschriften bei kurzem Inhalt ans Seitenende. */
+.blatt {
+  display: flex;
+  flex-direction: column;
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  margin: 16px auto;
+  padding: 18mm;
+  background: #fff;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+}
+
+.kopf-zeile { margin: 0 0 2mm; color: #444; font-size: 10pt; text-transform: uppercase; letter-spacing: 0.04em; }
+h1 { margin: 0 0 6mm; font-size: 20pt; line-height: 1.2; }
+h2 { margin: 0 0 3mm; font-size: 12.5pt; }
+
+table { width: 100%; border-collapse: collapse; }
+.kennzahlen { width: auto; margin-bottom: 8mm; }
+.kennzahlen th { padding: 1mm 8mm 1mm 0; text-align: left; font-weight: 400; color: #444; }
+.kennzahlen td { padding: 1mm 0; font-weight: 700; }
+
+.abschnitt { margin-bottom: 8mm; }
+.daten th, .daten td { padding: 2mm 2.5mm; border: 0.3mm solid #888; text-align: left; vertical-align: top; }
+.daten thead th { background: #eef1f5; font-weight: 700; }
+.daten tfoot td { font-weight: 700; background: #f6f7f9; }
+.daten .zahl { text-align: right; white-space: nowrap; }
+.daten tr { break-inside: avoid; }
+.leer { color: #555; font-style: italic; }
+
+.fuss { margin-top: auto; padding-top: 14mm; break-inside: avoid; }
+.unterschriften { display: flex; justify-content: space-between; gap: 16mm; }
+.unterschrift { flex: 1 1 0; display: flex; flex-direction: column; }
+.linie { height: 22mm; border-bottom: 0.4mm solid #000; }
+.unterschrift strong { margin-top: 1.5mm; }
+.unterschrift span { color: #444; font-size: 9pt; }
+.stand { margin: 8mm 0 0; color: #666; font-size: 8.5pt; text-align: right; }
+
+@media print {
+  body { background: #fff; }
+  .werkzeug { display: none; }
+  .blatt { width: auto; min-height: 255mm; margin: 0; padding: 0; box-shadow: none; }
+}
+
+@media (max-width: 700px) {
+  .blatt { padding: 12px; min-height: 0; }
+  .unterschriften { flex-direction: column; gap: 8mm; }
+  .daten { font-size: 0.85rem; }
+}

@@ -1,0 +1,21 @@
+<%# Auswahl eines Pools mit Anzeige, wie viel dort schon vergeben und noch frei %>
+<%# ist (siehe public/js/pool-auswahl.js). Erwartet: pools (aus poolsFuerAuswahl) %>
+<%# und optional gewaehlt (Pool-ID), gruppe (Kennung, die auch am Stundenfeld als %>
+<%# data-pool-stunden steht) und formId (falls ausserhalb des Formulars). %>
+<%# Der Server prueft die Grenze zusaetzlich. %>
+<% const gewaehltId = typeof gewaehlt !== 'undefined' ? gewaehlt : null; %>
+<div class="pool-auswahl">
+  <select name="pool_id" data-pool-select="<%= gruppe %>" required aria-label="Pool"<%- typeof formId !== 'undefined' && formId ? ` form="${formId}"` : '' %>>
+    <% if (pools.length === 0) { %>
+      <option value="">Kein Pool in diesem Schuljahr</option>
+    <% } else { %>
+      <option value="">Pool wählen …</option>
+      <% pools.forEach(p => { %>
+        <option value="<%= p.id %>" data-name="<%= p.name %>" data-stunden="<%= p.stunden %>" data-frei="<%= p.freiFuerAuswahl %>" <%= gewaehltId === p.id ? 'selected' : '' %>>
+          <%= p.name %> – <%= zahl(p.stunden - p.freiFuerAuswahl) %> von <%= zahl(p.stunden) %> h vergeben, <%= zahl(p.freiFuerAuswahl) %> frei
+        </option>
+      <% }) %>
+    <% } %>
+  </select>
+  <p class="hint pool-info" data-pool-info="<%= gruppe %>"></p>
+</div>

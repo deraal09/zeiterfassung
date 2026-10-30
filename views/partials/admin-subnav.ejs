@@ -1,0 +1,32 @@
+<%# Unternavigation des Admin-Bereichs: jede Ansicht ist von jeder Admin-Seite %>
+<%# mit einem Klick erreichbar, das gewaehlte Schuljahr bleibt dabei erhalten. %>
+<%# Erwartet: aktiv (Schluessel der aktuellen Seite) und pfad (Seite, auf die %>
+<%# das Schuljahr-Formular zeigt). %>
+<%
+  const eintraege = [
+    ['start', '/admin', 'Start'],
+    ['pools', '/admin/pools', 'Pools'],
+    ['bereiche', '/admin/bereiche', 'Bereiche'],
+    ['lehrkraefte', '/admin/lehrkraefte', 'Lehrkräfte'],
+    ['zuweisen', '/admin/zuweisen', 'Zuweisen'],
+    ['uebersicht', '/admin/uebersicht', 'Übersicht'],
+    ['dokumente', '/admin/dokumente', 'Dokumente'],
+    ['faktor', '/admin/faktor', 'Faktor'],
+  ];
+%>
+<div class="admin-subnav">
+  <nav class="admin-subnav-links" aria-label="Admin-Bereiche">
+    <% eintraege.forEach(([key, href, label]) => { %>
+      <a class="tab-button<%= aktiv === key ? ' active' : '' %>" href="<%= href %>?schuljahr=<%= encodeURIComponent(adminSchuljahr) %>"<%= aktiv === key ? ' aria-current="page"' : '' %>><%= label %></a>
+    <% }) %>
+  </nav>
+  <form method="get" action="<%= pfad %>" class="inline-form schuljahr-wahl">
+    <label for="admin-schuljahr" class="meta">Schuljahr</label>
+    <select id="admin-schuljahr" name="schuljahr" data-submit-on-change>
+      <% adminSchuljahre.forEach(sj => { %>
+        <option value="<%= sj %>" <%= sj === adminSchuljahr ? 'selected' : '' %>><%= sj %></option>
+      <% }) %>
+    </select>
+    <noscript><button type="submit" class="btn">Wechseln</button></noscript>
+  </form>
+</div>

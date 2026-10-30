@@ -1,34 +1,15 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <title>Ausgleichsstunden-Übersicht – Zeiterfassung</title>
+  <title>Übersicht – Admin – Zeiterfassung</title>
   <%- include('../partials/head') %>
 </head>
 <body>
   <%- include('../partials/nav') %>
   <main class="container">
-    <p><a href="/admin">&larr; Zur Übersicht</a></p>
+    <%- include('../partials/admin-subnav', { aktiv: 'uebersicht', pfad: '/admin/uebersicht' }) %>
 
-    <div class="page-header">
-      <h1>
-        Ausgleichsstunden – Übersicht
-        <% if (schuljahre.length > 1) { %>
-          <form method="get" action="/admin/uebersicht" class="inline-form schuljahr-wahl">
-            <label for="schuljahr-wahl" class="meta">Schuljahr</label>
-            <select id="schuljahr-wahl" name="schuljahr" data-submit-on-change>
-              <% schuljahre.forEach(sj => { %>
-                <option value="<%= sj %>" <%= sj === schuljahr ? 'selected' : '' %>>
-                  <%= sj %><%= sj === aktuellesSchuljahr ? ' (laufend)' : '' %>
-                </option>
-              <% }) %>
-            </select>
-            <noscript><button type="submit" class="btn">Wechseln</button></noscript>
-          </form>
-        <% } else { %>
-          <span class="meta">Schuljahr <%= schuljahr %></span>
-        <% } %>
-      </h1>
-    </div>
+    <h1>Übersicht <span class="meta">Schuljahr <%= schuljahr %></span></h1>
 
     <% if (!faktorSettings) { %>
       <p class="alert alert-error">
@@ -40,11 +21,90 @@
 
     <div class="tabs" data-tabs>
       <div class="tab-buttons" role="tablist">
-        <button type="button" class="tab-button active" data-tab-target="tab-uebersicht-kategorie">Pro Aufgabenbereich</button>
+        <button type="button" class="tab-button active" data-tab-target="tab-uebersicht-pools">Pools</button>
+        <button type="button" class="tab-button" data-tab-target="tab-uebersicht-bereich">Pro Bereich</button>
         <button type="button" class="tab-button" data-tab-target="tab-uebersicht-person">Pro Person</button>
+        <button type="button" class="tab-button" data-tab-target="tab-uebersicht-kategorie">Pro Aufgabenbereich</button>
       </div>
 
-      <div id="tab-uebersicht-kategorie" data-tab-panel>
+      <div id="tab-uebersicht-pools" data-tab-panel>
+        <section class="panel">
+          <div class="page-header" style="margin-bottom: 8px;">
+            <h2 style="margin-bottom: 0;">Alle Pools</h2>
+            <a href="/admin/druck/uebersicht?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn" target="_blank" rel="noopener">Übersicht drucken / PDF</a>
+          </div>
+          <% if (pools.length === 0) { %>
+            <p class="empty-state">Für <%= schuljahr %> gibt es noch keinen Pool.</p>
+          <% } else { %>
+            <div class="table-scroll">
+            <table class="entries-table">
+              <thead><tr><th>Pool</th><th>Ausgleichsstunden</th><th>Vergeben</th><th>Frei</th></tr></thead>
+              <tbody>
+                <% pools.forEach(p => { %>
+                  <tr>
+                    <td data-label="Pool"><a href="/admin/pools/<%= p.id %>"><%= p.name %></a></td>
+                    <td data-label="Ausgleichsstunden"><%= zahl(p.stunden) %></td>
+                    <td data-label="Vergeben"><%= zahl(p.vergeben) %></td>
+                    <td data-label="Frei"><%= zahl(p.frei) %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Gesamtpool</strong></td>
+                  <td data-label="Ausgleichsstunden"><strong><%= zahl(gesamt.stunden) %></strong></td>
+                  <td data-label="Vergeben"><strong><%= zahl(gesamt.vergeben) %></strong></td>
+                  <td data-label="Frei"><strong><%= zahl(gesamt.frei) %></strong></td>
+                </tr>
+              </tfoot>
+            </table>
+            </div>
+          <% } %>
+        </section>
+
+        <section class="panel">
+          <h2>Unterschriebene Übersicht</h2>
+          <p class="hint">Ausdrucken, von Schulleitung und ÖPR unterschreiben lassen und den Scan (PDF, JPG oder PNG) hier hochladen. Zuordnung: Schuljahr <%= schuljahr %>.</p>
+          <%- include('../partials/admin-dokument-upload', { art: 'uebersicht', zielId: null, dokSchuljahr: schuljahr, quelle: '' }) %>
+          <% if (dokumente.uebersicht) { %>
+            <p class="hint" style="margin-top: 10px;">
+              Zuletzt hochgeladen am <%= dokumente.uebersicht.hochgeladen_am.slice(0, 10) %>:
+              <a href="/admin/dokumente/<%= dokumente.uebersicht.id %>/datei" target="_blank" rel="noopener"><%= dokumente.uebersicht.dateiname %></a>
+              · <a href="/admin/dokumente?schuljahr=<%= encodeURIComponent(schuljahr) %>">alle Dokumente</a>
+            </p>
+          <% } else { %>
+            <p class="hint" style="margin-top: 10px;">Noch kein unterschriebenes Dokument für dieses Schuljahr.</p>
+          <% } %>
+        </section>
+      </div>
+
+      <div id="tab-uebersicht-bereich" data-tab-panel hidden>
+        <section class="panel">
+          <h2>Vergebene Ausgleichsstunden je Bereich</h2>
+          <% if (bereiche.length === 0) { %>
+            <p class="empty-state">Für <%= schuljahr %> gibt es noch keinen Bereich.</p>
+          <% } else { %>
+            <div class="table-scroll">
+            <table class="entries-table">
+              <thead><tr><th>Bereich</th><th>Personen</th><th>Ausgleichsstunden</th><% if (faktorSettings) { %><th>Zeitstunden</th><% } %><th></th></tr></thead>
+              <tbody>
+                <% bereiche.forEach(b => { %>
+                  <tr>
+                    <td data-label="Bereich"><a href="/admin/bereiche/<%= b.id %>"><%= b.name %></a></td>
+                    <td data-label="Personen"><%= b.anzahl_personen %></td>
+                    <td data-label="Ausgleichsstunden"><%= zahl(b.stunden) %></td>
+                    <% if (faktorSettings) { %><td data-label="Zeitstunden"><%= zahl(b.stunden * faktorSettings.faktor) %> h</td><% } %>
+                    <td data-label="Aktion"><a href="/admin/druck/bereich/<%= b.id %>" target="_blank" rel="noopener">Drucken / PDF</a></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+            </div>
+          <% } %>
+        </section>
+      </div>
+
+      <div id="tab-uebersicht-kategorie" data-tab-panel hidden>
         <section class="panel">
           <h2>Vergebene Ausgleichsstunden je Aufgabenbereich</h2>
           <p class="hint">

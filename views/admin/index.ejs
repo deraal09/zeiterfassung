@@ -7,152 +7,86 @@
 <body>
   <%- include('../partials/nav') %>
   <main class="container">
-    <h1>Lehrkräfte</h1>
+    <%- include('../partials/admin-subnav', { aktiv: 'start', pfad: '/admin' }) %>
+
+    <div class="page-header">
+      <h1>Admin <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+      <a href="/admin/zuweisen?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn btn-start">Ausgleichsstunden zuweisen</a>
+    </div>
 
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
 
-    <section class="panel">
-      <h2>Gesamtkontingent <span class="meta">Schuljahr <%= schuljahr %></span></h2>
-      <p class="hint">
-        Wie viele Ausgleichsstunden für das Schuljahr insgesamt zur Verfügung
-        stehen – rein informativ, vergibt aber weiterhin nichts von selbst.
+    <% if (!faktorSettings) { %>
+      <p class="alert alert-error">
+        Für <%= schuljahr %> ist noch kein Faktor festgelegt – ohne ihn lassen sich keine
+        Ausgleichsstunden zuweisen.
+        <a href="/admin/faktor?schuljahr=<%= encodeURIComponent(schuljahr) %>">Faktor festlegen</a>
       </p>
-      <% if (kontingent) { %>
-        <p class="progress-label">
-          <strong><%= vergeben %></strong> von <strong><%= kontingent.kontingent_ausgleichsstunden %></strong>
-          Ausgleichsstunden vergeben
-        </p>
-        <div class="progress">
-          <div class="progress-bar" style="width: <%= Math.min(100, (vergeben / kontingent.kontingent_ausgleichsstunden) * 100) %>%"></div>
-        </div>
-        <% if (vergeben > kontingent.kontingent_ausgleichsstunden) { %>
-          <p class="alert alert-error" style="margin-top: 12px;">
-            Das Kontingent ist um <%= vergeben - kontingent.kontingent_ausgleichsstunden %> Ausgleichsstunden überschritten.
-          </p>
-        <% } else { %>
-          <p class="hint" style="margin: 8px 0 0;">
-            <%= kontingent.kontingent_ausgleichsstunden - vergeben %> Ausgleichsstunden noch übrig.
-          </p>
-        <% } %>
+    <% } %>
+
+    <section class="panel">
+      <h2>Gesamtpool</h2>
+      <% if (gesamt.anzahl === 0) { %>
+        <p class="empty-state">Für <%= schuljahr %> gibt es noch keinen Pool.</p>
+        <a href="/admin/pools?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn">Pools anlegen</a>
       <% } else { %>
-        <p class="hint">Für <%= schuljahr %> ist noch kein Gesamtkontingent festgelegt.</p>
-      <% } %>
-      <form method="post" action="/admin/kontingent" class="inline-form" style="margin-top: 12px;">
-        <%- include('../partials/csrf') %>
-        <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
-        <input type="number" step="0.25" min="0" name="kontingent_ausgleichsstunden" placeholder="Gesamtkontingent (Ausgleichsstunden)" value="<%= kontingent ? kontingent.kontingent_ausgleichsstunden : '' %>" required>
-        <button type="submit" class="btn btn-start">Speichern</button>
-      </form>
-    </section>
-
-    <details class="panel-details"<%= (!faktorSettings || faktorFehlt.length > 0) ? ' open' : '' %>>
-      <summary><h2>Faktor <span class="meta">Schuljahr <%= schuljahr %></span></h2></summary>
-      <div class="panel-details-body">
-      <p class="hint">
-        Gilt einheitlich für alle Lehrkräfte in diesem Schuljahr: benötigte
-        Zeitstunden = Ausgleichsstunden × Zeitstunden pro Woche × Schulwochen.
-        Z. B. 1,7 Zeitstunden pro Woche × 40 Schulwochen = 68 Zeitstunden je
-        Ausgleichsstunde und Schuljahr. Eine Änderung wirkt sich sofort auf
-        alle bereits zugewiesenen Ausgleichsstunden dieses Schuljahres aus.
-      </p>
-      <form method="post" action="/admin/faktor" class="entry-form">
-        <%- include('../partials/csrf') %>
-        <input type="text" name="schuljahr" pattern="\d{4}/\d{2}" placeholder="Schuljahr, z. B. 2026/27" value="<%= schuljahr %>" title="Schreibweise 2026/27" required>
-        <input type="number" step="0.1" min="0.1" name="zeitstunden" placeholder="Zeitstunden pro Woche" value="<%= faktorSettings ? faktorSettings.zeitstundenProWoche : '' %>" required>
-        <input type="number" step="1" min="1" name="schulwochen" placeholder="Schulwochen" value="<%= faktorSettings ? faktorSettings.schulwochen : '' %>" required>
-        <button type="submit" class="btn btn-start">Speichern</button>
-      </form>
-      <p class="hint" style="margin-top: 8px;">
-        Das Schuljahr lässt sich ändern, um ein vergangenes zu korrigieren oder
-        ein kommendes vorzubereiten.
-      </p>
-      <% if (!faktorSettings) { %>
-        <p class="alert alert-error" style="margin-top: 12px;">
-          Für das laufende Schuljahr <%= schuljahr %> sind noch keine Werte
-          festgelegt. Ohne diese Angabe können keine Ausgleichsstunden
-          zugewiesen werden.
-        </p>
-      <% } %>
-
-      <% if (faktorFehlt.length > 0) { %>
-        <p class="alert alert-error" style="margin-top: 12px;">
-          Für folgende Schuljahre gibt es Zuweisungen, aber keinen Faktor –
-          dort steht das Stundenziel auf "unbekannt":
-          <% faktorFehlt.forEach((f, i) => { %><%= i > 0 ? ', ' : '' %><strong><%= f.schuljahr %></strong> (<%= f.zuweisungen %> Zuweisungen)<% }) %>.
-        </p>
-      <% } %>
-
-      <% if (alleFaktoren.length > 0) { %>
-        <div class="table-scroll">
-        <table class="entries-table" style="margin-top: 12px;">
-          <thead><tr><th>Schuljahr</th><th>Zeitstunden/Woche</th><th>Schulwochen</th><th>Faktor</th><th>Zuweisungen</th><th>Zuletzt geändert</th></tr></thead>
-          <tbody>
-            <% alleFaktoren.forEach(f => { %>
-              <tr>
-                <td data-label="Schuljahr"><strong><%= f.schuljahr %></strong><%= f.schuljahr === schuljahr ? ' (laufend)' : '' %></td>
-                <td data-label="Zeitstunden/Woche"><%= f.zeitstunden_pro_woche %></td>
-                <td data-label="Schulwochen"><%= f.schulwochen %></td>
-                <td data-label="Faktor"><%= f.faktor.toFixed(2) %> h</td>
-                <td data-label="Zuweisungen"><%= f.zuweisungen %></td>
-                <td class="meta" data-label="Zuletzt geändert"><%= f.updated_at %><%= f.updated_by ? ` · ${f.updated_by}` : '' %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+        <div class="stat-grid">
+          <div class="stat"><span class="stat-wert"><%= zahl(gesamt.stunden) %> h</span><span class="stat-label">im Gesamtpool</span></div>
+          <div class="stat"><span class="stat-wert"><%= zahl(gesamt.vergeben) %> h</span><span class="stat-label">vergeben</span></div>
+          <div class="stat"><span class="stat-wert"><%= zahl(gesamt.frei) %> h</span><span class="stat-label">noch frei</span></div>
         </div>
-      <% } %>
-      </div>
-    </details>
-
-    <section class="panel">
-      <h2>Ausgleichsstunden zuweisen</h2>
-      <p class="hint">
-        Benutzernamen direkt eintippen oder aus der LDAP-Suche auswählen
-        (falls verfügbar) und Ausgleichsstunden für das laufende Schuljahr
-        zuweisen. Die Lehrkraft verknüpft die Zuweisung anschließend selbst
-        mit einem eigenen Aufgabenbereich.
-      </p>
-      <form method="post" action="/admin/assign" id="assign-form" class="assign-form">
-        <%- include('../partials/csrf') %>
-        <div class="autocomplete">
-          <label for="assign-username">Benutzername</label>
-          <input type="text" id="assign-username" name="username" placeholder="Benutzername eingeben oder aus Suche wählen…" autocomplete="off" required>
-          <div id="ldap-results" class="autocomplete-results"></div>
+        <div class="progress" role="img" aria-label="<%= zahl(gesamt.vergeben) %> von <%= zahl(gesamt.stunden) %> Stunden vergeben">
+          <div class="progress-bar" style="width: <%= gesamt.stunden > 0 ? Math.min(100, (gesamt.vergeben / gesamt.stunden) * 100) : 0 %>%"></div>
         </div>
-        <input type="hidden" name="displayName" id="assign-displayName">
-        <input type="hidden" name="email" id="assign-email">
-        <p id="assign-selected" class="selected-user"></p>
-        <input type="number" step="0.25" min="0.25" name="ausgleichsstunden" placeholder="Ausgleichsstunden" required>
-        <button type="submit" class="btn btn-start">Zuweisen</button>
-      </form>
+
+        <ul class="pool-liste">
+          <% pools.forEach(p => { %>
+            <li>
+              <a href="/admin/pools/<%= p.id %>" class="pool-zeile">
+                <span class="pool-name"><%= p.name %></span>
+                <span class="pool-zahlen"><%= zahl(p.vergeben) %> von <%= zahl(p.stunden) %> h</span>
+              </a>
+              <div class="progress progress-klein"><div class="progress-bar" style="width: <%= p.stunden > 0 ? Math.min(100, (p.vergeben / p.stunden) * 100) : 0 %>%"></div></div>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
     </section>
 
-    <section class="panel">
-      <div class="page-header" style="margin-bottom: 8px;">
-        <h2 style="margin-bottom: 0;">Übersicht</h2>
-        <a href="/admin/uebersicht" class="btn">Tabellarische Übersicht</a>
-      </div>
-      <p class="hint">Vergebene Ausgleichsstunden je Lehrkraft, über alle Schuljahre summiert.</p>
-      <% if (users.length === 0) { %>
-        <p class="empty-state">Noch keine Lehrkräfte erfasst.</p>
-      <% } %>
-      <div class="card-grid">
-        <% users.forEach(u => { %>
-          <a class="card" href="/admin/users/<%= u.id %>">
-            <h2><%= u.display_name %></h2>
-            <p class="meta"><%= u.username %></p>
-            <p class="progress-label"><strong><%= u.summe_ausgleichsstunden %></strong> Ausgleichsstunden vergeben</p>
-            <% if (u.offene_zuweisungen > 0) { %>
-              <p class="hint" style="margin: 0;">
-                <%= u.offene_zuweisungen %> noch nicht verknüpfte Zuweisung<%= u.offene_zuweisungen === 1 ? '' : 'en' %>
-              </p>
-            <% } %>
-          </a>
-        <% }) %>
-      </div>
-    </section>
+    <div class="kachel-grid">
+      <a class="kachel" href="/admin/lehrkraefte?schuljahr=<%= encodeURIComponent(schuljahr) %>">
+        <span class="kachel-titel">Lehrkräfte</span>
+        <span class="kachel-wert"><%= anzahlLehrkraefte %></span>
+        <span class="kachel-text">mit Ausgleichsstunden<% if (offeneZuweisungen > 0) { %> · <%= offeneZuweisungen %> noch nicht verknüpft<% } %></span>
+      </a>
+      <a class="kachel" href="/admin/bereiche?schuljahr=<%= encodeURIComponent(schuljahr) %>">
+        <span class="kachel-titel">Bereiche</span>
+        <span class="kachel-wert"><%= anzahlBereiche %></span>
+        <span class="kachel-text">in diesem Schuljahr</span>
+      </a>
+      <a class="kachel" href="/admin/uebersicht?schuljahr=<%= encodeURIComponent(schuljahr) %>">
+        <span class="kachel-titel">Übersicht &amp; Druck</span>
+        <span class="kachel-wert">PDF</span>
+        <span class="kachel-text">Tabellen, Ausdruck zum Unterschreiben</span>
+      </a>
+      <a class="kachel" href="/admin/dokumente?schuljahr=<%= encodeURIComponent(schuljahr) %>">
+        <span class="kachel-titel">Unterschriebene Dokumente</span>
+        <span class="kachel-wert"><%= dokumente.vorhanden %> von <%= dokumente.noetig %></span>
+        <span class="kachel-text">hochgeladen</span>
+      </a>
+      <a class="kachel" href="/admin/faktor?schuljahr=<%= encodeURIComponent(schuljahr) %>">
+        <span class="kachel-titel">Faktor</span>
+        <span class="kachel-wert"><%= faktorSettings ? zahl(faktorSettings.faktor) + ' h' : '–' %></span>
+        <span class="kachel-text">Zeitstunden je Ausgleichsstunde</span>
+      </a>
+      <a class="kachel" href="/admin/pools?schuljahr=<%= encodeURIComponent(naechstesSchuljahr) %>&amp;uebernehmen=1#uebernehmen">
+        <span class="kachel-titel">Nächstes Schuljahr</span>
+        <span class="kachel-wert"><%= naechstesSchuljahr %></span>
+        <span class="kachel-text">vorbereiten: Pools, Bereiche, Zuweisungen übernehmen</span>
+      </a>
+    </div>
   </main>
-  <script src="/public/js/admin.js"></script>
+  <script src="/public/js/forms.js"></script>
   <script src="/public/js/theme.js"></script>
   <script src="/public/js/pwa.js"></script>
 </body>

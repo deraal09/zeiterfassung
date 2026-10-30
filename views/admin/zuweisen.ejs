@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Zuweisen – Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <%- include('../partials/admin-subnav', { aktiv: 'zuweisen', pfad: '/admin/zuweisen' }) %>
+
+    <h1>Ausgleichsstunden zuweisen <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+    <% if (!faktorSettings) { %>
+      <p class="alert alert-error">
+        Für <%= schuljahr %> ist noch kein Faktor festgelegt.
+        <a href="/admin/faktor?schuljahr=<%= encodeURIComponent(schuljahr) %>">Faktor festlegen</a>
+      </p>
+    <% } %>
+
+    <section class="panel">
+      <% if (pools.length === 0) { %>
+        <p class="empty-state">Für <%= schuljahr %> gibt es noch keinen Pool. Jede Ausgleichsstunde muss aus einem Pool vergeben werden.</p>
+        <a href="/admin/pools?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn btn-start">Pool anlegen</a>
+      <% } else { %>
+        <p class="hint">
+          Benutzernamen direkt eintippen oder aus der LDAP-Suche auswählen (falls
+          verfügbar). Die Lehrkraft verknüpft die Zuweisung anschließend selbst mit
+          einem eigenen Aufgabenbereich.
+        </p>
+        <form method="post" action="/admin/assign" id="assign-form" class="assign-form">
+          <%- include('../partials/csrf') %>
+          <input type="hidden" name="schuljahr" value="<%= schuljahr %>">
+          <div class="autocomplete">
+            <label for="assign-username">Benutzername</label>
+            <input type="text" id="assign-username" name="username" placeholder="Benutzername eingeben oder aus Suche wählen…" autocomplete="off" required>
+            <div id="ldap-results" class="autocomplete-results"></div>
+          </div>
+          <input type="hidden" name="displayName" id="assign-displayName">
+          <input type="hidden" name="email" id="assign-email">
+          <p id="assign-selected" class="selected-user"></p>
+
+          <label for="assign-stunden">Ausgleichsstunden</label>
+          <input type="number" id="assign-stunden" step="0.25" min="0.25" name="ausgleichsstunden" data-pool-stunden="neu" required>
+
+          <label>Pool</label>
+          <%- include('../partials/pool-auswahl', { pools, gruppe: 'neu' }) %>
+
+          <label for="assign-bereich">Bereich <span class="meta">(optional)</span></label>
+          <select id="assign-bereich" name="bereich_id">
+            <option value="">– kein Bereich –</option>
+            <% bereiche.forEach(b => { %><option value="<%= b.id %>"><%= b.name %></option><% }) %>
+          </select>
+          <% if (bereiche.length === 0) { %>
+            <p class="hint">Für <%= schuljahr %> gibt es noch keinen Bereich – <a href="/admin/bereiche?schuljahr=<%= encodeURIComponent(schuljahr) %>">Bereich anlegen</a>.</p>
+          <% } %>
+
+          <button type="submit" class="btn btn-start">Zuweisen</button>
+        </form>
+      <% } %>
+    </section>
+  </main>
+  <script src="/public/js/admin.js"></script>
+  <script src="/public/js/pool-auswahl.js"></script>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>

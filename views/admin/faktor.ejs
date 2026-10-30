@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>Faktor – Admin – Zeiterfassung</title>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+  <main class="container">
+    <%- include('../partials/admin-subnav', { aktiv: 'faktor', pfad: '/admin/faktor' }) %>
+
+    <h1>Faktor <span class="meta">Schuljahr <%= schuljahr %></span></h1>
+    <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
+
+    <section class="panel">
+      <p class="hint">
+        Gilt einheitlich für alle Lehrkräfte in diesem Schuljahr: benötigte
+        Zeitstunden = Ausgleichsstunden × Zeitstunden pro Woche × Schulwochen.
+        Z. B. 1,7 Zeitstunden pro Woche × 40 Schulwochen = 68 Zeitstunden je
+        Ausgleichsstunde und Schuljahr. Eine Änderung wirkt sich sofort auf
+        alle bereits zugewiesenen Ausgleichsstunden dieses Schuljahres aus.
+      </p>
+      <form method="post" action="/admin/faktor" class="entry-form">
+        <%- include('../partials/csrf') %>
+        <input type="text" name="schuljahr" pattern="\d{4}/\d{2}" placeholder="Schuljahr, z. B. 2026/27" value="<%= schuljahr %>" title="Schreibweise 2026/27" required>
+        <input type="number" step="0.1" min="0.1" name="zeitstunden" placeholder="Zeitstunden pro Woche" value="<%= faktorSettings ? faktorSettings.zeitstundenProWoche : '' %>" required>
+        <input type="number" step="1" min="1" name="schulwochen" placeholder="Schulwochen" value="<%= faktorSettings ? faktorSettings.schulwochen : '' %>" required>
+        <button type="submit" class="btn btn-start">Speichern</button>
+      </form>
+      <p class="hint" style="margin-top: 8px;">
+        Das Schuljahr lässt sich ändern, um ein vergangenes zu korrigieren oder
+        ein kommendes vorzubereiten.
+      </p>
+      <% if (!faktorSettings) { %>
+        <p class="alert alert-error" style="margin-top: 12px;">
+          Für <%= schuljahr %> sind noch keine Werte festgelegt. Ohne diese Angabe
+          können keine Ausgleichsstunden zugewiesen werden.
+        </p>
+      <% } %>
+
+      <% if (faktorFehlt.length > 0) { %>
+        <p class="alert alert-error" style="margin-top: 12px;">
+          Für folgende Schuljahre gibt es Zuweisungen, aber keinen Faktor –
+          dort steht das Stundenziel auf "unbekannt":
+          <% faktorFehlt.forEach((f, i) => { %><%= i > 0 ? ', ' : '' %><strong><%= f.schuljahr %></strong> (<%= f.zuweisungen %> Zuweisungen)<% }) %>.
+        </p>
+      <% } %>
+    </section>
+
+    <% if (alleFaktoren.length > 0) { %>
+      <section class="panel">
+        <h2>Alle Schuljahre</h2>
+        <div class="table-scroll">
+        <table class="entries-table">
+          <thead><tr><th>Schuljahr</th><th>Zeitstunden/Woche</th><th>Schulwochen</th><th>Faktor</th><th>Zuweisungen</th><th>Zuletzt geändert</th></tr></thead>
+          <tbody>
+            <% alleFaktoren.forEach(f => { %>
+              <tr>
+                <td data-label="Schuljahr"><strong><%= f.schuljahr %></strong><%= f.schuljahr === schuljahr ? ' (gewählt)' : '' %></td>
+                <td data-label="Zeitstunden/Woche"><%= f.zeitstunden_pro_woche %></td>
+                <td data-label="Schulwochen"><%= f.schulwochen %></td>
+                <td data-label="Faktor"><%= f.faktor.toFixed(2) %> h</td>
+                <td data-label="Zuweisungen"><%= f.zuweisungen %></td>
+                <td class="meta" data-label="Zuletzt geändert"><%= f.updated_at %><%= f.updated_by ? ` · ${f.updated_by}` : '' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+        </div>
+      </section>
+    <% } %>
+  </main>
+  <script src="/public/js/forms.js"></script>
+  <script src="/public/js/theme.js"></script>
+  <script src="/public/js/pwa.js"></script>
+</body>
+</html>
