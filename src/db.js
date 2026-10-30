@@ -128,6 +128,7 @@ function initDb() {
       vorschlag_von TEXT,
       pool_id INTEGER REFERENCES pools(id),
       bereich_id INTEGER REFERENCES bereiche(id) ON DELETE SET NULL,
+      geloest_am TEXT,
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -393,6 +394,12 @@ function initDb() {
   }
   if (!zuweisungColumnsFuerPools.includes('bereich_id')) {
     db.exec('ALTER TABLE zuweisungen ADD COLUMN bereich_id INTEGER REFERENCES bereiche(id) ON DELETE SET NULL');
+  }
+  // geloest_am: Zeitpunkt, zu dem die Lehrkraft die bestaetigte Verknuepfung selbst
+  // geloest hat (siehe util/zuweisungen.js). Haelt fuer den Admin fest, warum eine
+  // Zuweisung wieder "offen" ist; eine neue bestaetigte Verknuepfung loescht ihn.
+  if (!zuweisungColumnsFuerPools.includes('geloest_am')) {
+    db.exec('ALTER TABLE zuweisungen ADD COLUMN geloest_am TEXT');
   }
   einmalig('pools-aus-kontingent', () => {
     const jahre = db

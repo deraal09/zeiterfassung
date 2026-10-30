@@ -27,16 +27,23 @@ erfasst und an die Schulleitung übermittelt werden können.
   Lehrkraft einen Aufgabenbereich vor, muss der Admin bestätigen. Solange
   für den (bestätigten) Aufgabenbereich noch keine Zeiten erfasst wurden,
   lässt sich die Verknüpfung noch per neuem Vorschlag ändern oder aufheben –
-  sobald Zeiten erfasst sind, ist sie fest, damit niemandem bereits
-  geleistete Arbeit nachträglich entzogen wird. Ohne jede Verknüpfung wird
-  ein Aufgabenbereich einfach eigenständig für die Zeiterfassung genutzt
-  (mit dem eigenen Ziel, siehe unten).
+  sobald Zeiten erfasst sind, ist eine Änderung per Vorschlag gesperrt, damit
+  niemandem bereits geleistete Arbeit nachträglich entzogen wird. Ohne jede
+  Verknüpfung wird ein Aufgabenbereich einfach eigenständig für die
+  Zeiterfassung genutzt (mit dem eigenen Ziel, siehe unten).
+- **Verknüpfung lösen (Fehler korrigieren)** – die Lehrkraft kann eine
+  bestätigte Verknüpfung jederzeit selbst lösen („Verknüpfung lösen“ an der
+  Zuweisung im Dashboard), auch wenn dafür schon Zeiten erfasst sind. Die
+  erfassten Zeiten bleiben dabei unverändert im Aufgabenbereich; die
+  Ausgleichsstunden sind danach wieder „offen“ (der Admin sieht den Vermerk
+  „von der Lehrkraft gelöst“) und lassen sich neu verknüpfen – wieder per
+  Vorschlag und Bestätigung. Ein eigener offener Vorschlag der Lehrkraft wird
+  dabei verworfen, ein Vorschlag der Schulleitung bleibt zur Entscheidung stehen.
 - **Fälschlich zugewiesene Ausgleichsstunden löschen** – der Admin kann eine
-  Zuweisung wieder vollständig entfernen, solange dafür noch keine Zeiten
-  erfasst wurden. Sind bereits Zeiten erfasst, ist Löschen nicht mehr
-  möglich – die Lehrkraft muss die Zeiten zuerst auf einen anderen Aufgabenbereich
-  übertragen oder die Verknüpfung lösen (per Vorschlag "keine Verknüpfung",
-  vom Admin anzunehmen).
+  Zuweisung wieder vollständig entfernen, solange sie nicht mit einem
+  Aufgabenbereich verknüpft ist, für den Zeiten erfasst wurden. Ist das der
+  Fall, löst die Lehrkraft zuerst die Verknüpfung (die Zeiten bleiben
+  erhalten); danach lässt sich die Zuweisung löschen.
 - **Faktor gilt zentral pro Schuljahr** – einmal vom Admin festgelegt, für
   alle Lehrkräfte gleich, berechnet aus Zeitstunden pro Woche × Schulwochen
   (z. B. 1,7 × 40 = 68 Zeitstunden je Ausgleichsstunde und Schuljahr).

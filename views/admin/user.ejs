@@ -114,9 +114,12 @@
             <h3>Aufgabenbereich</h3>
             <% if (z.category_title) { %>
               <strong><%= z.category_title %></strong>
-              <% if (z.gesperrt) { %><p class="hint" style="margin: 4px 0 0;">fest, da bereits Zeiten erfasst</p><% } %>
+              <% if (z.gesperrt) { %><p class="hint" style="margin: 4px 0 0;">Änderung nur noch durch die Lehrkraft (Lösen), da bereits Zeiten erfasst</p><% } %>
             <% } else { %>
               <span class="meta">noch nicht verknüpft</span>
+              <% if (z.geloest_am) { %>
+                <p class="hint" style="margin: 4px 0 0;">Von der Lehrkraft am <%= z.geloest_am.slice(0, 10) %> gelöst.</p>
+              <% } %>
             <% } %>
 
             <% if (z.vorschlag_von === 'lehrkraft') { %>
@@ -165,9 +168,8 @@
             <% if (z.gesperrt) { %>
               <p class="hint" style="margin: 0;">
                 Nicht mehr löschbar (Zeiten erfasst). Um die Zuweisung
-                trotzdem zu entfernen, muss die Lehrkraft die Zeiten auf
-                einen anderen Aufgabenbereich übertragen oder die Verknüpfung
-                lösen.
+                trotzdem zu entfernen, muss die Lehrkraft die Verknüpfung
+                lösen (die erfassten Zeiten bleiben dabei erhalten).
               </p>
             <% } else { %>
               <form method="post" action="/admin/zuweisungen/<%= z.id %>/delete" class="inline-form" data-confirm="Diese Zuweisung wirklich entfernen?">

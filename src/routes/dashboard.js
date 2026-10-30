@@ -4,7 +4,7 @@ const { requireAuth } = require('../middleware/auth');
 const { nowLocalString } = require('../util/time');
 const { aktuellesSchuljahr, istSchuljahr } = require('../util/schuljahr');
 const { decrypt } = require('../util/crypto');
-const { vorschlagen, annehmen, ablehnen } = require('../util/zuweisungen');
+const { vorschlagen, annehmen, ablehnen, loesen } = require('../util/zuweisungen');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 const { interneZielseite } = require('../util/redirect');
 const { balkenDaten, kategorienBalkenDaten, kategorieFarbe, AUSWERTUNG_MAX_KATEGORIEN } = require('../util/auswertung');
@@ -18,7 +18,8 @@ const ERROR_MESSAGES = {
   'titel-fehlt': 'Bitte einen Titel fuer den Aufgabenbereich eingeben.',
   'keine-kategorie': 'Bitte einen Aufgabenbereich auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
-  'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
+  'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung laesst sich nicht mehr aendern. Du kannst sie aber loesen und danach neu verknuepfen; die erfassten Zeiten bleiben erhalten.',
+  'nicht-verknuepft': 'Diese Zuweisung ist gar nicht verknuepft.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Schulleitung vor.',
   'vorschlag-ungueltig': 'Der vorgeschlagene Aufgabenbereich existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
   'kategorie-nicht-loeschbar':
@@ -325,6 +326,18 @@ router.post('/zuweisungen/:id/ablehnen', requireAuth, (req, res) => {
   const ergebnis = ablehnen(zuweisung, 'lehrkraft');
   if (!ergebnis.ok) return res.redirect(`/?error=${ergebnis.fehler}`);
   res.redirect('/');
+});
+
+// Loest die bestaetigte Verknuepfung wieder, auch wenn dafuer schon Zeiten
+// erfasst wurden - zur Korrektur von Fehlern. Die Zeiten bleiben im
+// Aufgabenbereich, die Zuweisung ist danach wieder offen (siehe loesen()).
+router.post('/zuweisungen/:id/loesen', requireAuth, (req, res) => {
+  const zuweisung = db.prepare('SELECT * FROM zuweisungen WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
+  if (!zuweisung) return res.redirect('/');
+  const ergebnis = loesen(zuweisung);
+  const schuljahr = encodeURIComponent(zuweisung.schuljahr);
+  if (!ergebnis.ok) return res.redirect(`/?schuljahr=${schuljahr}&error=${ergebnis.fehler}`);
+  res.redirect(`/?schuljahr=${schuljahr}`);
 });
 
 // Legt direkt eine neue, eigene Kategorie an und schlaegt sie sofort als

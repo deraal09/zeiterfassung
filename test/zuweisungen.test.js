@@ -113,3 +113,42 @@ test('eine gesperrte Zuweisung nimmt keine neuen Vorschlaege an', () => {
   assert.equal(ergebnis.ok, false);
   assert.equal(ergebnis.fehler, 'gesperrt');
 });
+
+test('die Lehrkraft kann eine Verknuepfung loesen - auch nach erfassten Zeiten', () => {
+  const { db, hole, erfasseZeit, loesen, vorschlagen, istGesperrt } = aufbau();
+  erfasseZeit(1);
+  assert.equal(istGesperrt(hole()), true, 'Ausgangslage: gesperrt, keine Aenderung per Vorschlag mehr');
+  assert.equal(vorschlagen(hole(), 'lehrkraft', 2).fehler, 'gesperrt');
+
+  assert.equal(loesen(hole()).ok, true);
+  const z = hole();
+  assert.equal(z.category_id, null, 'die Zuweisung ist wieder offen');
+  assert.ok(z.geloest_am, 'der Zeitpunkt wird festgehalten');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM time_entries WHERE category_id=1').get().n, 1, 'die Zeiten bleiben im Aufgabenbereich');
+  assert.equal(istGesperrt(z), false, 'danach ist neu verknuepfen (und das Loeschen durch den Admin) wieder moeglich');
+  assert.equal(vorschlagen(z, 'lehrkraft', 2).ok, true);
+});
+
+test('Loesen verwirft den eigenen Vorschlag der Lehrkraft, nicht aber den der Schulleitung', () => {
+  const { hole, vorschlagen, loesen, db } = aufbau();
+  vorschlagen(hole(), 'lehrkraft', 2);
+  loesen(hole());
+  assert.equal(hole().vorschlag_von, null, 'der eigene Vorschlag bezog sich auf die alte Verknuepfung');
+
+  db.prepare("UPDATE zuweisungen SET category_id=1, geloest_am=NULL WHERE id=1").run();
+  vorschlagen(hole(), 'admin', 2);
+  loesen(hole());
+  assert.equal(hole().vorschlag_von, 'admin', 'die Schulleitung entscheidet weiter selbst');
+  assert.equal(hole().vorschlag_category_id, 2);
+});
+
+test('Loesen geht nur bei bestehender Verknuepfung, und eine neue Verknuepfung loescht den Vermerk', () => {
+  const { hole, loesen, vorschlagen, annehmen } = aufbau();
+  assert.equal(loesen(hole()).ok, true);
+  assert.equal(loesen(hole()).fehler, 'nicht-verknuepft', 'schon geloest');
+
+  vorschlagen(hole(), 'lehrkraft', 2);
+  assert.equal(annehmen(hole(), 'admin').ok, true);
+  assert.equal(hole().category_id, 2);
+  assert.equal(hole().geloest_am, null);
+});

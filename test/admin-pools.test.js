@@ -425,3 +425,42 @@ test('Pools und Bereiche mit hinterlegtem Dokument lassen sich nicht loeschen', 
     ende();
   }
 });
+
+test('Lehrkraft loest ihre Verknuepfung ueber die Route - nur die eigene', async () => {
+  const { db, ende } = await aufbau();
+  try {
+    // Eigene kleine App mit dem Dashboard-Router: Lehrkraft Anna (id 2).
+    const express = require('express');
+    const app = express();
+    app.use(express.urlencoded({ extended: false }));
+    app.use((req, res, next) => {
+      req.session = { csrfToken: 'tok', user: { id: Number(req.get('x-user')), isAdmin: false } };
+      next();
+    });
+    app.use('/', ladeSrc('routes/dashboard'));
+    const server = await new Promise((resolve) => {
+      const s = app.listen(0, '127.0.0.1', () => resolve(s));
+    });
+    try {
+      const basis = `http://127.0.0.1:${server.address().port}`;
+      db.prepare("INSERT INTO categories (user_id,title,schuljahr) VALUES (2,'Meins','2026/27')").run();
+      db.prepare("INSERT INTO zuweisungen (user_id,schuljahr,ausgleichsstunden,pool_id,category_id) VALUES (2,'2026/27',3,1,1)").run();
+      db.prepare(
+        "INSERT INTO time_entries (category_id,user_id,beschreibung,start_time,end_time,duration_minutes) VALUES (1,2,'x','2026-10-01 08:00:00','2026-10-01 09:00:00',60)"
+      ).run();
+
+      const post = (nutzer) => fetch(`${basis}/zuweisungen/1/loesen`, { method: 'POST', headers: { 'x-user': String(nutzer) }, redirect: 'manual' });
+      await post(3); // Bernd darf die Zuweisung von Anna nicht loesen
+      assert.equal(db.prepare('SELECT category_id FROM zuweisungen WHERE id=1').get().category_id, 1);
+
+      const res = await post(2);
+      assert.equal(res.status, 302);
+      assert.equal(db.prepare('SELECT category_id FROM zuweisungen WHERE id=1').get().category_id, null);
+      assert.equal(db.prepare('SELECT COUNT(*) n FROM time_entries').get().n, 1, 'Zeit bleibt erhalten');
+    } finally {
+      server.close();
+    }
+  } finally {
+    ende();
+  }
+});

@@ -21,12 +21,12 @@ const ERROR_MESSAGES = {
   'bereich-ungueltig': 'Der ausgewaehlte Bereich existiert nicht oder gehoert zu einem anderen Schuljahr.',
   'ungueltiges-schuljahr': 'Bitte ein Schuljahr in der Schreibweise 2026/27 angeben.',
   'schuljahr-passt-nicht': 'Der Aufgabenbereich gehoert zu einem anderen Schuljahr als die Zuweisung.',
-  'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nicht mehr geaendert werden.',
+  'gesperrt': 'Diese Zuweisung ist bereits verknuepft und es wurden dafuer schon Zeiten erfasst - die Verknuepfung kann nur noch die Lehrkraft loesen und danach neu vorschlagen.',
   'kein-vorschlag': 'Es liegt aktuell kein zu bestaetigender Vorschlag der Lehrkraft vor.',
   'vorschlag-ungueltig': 'Der vorgeschlagene Aufgabenbereich existiert nicht mehr. Bitte den Vorschlag ablehnen und neu vorschlagen.',
   'benutzer-nicht-leer':
     'Dieses Konto laesst sich nicht entfernen: es hat bereits Zuweisungen, Aufgabenbereiche oder erfasste Zeiten, oder es war schon einmal angemeldet.',
-  'nicht-loeschbar': 'Fuer diese Zuweisung sind bereits Zeiten erfasst - sie kann nicht mehr geloescht werden. Bitte die Lehrkraft bitten, die Zeiten auf einen anderen Aufgabenbereich zu uebertragen oder die Verknuepfung zu loesen.',
+  'nicht-loeschbar': 'Fuer diese Zuweisung sind bereits Zeiten erfasst - sie kann nicht mehr geloescht werden. Bitte die Lehrkraft bitten, die Verknuepfung zu loesen - die Zeiten bleiben dabei erhalten.',
 };
 
 function parseNumber(value) {

@@ -80,7 +80,9 @@ const annehmen = db.transaction((zuweisung, rolle) => {
     if (!kategorie) return fehler('vorschlag-ungueltig');
   }
 
-  db.prepare('UPDATE zuweisungen SET category_id=?, vorschlag_category_id=NULL, vorschlag_von=NULL WHERE id=?').run(
+  db.prepare(
+    'UPDATE zuweisungen SET category_id=?, geloest_am=NULL, vorschlag_category_id=NULL, vorschlag_von=NULL WHERE id=?'
+  ).run(
     aktuell.vorschlag_category_id,
     aktuell.id
   );
@@ -101,4 +103,25 @@ const ablehnen = db.transaction((zuweisung, rolle) => {
   return OK;
 });
 
-module.exports = { istGesperrt, vorschlagen, annehmen, ablehnen };
+// Loest die bestaetigte Verknuepfung - ausschliesslich durch die Lehrkraft und
+// ohne Zustimmung der Schulleitung, damit sich auch eine falsch gewaehlte
+// Verknuepfung korrigieren laesst, fuer die schon Zeiten erfasst wurden (dann
+// sperrt vorschlagen() jede Aenderung). Die erfassten Zeiten bleiben dabei
+// unveraendert im Aufgabenbereich; die Zuweisung ist danach wieder "offen" und
+// kann per Vorschlag neu verknuepft werden. Ein eigener offener Vorschlag der
+// Lehrkraft wird verworfen (er bezoege sich auf die alte Verknuepfung), ein
+// Vorschlag der Schulleitung bleibt zur Entscheidung stehen.
+const loesen = db.transaction((zuweisung) => {
+  const aktuell = ladeZuweisung(zuweisung.id);
+  if (!aktuell || !aktuell.category_id) return fehler('nicht-verknuepft');
+
+  db.prepare(
+    `UPDATE zuweisungen SET category_id=NULL, geloest_am=datetime('now'),
+       vorschlag_category_id = CASE WHEN vorschlag_von='lehrkraft' THEN NULL ELSE vorschlag_category_id END,
+       vorschlag_von = CASE WHEN vorschlag_von='lehrkraft' THEN NULL ELSE vorschlag_von END
+     WHERE id=?`
+  ).run(aktuell.id);
+  return OK;
+});
+
+module.exports = { istGesperrt, vorschlagen, annehmen, ablehnen, loesen };

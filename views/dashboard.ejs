@@ -75,7 +75,9 @@
           Aufgabenbereich – ein Vorschlag muss immer von der Schulleitung
           bestätigt werden, bevor er gilt. Solange für den Aufgabenbereich
           noch keine Zeiten erfasst wurden, lässt sich die Verknüpfung noch
-          per neuem Vorschlag ändern.
+          per neuem Vorschlag ändern. Eine Verknüpfung lässt sich außerdem
+          jederzeit <strong>lösen</strong>, z. B. um einen Fehler zu korrigieren –
+          die erfassten Zeiten bleiben dabei im Aufgabenbereich erhalten.
         </p>
         <% zuweisungen.forEach(z => { %>
           <div class="zuweisung-item">
@@ -97,8 +99,15 @@
             <% if (z.category_title) { %>
               <p class="zuweisung-meta">
                 Verknüpft mit: <strong><%= z.category_title %></strong>
-                <% if (z.gesperrt) { %><span class="hint">(fest, da bereits Zeiten erfasst)</span><% } %>
+                <% if (z.gesperrt) { %><span class="hint">(Änderung nur noch durch Lösen möglich, da bereits Zeiten erfasst)</span><% } %>
               </p>
+              <form method="post" action="/zuweisungen/<%= z.id %>/loesen" class="inline-form"
+                    data-confirm="Verknüpfung mit &quot;<%= z.category_title %>&quot; lösen? Die erfassten Zeiten bleiben im Aufgabenbereich erhalten. Die Ausgleichsstunden sind danach wieder nicht verknüpft und lassen sich neu verknüpfen.">
+                <%- include('partials/csrf') %>
+                <button type="submit" class="link-button link-button-danger">Verknüpfung lösen</button>
+              </form>
+            <% } else if (z.geloest_am) { %>
+              <p class="hint">Verknüpfung am <%= z.geloest_am.slice(0, 10) %> gelöst – du kannst unten einen Aufgabenbereich neu vorschlagen.</p>
             <% } %>
 
             <% if (z.vorschlag_von === 'admin') { %>
