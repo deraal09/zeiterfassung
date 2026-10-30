@@ -62,7 +62,7 @@ test('Eintraege: stabile external_id, auch wenn der Block waechst', () => {
   assert.equal(frueh[0].beginn, '2026-10-08T08:00:00.000Z');
 });
 
-test('Eintraege: Mindestdauer, Stichtag und Unterprojekt', () => {
+test('Eintraege: Mindestdauer, Stichtag und Unterthema', () => {
   const bloecke = [
     { start: t0, ende: t0 + min(1) },
     { start: t0 + min(60), ende: t0 + min(100) },

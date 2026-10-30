@@ -157,16 +157,16 @@ function initDb() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
-    -- Unterprojekte gliedern die Zeiten INNERHALB einer Kategorie weiter
+    -- Unterthemen gliedern die Zeiten INNERHALB einer Kategorie weiter
     -- (z. B. "Kurs A", "Kurs B"). Rein optional - eine Kategorie ohne
-    -- Unterprojekte funktioniert unveraendert wie bisher. Sobald das erste
-    -- Unterprojekt einer Kategorie angelegt wird, werden alle bis dahin
-    -- nicht zugeordneten Zeiten automatisch dem Unterprojekt "Allgemein"
+    -- Unterthemen funktioniert unveraendert wie bisher. Sobald das erste
+    -- Unterthema einer Kategorie angelegt wird, werden alle bis dahin
+    -- nicht zugeordneten Zeiten automatisch dem Unterthema "Allgemein"
     -- zugeordnet (siehe categories.js) - danach hat in dieser Kategorie
-    -- jede Zeit ein Unterprojekt.
-    -- ist_auffang markiert das Unterprojekt, in dem Zeiten ohne eigene
+    -- jede Zeit ein Unterthema.
+    -- ist_auffang markiert das Unterthema, in dem Zeiten ohne eigene
     -- Zuordnung landen. Frueher wurde es am Titel "Allgemein" erkannt - dann
-    -- wird aber ein gleichnamiges Unterprojekt der Lehrkraft ungewollt zum
+    -- wird aber ein gleichnamiges Unterthema der Lehrkraft ungewollt zum
     -- Auffang, und ein Umbenennen erzeugt beim naechsten Mal ein zweites.
     CREATE TABLE IF NOT EXISTS unterprojekte (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -420,7 +420,7 @@ function initDb() {
     }
   });
 
-  // Migration fuer Datenbanken vor Einfuehrung der Unterprojekte: die neue
+  // Migration fuer Datenbanken vor Einfuehrung der Unterthemen: die neue
   // unterprojekte-Tabelle wird oben bereits per CREATE TABLE IF NOT EXISTS
   // angelegt, hier fehlt nur noch die Spalte auf time_entries.
   const timeEntryColumns = db.prepare('PRAGMA table_info(time_entries)').all().map((c) => c.name);

@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex">
   <%# Der Titel wird vom Browser als Dateiname vorgeschlagen, wenn "Als PDF speichern" gewaehlt wird. %>
   <title><%= dateiname %></title>
-  <link rel="stylesheet" href="/public/css/druck.css">
+  <link rel="stylesheet" href="/public/css/druck.css?v=<%= assetVersion %>">
 </head>
 <body>
   <div class="werkzeug">
@@ -72,6 +72,6 @@
       <p class="stand">Erstellt am <%= stand %></p>
     </footer>
   </main>
-  <script src="/public/js/druck.js"></script>
+  <script src="/public/js/druck.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

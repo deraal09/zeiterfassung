@@ -219,7 +219,7 @@ test('ungueltige Zeiten werden abgelehnt', async () => {
   }
 });
 
-test('Unterprojekt per Titel; unbekannte Angaben sind ein Fehler, keine stille Umbuchung', async () => {
+test('Unterthema per Titel; unbekannte Angaben sind ein Fehler, keine stille Umbuchung', async () => {
   const { aufruf, db, ende } = await aufbau();
   try {
     db.prepare("INSERT INTO unterprojekte (category_id,title,ist_auffang) VALUES (1,'Allgemein',1)").run();

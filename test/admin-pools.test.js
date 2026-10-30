@@ -23,6 +23,7 @@ async function aufbau() {
   const app = express();
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
+  app.locals.assetVersion = 'test';
   app.locals.zahl = (w) => (Math.round(Number(w) * 100) / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 });
   app.use(express.urlencoded({ extended: false }));
   app.use((req, res, next) => {

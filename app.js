@@ -8,6 +8,7 @@ const config = require('./src/config');
 const { initDb } = require('./src/db');
 const { csrfMiddleware } = require('./src/middleware/csrf');
 const { adminKontext } = require('./src/middleware/admin-kontext');
+const { berechne: berechneAssetVersion } = require('./src/util/asset-version');
 const { nonceMiddleware, helmetMiddleware } = require('./src/middleware/security');
 
 initDb();
@@ -19,6 +20,7 @@ app.set('trust proxy', 1);
 
 // Zahlen in deutscher Schreibweise (Komma, hoechstens zwei Nachkommastellen)
 // fuer alle Ansichten.
+app.locals.assetVersion = berechneAssetVersion();
 app.locals.zahl = (wert) =>
   (Math.round(Number(wert) * 100) / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 });
 

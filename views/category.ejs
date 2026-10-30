@@ -68,7 +68,7 @@
         <button type="button" class="tab-button<%= activeTab === 'erfassen' ? ' active' : '' %>" data-tab-target="tab-erfassen">Erfassen</button>
         <button type="button" class="tab-button<%= activeTab === 'nachtragen' ? ' active' : '' %>" data-tab-target="tab-nachtragen">Zeit nachtragen</button>
         <button type="button" class="tab-button<%= activeTab === 'import' ? ' active' : '' %>" data-tab-target="tab-import">Import / Export</button>
-        <button type="button" class="tab-button<%= activeTab === 'unterprojekte' ? ' active' : '' %>" data-tab-target="tab-unterprojekte">Unterprojekte</button>
+        <button type="button" class="tab-button<%= activeTab === 'unterprojekte' ? ' active' : '' %>" data-tab-target="tab-unterprojekte">Unterthemen</button>
       </div>
 
       <section class="panel tab-panel" id="tab-erfassen" data-tab-panel <%= activeTab === 'erfassen' ? '' : 'hidden' %>>
@@ -88,7 +88,7 @@
             <%- include('partials/csrf') %>
             <input type="text" name="beschreibung" placeholder="Kurze Tätigkeitsbeschreibung" required>
             <% if (unterprojekte.length > 0) { %>
-              <select name="unterprojekt_id" title="Unterprojekt (optional, sonst Allgemein)">
+              <select name="unterprojekt_id" title="Unterthema (optional, sonst Allgemein)">
                 <option value="">– Allgemein –</option>
                 <% unterprojekte.forEach(up => { %>
                   <option value="<%= up.id %>"><%= up.title %></option>
@@ -110,7 +110,7 @@
           <input type="time" name="bis" title="Bis" required>
           <input type="date" name="bis_datum" title="Bis-Datum – nur nötig, wenn die Tätigkeit erst am Folgetag endet">
           <% if (unterprojekte.length > 0) { %>
-            <select name="unterprojekt_id" title="Unterprojekt (optional, sonst Allgemein)">
+            <select name="unterprojekt_id" title="Unterthema (optional, sonst Allgemein)">
               <option value="">– Allgemein –</option>
               <% unterprojekte.forEach(up => { %>
                 <option value="<%= up.id %>"><%= up.title %></option>
@@ -134,11 +134,11 @@
           <code>HH:MM</code>. Komma, Semikolon, Tabulator und Pipe (<code>|</code>)
           werden automatisch als Trennzeichen erkannt.
           Optional <code>Bis-Datum</code> für Tätigkeiten, die erst am Folgetag
-          enden, und <code>Unterprojekt</code> (Titel je Zeile; unbekannte
-          Angaben landen im auffangenden Unterprojekt). Zeilen mit ungültigem
+          enden, und <code>Unterthema</code> (Titel je Zeile; unbekannte
+          Angaben landen im auffangenden Unterthema). Zeilen mit ungültigem
           Datum oder ungültiger Uhrzeit werden übersprungen und gezählt.
           <% if (unterprojekte.length > 0) { %>
-            Hat die Datei keine eigene <code>Unterprojekt</code>-Spalte, gilt
+            Hat die Datei keine eigene <code>Unterthema</code>-Spalte, gilt
             stattdessen die Auswahl unten für die ganze Datei.
           <% } %>
         </p>
@@ -146,7 +146,7 @@
           <%- include('partials/csrf') %>
           <input type="file" name="csv_file" accept=".csv,text/csv" required>
           <% if (unterprojekte.length > 0) { %>
-            <select name="unterprojekt_id" title="Unterprojekt für Zeilen ohne eigene Unterprojekt-Spalte (sonst Allgemein)">
+            <select name="unterprojekt_id" title="Unterthema für Zeilen ohne eigene Unterthema-Spalte (sonst Allgemein)">
               <option value="">– Allgemein –</option>
               <% unterprojekte.forEach(up => { %>
                 <option value="<%= up.id %>"><%= up.title %></option>
@@ -160,7 +160,7 @@
         <h2>Zeiten als CSV exportieren</h2>
         <p class="hint">
           Exportiert die aktuell unten gefilterten Zeiten dieses Aufgabenbereichs
-          (Beginn, Ende, Dauer, Beschreibung, Unterprojekt, Status) als
+          (Beginn, Ende, Dauer, Beschreibung, Unterthema, Status) als
           CSV-Datei zum Öffnen in Excel.
         </p>
         <a class="btn"
@@ -170,10 +170,10 @@
       </section>
 
       <section class="panel tab-panel" id="tab-unterprojekte" data-tab-panel <%= activeTab === 'unterprojekte' ? '' : 'hidden' %>>
-        <h2>Unterprojekte <span class="meta">optional</span></h2>
+        <h2>Unterthemen <span class="meta">optional</span></h2>
         <% if (unterprojekte.length > 0) { %>
           <p class="hint">
-            Zeiten lassen sich beim Erfassen/Nachtragen einem Unterprojekt zuordnen (sonst landen sie im auffangenden Unterprojekt) und nachträglich über das Aktion-Menü einem anderen zuordnen.
+            Zeiten lassen sich beim Erfassen/Nachtragen einem Unterthema zuordnen (sonst landen sie im auffangenden Unterthema) und nachträglich über das Aktion-Menü einem anderen zuordnen.
           </p>
           <div class="table-scroll">
           <table class="entries-table" style="margin-bottom: 12px;">
@@ -192,7 +192,7 @@
                   </td>
                   <td data-label="Aktion">
                     <form method="post" action="/unterprojekte/<%= up.id %>/delete" class="inline-form"
-                          data-confirm="Unterprojekt &quot;<%= up.title %>&quot; löschen? Die erfassten Zeiten bleiben erhalten.">
+                          data-confirm="Unterthema &quot;<%= up.title %>&quot; löschen? Die erfassten Zeiten bleiben erhalten.">
                       <%- include('partials/csrf') %>
                       <button type="submit" class="link-button link-button-danger">Löschen</button>
                     </form>
@@ -204,17 +204,17 @@
           </div>
           <p class="hint">
             Beim Löschen bleiben die erfassten Zeiten erhalten: sie wandern in das
-            auffangende Unterprojekt – oder werden wieder unzugeordnet, wenn es
+            auffangende Unterthema – oder werden wieder unzugeordnet, wenn es
             das letzte war.
           </p>
         <% } else { %>
           <p class="hint">
-            Noch keine Unterprojekte angelegt. Damit lassen sich die Zeiten dieses Aufgabenbereichs z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
+            Noch keine Unterthemen angelegt. Damit lassen sich die Zeiten dieses Aufgabenbereichs z. B. nach Kurs oder Teilaufgabe gliedern - ganz optional.
           </p>
         <% } %>
         <form method="post" action="/categories/<%= category.id %>/unterprojekte" class="inline-form">
           <%- include('partials/csrf') %>
-          <input type="text" name="title" placeholder="Neues Unterprojekt, z. B. Kurs A" required>
+          <input type="text" name="title" placeholder="Neues Unterthema, z. B. Kurs A" required>
           <button type="submit" class="btn">Anlegen</button>
         </form>
       </section>
@@ -256,11 +256,11 @@
       <% }) %>
     </section>
   </main>
-  <script src="/public/js/timer.js"></script>
-  <script src="/public/js/theme.js"></script>
-  <script src="/public/js/forms.js"></script>
-  <script src="/public/js/tabs.js"></script>
-  <script src="/public/js/details-merken.js"></script>
-  <script src="/public/js/pwa.js"></script>
+  <script src="/public/js/timer.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/theme.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/forms.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/tabs.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/details-merken.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/pwa.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

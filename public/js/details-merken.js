@@ -1,4 +1,4 @@
-// Unterprojekt-Gruppen sind standardmaessig eingeklappt. Weil jede Aenderung
+// Unterthema-Gruppen sind standardmaessig eingeklappt. Weil jede Aenderung
 // an einem Eintrag (automatisches Speichern, Zuordnen, Loeschen) die Seite neu
 // laedt, merkt sich dieses Skript je Browser-Tab, welche Gruppen aufgeklappt
 // wurden - sonst klappte die gerade bearbeitete Gruppe nach jedem Speichern

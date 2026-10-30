@@ -25,7 +25,7 @@ const FEHLER = {
   'ungueltige-anfrage': 'Der Anfragekoerper muss ein JSON-Objekt sein.',
   'aufgabenbereich-fehlt': 'aufgabenbereich_id fehlt.',
   'aufgabenbereich-unbekannt': 'Der Aufgabenbereich existiert nicht oder gehoert nicht zu diesem Konto.',
-  'unterprojekt-unbekannt': 'Das Unterprojekt gehoert nicht zu diesem Aufgabenbereich.',
+  'unterprojekt-unbekannt': 'Das Unterthema gehoert nicht zu diesem Aufgabenbereich.',
   'ungueltiger-zeitpunkt':
     'beginn/ende muessen ein gueltiger Zeitpunkt sein: "YYYY-MM-DD HH:MM" (Serverzeit) oder ISO 8601 mit Zone, z. B. "2026-10-08T09:30:00Z".',
   'zeitpunkt-fehlt': 'beginn und ende sind erforderlich.',
@@ -178,8 +178,8 @@ function pruefeExternalId(wert) {
 
 // Anders als die Oberflaeche (die eine unbekannte Auswahl stillschweigend auf
 // "Allgemein" zurueckfallen laesst) meldet die API ein unbekanntes
-// Unterprojekt als Fehler: ein Programm kann nicht sehen, dass seine Angabe
-// ins Leere ging, und buchte sonst dauerhaft auf das falsche Unterprojekt.
+// Unterthema als Fehler: ein Programm kann nicht sehen, dass seine Angabe
+// ins Leere ging, und buchte sonst dauerhaft auf das falsche Unterthema.
 // Ohne Angabe gilt wie ueberall die Auffang-Regel (resolveUnterprojektId).
 function loeseUnterprojekt(cat, body) {
   let gewaehlt = null;
@@ -438,7 +438,7 @@ router.post('/eintraege/abgleich', (req, res) => {
   res.json({ zusammenfassung: zaehler, ergebnisse });
 });
 
-// PATCH /eintraege/:id - Beschreibung, Zeitraum oder Unterprojekt eines
+// PATCH /eintraege/:id - Beschreibung, Zeitraum oder Unterthema eines
 // abgeschlossenen Eintrags aendern. Nur uebergebene Felder werden geaendert.
 router.patch('/eintraege/:id', (req, res) => {
   const body = objektKoerper(req);

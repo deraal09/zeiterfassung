@@ -32,10 +32,10 @@ const ERROR_MESSAGES = {
   'zu-lang': `Ein einzelner Eintrag kann hoechstens ${MAX_DAUER_MINUTEN / 60} Stunden umfassen. Bitte Datum und Uhrzeiten pruefen.`,
   'keine-datei': 'Bitte eine CSV-Datei auswaehlen.',
   'ungueltiges-ziel': 'Bitte eine gueltige Anzahl Zeitstunden eingeben.',
-  'unterprojekt-titel-fehlt': 'Bitte einen Titel fuer das Unterprojekt eingeben.',
-  'unterprojekt-nicht-gefunden': 'Das Unterprojekt gehoert nicht zu diesem Aufgabenbereich.',
+  'unterprojekt-titel-fehlt': 'Bitte einen Titel fuer das Unterthema eingeben.',
+  'unterprojekt-nicht-gefunden': 'Das Unterthema gehoert nicht zu diesem Aufgabenbereich.',
   'auffang-nicht-loeschbar':
-    'Dieses Unterprojekt nimmt die Zeiten ohne eigene Zuordnung auf und laesst sich nur loeschen, wenn es das letzte ist.',
+    'Dieses Unterthema nimmt die Zeiten ohne eigene Zuordnung auf und laesst sich nur loeschen, wenn es das letzte ist.',
 };
 
 // Baut aus Kopfzeile + Zeilen einen CSV-Text zum Oeffnen in Excel: Semikolon
@@ -108,8 +108,8 @@ router.get('/categories/:id', requireAuth, (req, res) => {
     .get(cat.id);
   if (laufender) laufender.beschreibung = decrypt(laufender.beschreibung);
 
-  // Unterprojekte gliedern die Zeiten optional weiter (siehe Kommentar an
-  // der Tabelle in db.js). Je Unterprojekt wird die Gesamtzeit aus allen
+  // Unterthemen gliedern die Zeiten optional weiter (siehe Kommentar an
+  // der Tabelle in db.js). Je Unterthema wird die Gesamtzeit aus allen
   // damit verknuepften abgeschlossenen Eintraegen berechnet - unabhaengig
   // vom Filter der Tabelle darunter, aus demselben Grund wie erfassteStunden.
   const unterprojekte = getUnterprojekte(cat.id).map((up) => {
@@ -157,10 +157,10 @@ router.get('/categories/:id', requireAuth, (req, res) => {
     entries = entries.filter((e) => e.beschreibung.toLowerCase().includes(nadel));
   }
 
-  // Hat die Kategorie Unterprojekte, werden die (bereits gefilterten und
-  // sortierten) Eintraege dafuer nach Unterprojekt gruppiert - jede Zeit
+  // Hat die Kategorie Unterthemen, werden die (bereits gefilterten und
+  // sortierten) Eintraege dafuer nach Unterthema gruppiert - jede Zeit
   // gehoert dann zu genau einem, siehe resolveUnterprojektId. Ohne
-  // Unterprojekte bleibt es bei der bisherigen flachen Ansicht (eine
+  // Unterthemen bleibt es bei der bisherigen flachen Ansicht (eine
   // "Gruppe" ohne Ueberschrift).
   let gruppen;
   if (unterprojekte.length > 0) {
@@ -172,7 +172,7 @@ router.get('/categories/:id', requireAuth, (req, res) => {
       if (gruppe) gruppe.entries.push(e);
     });
     gruppen = Array.from(gruppenNachId.values());
-    // Das Auffang-Unterprojekt steht unten - dort landet, was keiner
+    // Das Auffang-Unterthema steht unten - dort landet, was keiner
     // konkreten Teilaufgabe zugeordnet wurde.
     gruppen.sort((a, b) => (a.istAuffang ? 1 : 0) - (b.istAuffang ? 1 : 0));
   } else {
@@ -264,7 +264,7 @@ router.get('/categories/:id/export', requireAuth, (req, res) => {
   }
 
   const zeilen = [
-    ['Beginn-Datum', 'Beginn-Uhrzeit', 'Ende-Datum', 'Ende-Uhrzeit', 'Dauer (Stunden)', 'Beschreibung', 'Unterprojekt', 'Status'],
+    ['Beginn-Datum', 'Beginn-Uhrzeit', 'Ende-Datum', 'Ende-Uhrzeit', 'Dauer (Stunden)', 'Beschreibung', 'Unterthema', 'Status'],
     ...entries.map((e) => [
       e.start_time.slice(0, 10),
       e.start_time.slice(11, 16),
@@ -317,7 +317,7 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
   // unterprojekt_id wird hier bewusst NICHT angefasst - die Zuordnung
   // erfolgt separat ueber das Aktion-Menue (/entries/:id/zuweisen), damit ein
   // automatisches Speichern dieses Formulars (siehe forms.js) eine bereits
-  // gesetzte Zuordnung nicht versehentlich auf das Auffang-Unterprojekt
+  // gesetzte Zuordnung nicht versehentlich auf das Auffang-Unterthema
   // zuruecksetzt.
   const { beschreibung, datum, bis_datum, von, bis } = req.body;
   if (!datum || !von || !bis) return res.redirect(`/categories/${entry.category_id}?error=felder-fehlen`);
@@ -342,7 +342,7 @@ router.post('/entries/:id/edit', requireAuth, (req, res) => {
 });
 
 // Ordnet einen Eintrag ueber das Aktion-Menue direkt einem anderen
-// Unterprojekt zu, ohne die uebrigen Felder anzufassen (Gegenstueck zum
+// Unterthema zu, ohne die uebrigen Felder anzufassen (Gegenstueck zum
 // bewusst unterprojekt_id-freien /entries/:id/edit oben).
 router.post('/entries/:id/zuweisen', requireAuth, (req, res) => {
   const userId = req.session.user.id;
@@ -398,7 +398,7 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), cs
 
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   const rows = parseCsv(req.file.buffer.toString('utf8'));
-  // Vorauswahl aus dem Formular gilt fuer Zeilen ohne eigene Unterprojekt-
+  // Vorauswahl aus dem Formular gilt fuer Zeilen ohne eigene Unterthema-
   // Spalte (bzw. mit einem darin unbekannten Titel) - siehe resolveUnterprojektId.
   const formularUnterprojektId = req.body.unterprojekt_id;
 
@@ -421,12 +421,13 @@ router.post('/categories/:id/import', requireAuth, upload.single('csv_file'), cs
         uebersprungen++;
         continue;
       }
-      // Unterprojekt wird bevorzugt ueber den Titel in der Spalte zugeordnet;
+      // Unterthema wird bevorzugt ueber den Titel in der Spalte zugeordnet;
       // steht dort nichts oder etwas Unbekanntes, gilt die Vorauswahl aus dem
       // Formular. Bleibt auch die leer, uebernimmt resolveUnterprojektId das
-      // Auffang-Unterprojekt (bzw. laesst den Eintrag frei, wenn die
-      // Kategorie gar keine Unterprojekte hat).
-      const unterprojektTitel = (row['unterprojekt'] ?? '').trim();
+      // Auffang-Unterthema (bzw. laesst den Eintrag frei, wenn die
+      // Kategorie gar keine Unterthemen hat).
+      // Die Spalte hiess frueher "Unterprojekt" - aeltere Exporte bleiben importierbar.
+      const unterprojektTitel = (row['unterthema'] ?? row['unterprojekt'] ?? '').trim();
       const unterprojektAusSpalte = unterprojektTitel
         ? db
             .prepare('SELECT id FROM unterprojekte WHERE category_id=? AND title=? COLLATE NOCASE')
@@ -462,9 +463,9 @@ router.post('/categories/:id/ziel', requireAuth, (req, res) => {
   res.redirect(`/categories/${cat.id}`);
 });
 
-// Legt ein neues Unterprojekt fuer die Kategorie an. Beim allerersten
-// Unterprojekt einer Kategorie werden gleichzeitig alle bis dahin nicht
-// zugeordneten Zeiten dem (bei Bedarf automatisch angelegten) Unterprojekt
+// Legt ein neues Unterthema fuer die Kategorie an. Beim allerersten
+// Unterthema einer Kategorie werden gleichzeitig alle bis dahin nicht
+// zugeordneten Zeiten dem (bei Bedarf automatisch angelegten) Unterthema
 // "Allgemein" zugeordnet - siehe Kommentar an db.js/unterprojekte.
 router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
   const cat = getOwnedCategory(req.params.id, req.session.user.id);
@@ -487,7 +488,7 @@ router.post('/categories/:id/unterprojekte', requireAuth, (req, res) => {
   res.redirect(`/categories/${cat.id}?formular=unterprojekte`);
 });
 
-// Benennt ein Unterprojekt um. Auch das Auffang-Unterprojekt darf einen
+// Benennt ein Unterthema um. Auch das Auffang-Unterthema darf einen
 // eigenen Namen bekommen - es wird ueber ist_auffang erkannt, nicht ueber
 // seinen Titel.
 router.post('/unterprojekte/:id/rename', requireAuth, (req, res) => {
@@ -498,7 +499,7 @@ router.post('/unterprojekte/:id/rename', requireAuth, (req, res) => {
        WHERE up.id=? AND c.user_id=?`
     )
     .get(req.params.id, req.session.user.id);
-  if (!up) return res.status(404).render('error', { message: 'Unterprojekt nicht gefunden.' });
+  if (!up) return res.status(404).render('error', { message: 'Unterthema nicht gefunden.' });
 
   const title = (req.body.title || '').trim();
   if (!title) return res.redirect(`/categories/${up.category_id}?error=unterprojekt-titel-fehlt&formular=unterprojekte`);
@@ -507,9 +508,9 @@ router.post('/unterprojekte/:id/rename', requireAuth, (req, res) => {
   res.redirect(`/categories/${up.category_id}?formular=unterprojekte`);
 });
 
-// Loescht ein Unterprojekt. Die erfassten Zeiten bleiben immer erhalten -
-// sie wandern ins Auffang-Unterprojekt, oder werden bei der letzten
-// Loeschung wieder unzugeordnet (dann hat die Kategorie keine Unterprojekte
+// Loescht ein Unterthema. Die erfassten Zeiten bleiben immer erhalten -
+// sie wandern ins Auffang-Unterthema, oder werden bei der letzten
+// Loeschung wieder unzugeordnet (dann hat die Kategorie keine Unterthemen
 // mehr und die flache Ansicht greift wie vorher).
 router.post('/unterprojekte/:id/delete', requireAuth, (req, res) => {
   const up = db
@@ -519,13 +520,13 @@ router.post('/unterprojekte/:id/delete', requireAuth, (req, res) => {
        WHERE up.id=? AND c.user_id=?`
     )
     .get(req.params.id, req.session.user.id);
-  if (!up) return res.status(404).render('error', { message: 'Unterprojekt nicht gefunden.' });
+  if (!up) return res.status(404).render('error', { message: 'Unterthema nicht gefunden.' });
 
   const uebrige = db
     .prepare('SELECT COUNT(*) as c FROM unterprojekte WHERE category_id=? AND id<>?')
     .get(up.category_id, up.id).c;
 
-  // Das Auffang-Unterprojekt kann nicht weg, solange es noch andere gibt -
+  // Das Auffang-Unterthema kann nicht weg, solange es noch andere gibt -
   // deren Zeiten haetten sonst kein Ziel mehr.
   if (up.ist_auffang && uebrige > 0) {
     return res.redirect(`/categories/${up.category_id}?error=auffang-nicht-loeschbar&formular=unterprojekte`);

@@ -32,7 +32,7 @@ Optionen fuer "abgleich":
   --pause <min>               Pause, ab der ein neuer Block beginnt (Standard: 15)
   --min <min>                 kuerzere Bloecke ignorieren (Standard: 1)
   --aufgabenbereich <titel|id>  ueberschreibt die Zuordnung der Projektdatei
-  --unterprojekt <titel>      ueberschreibt das Unterprojekt der Projektdatei
+  --unterprojekt <titel>      ueberschreibt das Unterthema der Projektdatei
   --trocken                   nur anzeigen, nichts senden
 
 Zuordnung Projekt -> Aufgabenbereich: Datei .zeiterfassung.json im Projektordner

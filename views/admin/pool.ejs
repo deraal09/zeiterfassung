@@ -68,8 +68,8 @@
       <%- include('../partials/admin-dokument-liste', { dateien: dokumente }) %>
     </section>
   </main>
-  <script src="/public/js/forms.js"></script>
-  <script src="/public/js/theme.js"></script>
-  <script src="/public/js/pwa.js"></script>
+  <script src="/public/js/forms.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/theme.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/pwa.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

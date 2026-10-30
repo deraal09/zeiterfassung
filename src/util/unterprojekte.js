@@ -1,11 +1,11 @@
 const { db } = require('../db');
 
-// Holt (oder legt bei Bedarf an) das Auffang-Unterprojekt einer Kategorie -
-// dorthin wandern Zeiten, die keinem konkreten Unterprojekt zugeordnet
-// wurden, sobald die Kategorie ueberhaupt Unterprojekte hat.
+// Holt (oder legt bei Bedarf an) das Auffang-Unterthema einer Kategorie -
+// dorthin wandern Zeiten, die keinem konkreten Unterthema zugeordnet
+// wurden, sobald die Kategorie ueberhaupt Unterthemen hat.
 //
 // Erkannt wird es am Kennzeichen ist_auffang, nicht mehr am Titel: sonst
-// wuerde ein von der Lehrkraft selbst "Allgemein" genanntes Unterprojekt
+// wuerde ein von der Lehrkraft selbst "Allgemein" genanntes Unterthema
 // ungewollt zum Auffang, und ein Umbenennen erzeugte ein zweites.
 function auffangUnterprojekt(categoryId) {
   let up = db.prepare('SELECT * FROM unterprojekte WHERE category_id=? AND ist_auffang=1').get(categoryId);
@@ -18,11 +18,11 @@ function auffangUnterprojekt(categoryId) {
   return up;
 }
 
-// Loest die zu speichernde unterprojekt_id auf. Unterprojekte sind komplett
+// Loest die zu speichernde unterprojekt_id auf. Unterthemen sind komplett
 // optional: hat die Kategorie noch keine, bleibt der Eintrag unzugeordnet
 // (null). Hat sie welche, zaehlt entweder das explizit gewaehlte (wenn es
 // zu dieser Kategorie gehoert) oder sonst automatisch "Allgemein" - damit
-// hat in einer Kategorie mit Unterprojekten am Ende jede Zeit eins
+// hat in einer Kategorie mit Unterthemen am Ende jede Zeit eins
 // zugeordnet.
 function resolveUnterprojektId(categoryId, submittedId) {
   const hatUnterprojekte = !!db.prepare('SELECT 1 FROM unterprojekte WHERE category_id=? LIMIT 1').get(categoryId);

@@ -61,19 +61,19 @@ erfasst und an die Schulleitung übermittelt werden können.
 - **Umrechnung** – benötigte Zeitstunden eines Aufgabenbereichs = Summe aller
   damit verknüpften (Ausgleichsstunden × Schuljahr-Faktor). Fortschritt wird
   als Balken angezeigt.
-- **Unterprojekte gliedern einen Aufgabenbereich optional weiter** – z. B.
+- **Unterthemen gliedern einen Aufgabenbereich optional weiter** – z. B.
   "Kurs A", "Kurs B" innerhalb eines Aufgabenbereichs, anlegbar im Reiter
-  "Unterprojekte" auf der Aufgabenbereichs-Seite. Rein optional, kein
-  Pflichtfeld: ein Aufgabenbereich ohne Unterprojekte funktioniert
-  unverändert flach. Sobald das erste Unterprojekt angelegt wird, werden
-  alle bis dahin nicht zugeordneten Zeiten automatisch dem Unterprojekt
+  "Unterthemen" auf der Aufgabenbereichs-Seite. Rein optional, kein
+  Pflichtfeld: ein Aufgabenbereich ohne Unterthemen funktioniert
+  unverändert flach. Sobald das erste Unterthema angelegt wird, werden
+  alle bis dahin nicht zugeordneten Zeiten automatisch dem Unterthema
   "Allgemein" zugeordnet – ab dann hat jede Zeit dieses Aufgabenbereichs
   eins. Beim Start des Timers oder beim Nachtragen lässt sich das
-  Unterprojekt gleich mit auswählen (sonst "Allgemein"), und über das
+  Unterthema gleich mit auswählen (sonst "Allgemein"), und über das
   Aktion-Menü einer Zeile jederzeit einem anderen zuordnen. In der Tabelle
-  "Erfasste Tätigkeiten" sind alle Unterprojekte zunächst **eingeklappt** und
+  "Erfasste Tätigkeiten" sind alle Unterthemen zunächst **eingeklappt** und
   zeigen nur ihre Gesamtzeit (Summe aller zugeordneten Zeiten) in der
-  Kopfzeile; zum Ansehen und Bearbeiten wird das jeweilige Unterprojekt
+  Kopfzeile; zum Ansehen und Bearbeiten wird das jeweilige Unterthema
   aufgeklappt. Aufgeklappte bleiben im selben Browser-Tab offen, auch wenn
   sich die Seite nach einer Änderung neu lädt.
 - **Start/Stopp-Timer** – Tätigkeit kurz beschreiben, Start drücken, später Stopp
@@ -98,12 +98,12 @@ erfasst und an die Schulleitung übermittelt werden können.
   die andere Änderung mit verwerfen.
 - **CSV-Import und -Export** – mehrere nachzutragende Zeiten auf einmal per
   CSV-Datei hochladen (Spalten: Datum, Von, Bis, Beschreibung, optional
-  Bis-Datum für Tätigkeiten über Mitternacht und Unterprojekt). Komma,
+  Bis-Datum für Tätigkeiten über Mitternacht und Unterthema). Komma,
   Semikolon, Tabulator und Pipe werden automatisch als Trennzeichen erkannt;
   Datum als `YYYY-MM-DD` oder `DD.MM.YYYY`. Ungültige Zeilen werden
   übersprungen und gezählt, gültige trotzdem importiert. Hat ein Aufgabenbereich
-  Unterprojekte, lässt sich beim Import zusätzlich eines aus einer Liste
-  auswählen, das für alle Zeilen ohne eigene Unterprojekt-Spalte gilt – eine
+  Unterthemen, lässt sich beim Import zusätzlich eines aus einer Liste
+  auswählen, das für alle Zeilen ohne eigene Unterthema-Spalte gilt – eine
   Spalte in der Datei hat für ihre Zeile trotzdem Vorrang. Umgekehrt lassen
   sich die (aktuell gefilterten) Zeiten eines Aufgabenbereichs als CSV-Datei
   exportieren – mit Semikolon als Trennzeichen, Komma als Dezimaltrennzeichen
@@ -204,7 +204,7 @@ erfasst und an die Schulleitung übermittelt werden können.
   Ausgleichsstunden-Verknüpfung daran hängen, vollständig löschen.
 - **Responsives Design (Smartphone)** – Navigation und Register-Buttons
   brechen auf schmalen Bildschirmen um, statt seitlich abgeschnitten zu
-  werden. Jede Datentabelle der App (Erfasste Tätigkeiten, Unterprojekte,
+  werden. Jede Datentabelle der App (Erfasste Tätigkeiten, Unterthemen,
   Admin-Bereich) wird auf Smartphone-Breite (≤ 640px) zu gestapelten,
   beschrifteten Karten je Zeile – vorher lagen hintere Spalten (Aktion-Menü,
   Aufgabenbereichs-Verknüpfung, Archivieren/Löschen) innerhalb eines seitlich
@@ -244,7 +244,7 @@ weder Cookies noch CSRF-Token. Anfragen und Antworten sind JSON.
 | Methode und Pfad | Zweck |
 | --- | --- |
 | `GET /me` | Konto, laufendes Schuljahr, Serverzeit, ob ein Timer läuft |
-| `GET /aufgabenbereiche?schuljahr=2026/27\|alle&archiviert=1` | eigene Aufgabenbereiche samt Unterprojekten und erfassten Stunden (Standard: laufendes Schuljahr, ohne archivierte) |
+| `GET /aufgabenbereiche?schuljahr=2026/27\|alle&archiviert=1` | eigene Aufgabenbereiche samt Unterthemen und erfassten Stunden (Standard: laufendes Schuljahr, ohne archivierte) |
 | `POST /aufgabenbereiche` `{titel, schuljahr?}` | legt einen Aufgabenbereich an – oder liefert den gleichnamigen des Schuljahres zurück (`angelegt: false`) |
 | `GET /eintraege?aufgabenbereich_id=&von=&bis=&quelle=&external_id=&limit=&offset=` | Zeiten lesen (`von`/`bis` als Datum, inklusive) |
 | `GET /eintraege/:id` | ein Eintrag |
@@ -273,8 +273,8 @@ curl -X POST "$ZEITERFASSUNG_URL/api/v1/eintraege" \
   aktualisiert den vorhandenen (`status`: `angelegt`, `aktualisiert` oder
   `unveraendert`) – so lässt sich ein Abgleich beliebig oft wiederholen. Der
   Schlüssel ist nur je Benutzer eindeutig.
-- **Unterprojekte:** eine unbekannte Angabe ist ein Fehler (`422`), kein stilles
-  Umbuchen. Ohne Angabe gilt wie in der Oberfläche das Auffang-Unterprojekt
+- **Unterthemen:** eine unbekannte Angabe ist ein Fehler (`422`), kein stilles
+  Umbuchen. Ohne Angabe gilt wie in der Oberfläche das Auffang-Unterthema
   "Allgemein".
 - **Status:** per API angelegte Einträge haben die Quelle `api` und sind – wie
   nachgetragene Zeiten – zunächst Entwurf, bis sie synchronisiert werden
@@ -352,6 +352,12 @@ danach genügt in einem Claude-Code-Chat `/zeiterfassung`.
   auch nach einem Neustart der App erhalten
 - LDAP-Anbindung über `ldapts` (Bind als Service-Account zur Benutzersuche,
   anschließend Bind mit den eingegebenen Zugangsdaten zur Passwortprüfung)
+
+- **Neue Version = neues CSS/JS sofort** – die Adressen aller Stylesheets und
+  Skripte tragen einen Inhalts-Hash (`?v=…`, siehe `src/util/asset-version.js`).
+  Nach einem Update lädt der Browser (und ein vorgeschalteter Webserver wie bei
+  Plesk) sie deshalb von selbst neu, statt eine neue Seite mit altem CSS
+  darzustellen. Ein manuelles "hart neu laden" ist nicht mehr nötig.
 
 ### Absicherung
 
