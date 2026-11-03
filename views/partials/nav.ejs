@@ -1,28 +1,31 @@
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="<%= user && user.isAdmin ? '/admin' : '/' %>">Zeiterfassung</a>
+    <a class="brand" href="<%= user && user.isAdmin ? '/admin' : '/' %>">⏱️ Zeiterfassung</a>
     <% if (user) { %>
-      <nav class="nav-links">
+      <button type="button" class="nav-toggle" aria-label="Menü öffnen" aria-expanded="false">☰</button>
+      <nav class="nav">
         <% if (user.isAdmin) { %>
           <a href="/admin">Admin</a>
           <a href="/">Meine Zeiten</a>
         <% } else { %>
           <a href="/">Übersicht</a>
         <% } %>
-        <span class="nav-user"><%= user.displayName %></span>
+      </nav>
+      <div class="userbox">
+        <span class="user"><%= user.displayName %></span>
+        <% if (user.isAdmin) { %><span class="role">Admin</span><% } %>
         <form action="/logout" method="post" class="inline-form">
           <%- include('csrf') %>
-          <button type="submit" class="link-button">Abmelden</button>
+          <button type="submit" class="link-button logout">Abmelden</button>
         </form>
-        <%- include('pwa-install') %>
-        <%- include('theme-toggle') %>
-      </nav>
-    <% } else { %>
-      <div class="nav-links">
-        <%- include('pwa-install') %>
-        <%- include('theme-toggle') %>
       </div>
+    <% } else { %>
+      <span class="nav-spacer"></span>
     <% } %>
+    <div class="topbar-rechts">
+      <%- include('pwa-install') %>
+      <%- include('theme-toggle') %>
+    </div>
   </div>
 </header>
 <% if (user && user.isAdmin && typeof poolBadge !== 'undefined' && poolBadge) { %>
@@ -42,3 +45,4 @@
     </a>
   </div>
 <% } %>
+<script src="/public/js/nav.js?v=<%= assetVersion %>"></script>

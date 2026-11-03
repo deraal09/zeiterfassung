@@ -209,6 +209,14 @@ erfasst und an die Schulleitung übermittelt werden können.
   eigenen Übersicht, bleibt inklusive aller Zeiten erhalten – der Admin kann
   ihn bei Bedarf reaktivieren) oder, solange weder Zeiten noch eine
   Ausgleichsstunden-Verknüpfung daran hängen, vollständig löschen.
+- **Optik wie `noten_webapp`** – dunkelblaue Kopfzeile (Marke, Navigation,
+  Benutzer mit Rollen-Badge), weiße Karten mit Schatten, eckige Register,
+  dunkelblaue Buttons, Kennzahlen-Karten (`KPI`) und Kacheln auf der
+  Admin-Startseite sowie eine Fußzeile mit Jahr und Version. Hell, Dunkel
+  oder Systemeinstellung wählt der Emoji-Umschalter (🖥️ ☀️ 🌙) in der
+  Kopfzeile, daneben steht "📲 App installieren". Auf dem Smartphone klappt
+  die Navigation hinter ein ☰-Menü. Anmelde- und Ersteinrichtungsseite
+  nutzen dasselbe Layout wie alle anderen Seiten.
 - **Responsives Design (Smartphone)** – Navigation und Register-Buttons
   brechen auf schmalen Bildschirmen um, statt seitlich abgeschnitten zu
   werden. Jede Datentabelle der App (Erfasste Tätigkeiten, Unterthemen,

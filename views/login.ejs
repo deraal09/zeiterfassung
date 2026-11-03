@@ -4,24 +4,24 @@
   <title>Anmelden – Zeiterfassung</title>
   <%- include('partials/head') %>
 </head>
-<body class="login-page">
-  <div class="login-page-toolbar">
-    <%- include('partials/pwa-install') %>
-    <%- include('partials/theme-toggle') %>
-  </div>
-  <main class="login-box">
-    <h1>Zeiterfassung</h1>
-    <p class="subtitle">Anmeldung mit Schulaccount</p>
+<body>
+  <%- include('partials/nav') %>
+  <main class="container">
+    <h1>Anmelden</h1>
+    <p class="hint">Anmeldung mit dem Schulaccount.</p>
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
-    <form method="post" action="/login">
+    <form method="post" action="/login" class="form-karte">
       <%- include('partials/csrf') %>
-      <label for="username">Benutzername</label>
-      <input type="text" id="username" name="username" autocomplete="username" required autofocus>
-      <label for="password">Passwort</label>
-      <input type="password" id="password" name="password" autocomplete="current-password" required>
+      <label for="username">Benutzername
+        <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+      </label>
+      <label for="password">Passwort
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+      </label>
       <button type="submit" class="btn btn-start btn-block">Anmelden</button>
     </form>
   </main>
+  <%- include('partials/footer') %>
   <script src="/public/js/theme.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/pwa.js?v=<%= assetVersion %>"></script>
 </body>

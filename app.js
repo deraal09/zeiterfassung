@@ -21,6 +21,7 @@ app.set('trust proxy', 1);
 // Zahlen in deutscher Schreibweise (Komma, hoechstens zwei Nachkommastellen)
 // fuer alle Ansichten.
 app.locals.assetVersion = berechneAssetVersion();
+app.locals.appVersion = require('./package.json').version;
 app.locals.zahl = (wert) =>
   (Math.round(Number(wert) * 100) / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 });
 

@@ -11,7 +11,7 @@
 
     <div class="page-header">
       <h1>Admin <span class="meta">Schuljahr <%= schuljahr %></span></h1>
-      <a href="/admin/zuweisen?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn btn-start">Ausgleichsstunden zuweisen</a>
+      <a href="/admin/zuweisen?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn btn-start">➕ Ausgleichsstunden zuweisen</a>
     </div>
 
     <% if (error) { %><p class="alert alert-error"><%= error %></p><% } %>
@@ -24,21 +24,21 @@
       </p>
     <% } %>
 
-    <section class="panel">
-      <h2>Gesamtpool</h2>
-      <% if (gesamt.anzahl === 0) { %>
-        <p class="empty-state">Für <%= schuljahr %> gibt es noch keinen Pool.</p>
-        <a href="/admin/pools?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn">Pools anlegen</a>
-      <% } else { %>
-        <div class="stat-grid">
-          <div class="stat"><span class="stat-wert"><%= zahl(gesamt.stunden) %> h</span><span class="stat-label">im Gesamtpool</span></div>
-          <div class="stat"><span class="stat-wert"><%= zahl(gesamt.vergeben) %> h</span><span class="stat-label">vergeben</span></div>
-          <div class="stat"><span class="stat-wert"><%= zahl(gesamt.frei) %> h</span><span class="stat-label">noch frei</span></div>
-        </div>
+    <h2>Gesamtpool</h2>
+    <% if (gesamt.anzahl === 0) { %>
+      <p class="empty-state">Für <%= schuljahr %> gibt es noch keinen Pool.</p>
+      <a href="/admin/pools?schuljahr=<%= encodeURIComponent(schuljahr) %>" class="btn">Pools anlegen</a>
+    <% } else { %>
+      <div class="kpis">
+        <div class="kpi"><div class="kpi-val"><%= zahl(gesamt.stunden) %> h</div><div class="kpi-lbl">im Gesamtpool</div></div>
+        <div class="kpi"><div class="kpi-val"><%= zahl(gesamt.vergeben) %> h</div><div class="kpi-lbl">vergeben</div></div>
+        <div class="kpi"><div class="kpi-val"><%= zahl(gesamt.frei) %> h</div><div class="kpi-lbl">noch frei</div></div>
+      </div>
+
+      <section class="panel">
         <div class="progress" role="img" aria-label="<%= zahl(gesamt.vergeben) %> von <%= zahl(gesamt.stunden) %> Stunden vergeben">
           <div class="progress-bar" style="width: <%= gesamt.stunden > 0 ? Math.min(100, (gesamt.vergeben / gesamt.stunden) * 100) : 0 %>%"></div>
         </div>
-
         <ul class="pool-liste">
           <% pools.forEach(p => { %>
             <li>
@@ -50,42 +50,44 @@
             </li>
           <% }) %>
         </ul>
-      <% } %>
-    </section>
+      </section>
+    <% } %>
 
+    <h2>Verwaltung</h2>
     <div class="kachel-grid">
       <a class="kachel" href="/admin/lehrkraefte?schuljahr=<%= encodeURIComponent(schuljahr) %>">
-        <span class="kachel-titel">Lehrkräfte</span>
+        <span class="kachel-zeile"><span class="kachel-icon" aria-hidden="true">🧑‍🏫</span><span class="kachel-titel">Lehrkräfte</span></span>
         <span class="kachel-wert"><%= anzahlLehrkraefte %></span>
         <span class="kachel-text">mit Ausgleichsstunden<% if (offeneZuweisungen > 0) { %> · <%= offeneZuweisungen %> noch nicht verknüpft<% } %></span>
       </a>
       <a class="kachel" href="/admin/bereiche?schuljahr=<%= encodeURIComponent(schuljahr) %>">
-        <span class="kachel-titel">Bereiche</span>
+        <span class="kachel-zeile"><span class="kachel-icon" aria-hidden="true">🏫</span><span class="kachel-titel">Bereiche</span></span>
         <span class="kachel-wert"><%= anzahlBereiche %></span>
         <span class="kachel-text">in diesem Schuljahr</span>
       </a>
       <a class="kachel" href="/admin/uebersicht?schuljahr=<%= encodeURIComponent(schuljahr) %>">
-        <span class="kachel-titel">Übersicht &amp; Druck</span>
+        <span class="kachel-zeile"><span class="kachel-icon" aria-hidden="true">🖨️</span><span class="kachel-titel">Übersicht &amp; Druck</span></span>
         <span class="kachel-wert">PDF</span>
         <span class="kachel-text">Tabellen, Ausdruck zum Unterschreiben</span>
       </a>
       <a class="kachel" href="/admin/dokumente?schuljahr=<%= encodeURIComponent(schuljahr) %>">
-        <span class="kachel-titel">Unterschriebene Dokumente</span>
+        <span class="kachel-zeile"><span class="kachel-icon" aria-hidden="true">✍️</span><span class="kachel-titel">Dokumente</span></span>
         <span class="kachel-wert"><%= dokumente.vorhanden %> von <%= dokumente.noetig %></span>
-        <span class="kachel-text">hochgeladen</span>
+        <span class="kachel-text">unterschrieben hochgeladen</span>
       </a>
       <a class="kachel" href="/admin/faktor?schuljahr=<%= encodeURIComponent(schuljahr) %>">
-        <span class="kachel-titel">Faktor</span>
+        <span class="kachel-zeile"><span class="kachel-icon" aria-hidden="true">⚖️</span><span class="kachel-titel">Faktor</span></span>
         <span class="kachel-wert"><%= faktorSettings ? zahl(faktorSettings.faktor) + ' h' : '–' %></span>
         <span class="kachel-text">Zeitstunden je Ausgleichsstunde</span>
       </a>
       <a class="kachel" href="/admin/pools?schuljahr=<%= encodeURIComponent(naechstesSchuljahr) %>&amp;uebernehmen=1#uebernehmen">
-        <span class="kachel-titel">Nächstes Schuljahr</span>
+        <span class="kachel-zeile"><span class="kachel-icon" aria-hidden="true">📅</span><span class="kachel-titel">Nächstes Schuljahr</span></span>
         <span class="kachel-wert"><%= naechstesSchuljahr %></span>
         <span class="kachel-text">vorbereiten: Pools, Bereiche, Zuweisungen übernehmen</span>
       </a>
     </div>
   </main>
+  <%- include('../partials/footer') %>
   <script src="/public/js/forms.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/theme.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/pwa.js?v=<%= assetVersion %>"></script>
