@@ -214,7 +214,9 @@ erfasst und an die Schulleitung übermittelt werden können.
   dunkelblaue Buttons, Kennzahlen-Karten (`KPI`) und Kacheln auf der
   Admin-Startseite sowie eine Fußzeile mit Jahr und Version. Hell, Dunkel
   oder Systemeinstellung wählt der Emoji-Umschalter (🖥️ ☀️ 🌙) in der
-  Kopfzeile, daneben steht "📲 App installieren". Auf dem Smartphone klappt
+  Kopfzeile, daneben stehen "📲 App installieren" und "🔄 Neu laden". Der
+  Neu-laden-Knopf leert Service Worker und Caches und holt Seite, CSS und
+  Skripte frisch vom Server – ein harter Reload auch in der installierten App. Auf dem Smartphone klappt
   die Navigation hinter ein ☰-Menü. Anmelde- und Ersteinrichtungsseite
   nutzen dasselbe Layout wie alle anderen Seiten.
 - **Responsives Design (Smartphone)** – Navigation und Register-Buttons
