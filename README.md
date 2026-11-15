@@ -216,8 +216,8 @@ erfasst und an die Schulleitung übermittelt werden können.
   oder Systemeinstellung wählt der Emoji-Umschalter (🖥️ ☀️ 🌙) in der
   Kopfzeile, daneben stehen "📲 App installieren" und "🔄 Neu laden". Der
   Neu-laden-Knopf leert Service Worker und Caches und holt Seite, CSS und
-  Skripte frisch vom Server – ein harter Reload auch in der installierten App. Auf dem Smartphone klappt
-  die Navigation hinter ein ☰-Menü. Anmelde- und Ersteinrichtungsseite
+  Skripte frisch vom Server – ein harter Reload auch in der installierten App. Auf dem Smartphone
+  klappt die Navigation hinter ein ☰-Menü. Anmelde- und Ersteinrichtungsseite
   nutzen dasselbe Layout wie alle anderen Seiten.
 - **Responsives Design (Smartphone)** – Navigation und Register-Buttons
   brechen auf schmalen Bildschirmen um, statt seitlich abgeschnitten zu

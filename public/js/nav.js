@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       // cache: 'reload' umgeht den HTTP-Cache und ersetzt dabei den dortigen
       // Eintrag - die folgende Navigation findet dann nur noch frische Dateien.
-      const urls = new Set([location.href]);
+      const urls = new Set([window.location.href]);
       document.querySelectorAll('link[rel="stylesheet"][href], script[src]').forEach((el) => {
         urls.add(el.href || el.src);
       });
@@ -41,6 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
       // Auch wenn das Aufraeumen scheitert: neu laden bringt trotzdem etwas.
     }
     // replace statt reload: nach einem POST soll nichts erneut abgeschickt werden.
-    location.replace(location.href);
+    window.location.replace(window.location.href);
   });
 });
