@@ -1,0 +1,17 @@
+<%# Laufender Timer auf jeder Seite (siehe middleware/laufender-timer.js). %>
+<% if (typeof laufenderTimer !== 'undefined' && laufenderTimer) { %>
+  <div class="timer-leiste" role="status">
+    <div class="timer-leiste-inner">
+      <span class="timer-punkt" aria-hidden="true"></span>
+      <a class="timer-text" href="/categories/<%= laufenderTimer.category_id %>">
+        <strong>Läuft:</strong> <%= laufenderTimer.beschreibung %>
+        <span class="meta">(<%= laufenderTimer.category_title %>)</span>
+      </a>
+      <span class="live-timer" data-start="<%= laufenderTimer.start_time %>">00:00:00</span>
+      <form method="post" action="/entries/<%= laufenderTimer.id %>/stop" class="inline-form">
+        <%- include('csrf') %>
+        <button type="submit" class="btn btn-stop">Stopp</button>
+      </form>
+    </div>
+  </div>
+<% } %>

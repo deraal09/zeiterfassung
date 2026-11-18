@@ -3,7 +3,6 @@ const { db } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { nowLocalString } = require('../util/time');
 const { aktuellesSchuljahr, istSchuljahr } = require('../util/schuljahr');
-const { decrypt } = require('../util/crypto');
 const { vorschlagen, annehmen, ablehnen, loesen } = require('../util/zuweisungen');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 const { interneZielseite } = require('../util/redirect');
@@ -36,18 +35,6 @@ function kategorieLoeschbar(categoryId) {
     .prepare('SELECT 1 FROM zuweisungen WHERE category_id=? OR vorschlag_category_id=? LIMIT 1')
     .get(categoryId, categoryId);
   return !hatZeiten && !hatZuweisung;
-}
-
-function activeTimer(userId) {
-  const timer = db
-    .prepare(
-      `SELECT te.*, c.title as category_title FROM time_entries te
-       JOIN categories c ON c.id = te.category_id
-       WHERE te.user_id = ? AND te.end_time IS NULL`
-    )
-    .get(userId);
-  if (timer) timer.beschreibung = decrypt(timer.beschreibung);
-  return timer;
 }
 
 const MONATSKUERZEL = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
@@ -226,7 +213,6 @@ router.get('/', requireAuth, (req, res) => {
     schuljahr,
     schuljahre,
     aktuellesSchuljahr: aktuellesSchuljahr(),
-    timer: activeTimer(userId),
     unsyncedCount,
     error: ERROR_MESSAGES[req.query.error] || null,
   });
@@ -253,6 +239,7 @@ router.post('/categories', requireAuth, (req, res) => {
     schuljahr,
     ziel
   );
+  req.flash(`Aufgabenbereich „${title}“ angelegt.`);
   res.redirect(zurueck);
 });
 
@@ -264,6 +251,7 @@ router.post('/categories/:id/archive', requireAuth, (req, res) => {
   const cat = db.prepare('SELECT * FROM categories WHERE id=? AND user_id=?').get(req.params.id, req.session.user.id);
   if (!cat) return res.redirect('/');
   db.prepare('UPDATE categories SET archived=1 WHERE id=?').run(cat.id);
+  req.flash(`Aufgabenbereich „${cat.title}“ archiviert.`);
   res.redirect(`/?schuljahr=${encodeURIComponent(cat.schuljahr)}`);
 });
 
@@ -278,6 +266,7 @@ router.post('/categories/:id/delete', requireAuth, (req, res) => {
   }
 
   db.prepare('DELETE FROM categories WHERE id=?').run(cat.id);
+  req.flash(`Aufgabenbereich „${cat.title}“ gelöscht.`);
   res.redirect(`/?schuljahr=${encodeURIComponent(cat.schuljahr)}`);
 });
 
@@ -306,6 +295,7 @@ router.post('/zuweisungen/:id/link', requireAuth, (req, res) => {
 
   const ergebnis = vorschlagen(zuweisung, 'lehrkraft', categoryId);
   if (!ergebnis.ok) return res.redirect(`/?error=${ergebnis.fehler}`);
+  req.flash('Vorschlag an die Schulleitung gesendet – er gilt, sobald sie ihn bestätigt.');
   res.redirect('/');
 });
 
@@ -315,6 +305,7 @@ router.post('/zuweisungen/:id/annehmen', requireAuth, (req, res) => {
   if (!zuweisung) return res.redirect('/');
   const ergebnis = annehmen(zuweisung, 'lehrkraft');
   if (!ergebnis.ok) return res.redirect(`/?error=${ergebnis.fehler}`);
+  req.flash('Vorschlag der Schulleitung angenommen.');
   res.redirect('/');
 });
 
@@ -325,6 +316,7 @@ router.post('/zuweisungen/:id/ablehnen', requireAuth, (req, res) => {
   if (!zuweisung) return res.redirect('/');
   const ergebnis = ablehnen(zuweisung, 'lehrkraft');
   if (!ergebnis.ok) return res.redirect(`/?error=${ergebnis.fehler}`);
+  req.flash('Vorschlag der Schulleitung abgelehnt.');
   res.redirect('/');
 });
 
@@ -337,6 +329,7 @@ router.post('/zuweisungen/:id/loesen', requireAuth, (req, res) => {
   const ergebnis = loesen(zuweisung);
   const schuljahr = encodeURIComponent(zuweisung.schuljahr);
   if (!ergebnis.ok) return res.redirect(`/?schuljahr=${schuljahr}&error=${ergebnis.fehler}`);
+  req.flash('Verknüpfung gelöst – die erfassten Zeiten bleiben erhalten.');
   res.redirect(`/?schuljahr=${schuljahr}`);
 });
 
@@ -362,14 +355,16 @@ router.post('/zuweisungen/:id/uebernehmen', requireAuth, (req, res) => {
     db.prepare('DELETE FROM categories WHERE id=?').run(info.lastInsertRowid);
     return res.redirect(`/?error=${ergebnis.fehler}`);
   }
+  req.flash(`Aufgabenbereich „${title}“ angelegt und der Schulleitung zur Bestätigung vorgeschlagen.`);
   res.redirect('/');
 });
 
 router.post('/sync', requireAuth, (req, res) => {
-  db.prepare("UPDATE time_entries SET synced=1, synced_at=? WHERE user_id=? AND synced=0 AND end_time IS NOT NULL").run(
+  const info = db.prepare("UPDATE time_entries SET synced=1, synced_at=? WHERE user_id=? AND synced=0 AND end_time IS NOT NULL").run(
     nowLocalString(),
     req.session.user.id
   );
+  req.flash(info.changes === 1 ? '1 Eintrag synchronisiert.' : `${info.changes} Einträge synchronisiert.`);
   res.redirect(interneZielseite(req.get('referer')));
 });
 

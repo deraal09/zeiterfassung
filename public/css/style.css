@@ -303,7 +303,8 @@ h1 .meta, h2 .meta {
   overflow: hidden;
   margin: 8px 0;
 }
-.progress-bar { background: var(--color-primary); height: 100%; }
+.progress-bar { background: var(--color-primary); height: 100%; transition: width 0.3s ease; }
+.progress-bar-voll { background: var(--color-success); }
 .progress-label { color: var(--color-muted); font-size: 0.85rem; margin: 0; }
 
 .timer-banner {
@@ -1005,4 +1006,98 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
   .kachel-icon { font-size: 1.2rem; }
   .kachel-wert { font-size: 1.3rem; }
   .eingabe-breit { min-width: 0; }
+}
+
+
+/* ---- Verbesserungen UI/UX ------------------------------------------------ */
+
+/* Sichtbarer Tastaturfokus: hell auf der dunklen Kopfzeile, sonst in der
+   Akzentfarbe. Nur bei Tastaturbedienung (focus-visible), nicht bei Mausklick. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.topbar :focus-visible { outline-color: #ffffff; }
+
+/* Laufender Timer: Leiste unter der Kopfzeile auf jeder Seite. */
+.timer-leiste {
+  background: var(--color-timer-bg);
+  border-bottom: 1px solid var(--color-timer-border);
+}
+.timer-leiste-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0.5rem 16px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.timer-leiste .timer-text {
+  flex: 1 1 200px;
+  min-width: 0;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.timer-leiste .timer-text:hover { text-decoration: none; }
+.timer-leiste .live-timer { margin-left: 0; font-size: 1.05rem; }
+.timer-leiste .btn { padding: 0.3rem 0.9rem; }
+.timer-punkt {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  animation: timer-puls 1.6s ease-in-out infinite;
+}
+@keyframes timer-puls {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Smartphone: oben Punkt, Zeit und Stopp in einer Zeile, darunter die
+   (einzeilig gekuerzte) Beschreibung. */
+@media (max-width: 640px) {
+  .timer-leiste .live-timer { order: 1; margin-right: auto; }
+  .timer-leiste form { order: 2; }
+  .timer-leiste .timer-text {
+    order: 3;
+    flex: 1 1 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Rueckmeldung nach einer Aktion */
+.flash-wrap { padding-top: 12px; padding-bottom: 0; }
+.flash-wrap .alert { margin: 0; }
+
+/* Aufklappbare Erklaerung ("Wie funktioniert das?") */
+.erklaerung { margin: 0 0 12px; font-size: 0.9rem; color: var(--color-muted); }
+.erklaerung summary { cursor: pointer; color: var(--color-link); }
+.erklaerung ul { margin: 8px 0 0; padding-left: 1.2rem; }
+.erklaerung li { margin: 4px 0; }
+
+/* Kleine Statusmarke */
+.badge-zeile { margin: 8px 0; }
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border-strong);
+}
+.badge-ok {
+  background: var(--color-alert-success-bg);
+  border-color: var(--color-alert-success-border);
+  color: var(--color-alert-success-text);
+}
+.pool-liste-titel { margin: 16px 0 4px; font-size: 0.95rem; color: var(--color-muted); }
+
+/* Wer Bewegung reduziert haben will, bekommt keine Animationen und Uebergaenge. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

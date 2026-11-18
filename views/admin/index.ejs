@@ -39,6 +39,11 @@
         <div class="progress" role="img" aria-label="<%= zahl(gesamt.vergeben) %> von <%= zahl(gesamt.stunden) %> Stunden vergeben">
           <div class="progress-bar" style="width: <%= gesamt.stunden > 0 ? Math.min(100, (gesamt.vergeben / gesamt.stunden) * 100) : 0 %>%"></div>
         </div>
+        <p class="progress-label">
+          <%= zahl(gesamt.vergeben) %> von <%= zahl(gesamt.stunden) %> h vergeben
+          (<%= gesamt.stunden > 0 ? Math.round((gesamt.vergeben / gesamt.stunden) * 100) : 0 %> %)
+        </p>
+        <h3 class="pool-liste-titel">Nach Pool</h3>
         <ul class="pool-liste">
           <% pools.forEach(p => { %>
             <li>

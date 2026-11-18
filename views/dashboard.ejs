@@ -7,19 +7,6 @@
 <body>
   <%- include('partials/nav') %>
   <main class="container">
-    <% if (timer) { %>
-      <div class="timer-banner">
-        <div>
-          <strong>Läuft:</strong> <%= timer.beschreibung %> (<%= timer.category_title %>)
-          <span class="live-timer" data-start="<%= timer.start_time %>">00:00:00</span>
-        </div>
-        <form method="post" action="/entries/<%= timer.id %>/stop">
-          <%- include('partials/csrf') %>
-          <button type="submit" class="btn btn-stop">Stopp</button>
-        </form>
-      </div>
-    <% } %>
-
     <div class="page-header">
       <h1>
         Meine Ausgleichsstunden
@@ -70,21 +57,25 @@
       <section class="panel">
         <h2>Meine Ausgleichsstunden-Zuweisungen <span class="meta">Schuljahr <%= schuljahr %></span></h2>
         <p class="hint">
-          Von der Schulleitung zugewiesene Ausgleichsstunden. Verknüpfe sie mit
-          einem eigenen Aufgabenbereich oder übernimm sie als neuen
-          Aufgabenbereich – ein Vorschlag muss immer von der Schulleitung
-          bestätigt werden, bevor er gilt. Solange für den Aufgabenbereich
-          noch keine Zeiten erfasst wurden, lässt sich die Verknüpfung noch
-          per neuem Vorschlag ändern. Eine Verknüpfung lässt sich außerdem
-          jederzeit <strong>lösen</strong>, z. B. um einen Fehler zu korrigieren –
-          die erfassten Zeiten bleiben dabei im Aufgabenbereich erhalten.
+          Von der Schulleitung zugewiesen. Ordne jede Zuweisung einem
+          Aufgabenbereich zu – die Schulleitung bestätigt das noch.
         </p>
+        <details class="erklaerung">
+          <summary>ⓘ Wie funktioniert das?</summary>
+          <ul>
+            <li><strong>Mit vorhandenem Aufgabenbereich verknüpfen:</strong> wähle einen deiner Aufgabenbereiche und schlage ihn vor.</li>
+            <li><strong>Als neuen Aufgabenbereich anlegen:</strong> legt einen Aufgabenbereich an und schlägt ihn sofort vor.</li>
+            <li>Ein Vorschlag gilt erst, wenn die Schulleitung ihn bestätigt.</li>
+            <li>Solange noch keine Zeiten erfasst sind, kannst du die Verknüpfung per neuem Vorschlag ändern.</li>
+            <li>Eine bestehende Verknüpfung lässt sich jederzeit <strong>lösen</strong> (z. B. um einen Fehler zu korrigieren) – die erfassten Zeiten bleiben im Aufgabenbereich erhalten.</li>
+          </ul>
+        </details>
         <% zuweisungen.forEach(z => { %>
           <div class="zuweisung-item">
             <p class="zuweisung-meta">
-              <strong><%= z.ausgleichsstunden %></strong> Ausgleichsstunden
+              <strong><%= zahl(z.ausgleichsstunden) %></strong> Ausgleichsstunden
               <% if (z.faktor) { %>
-                × Faktor <strong><%= z.faktor %></strong> = <%= (z.ausgleichsstunden * z.faktor).toFixed(2) %> Zeitstunden
+                × Faktor <strong><%= zahl(z.faktor) %></strong> = <%= zahl(z.ausgleichsstunden * z.faktor) %> Zeitstunden
               <% } %>
               <span class="meta">(Schuljahr <%= z.schuljahr %>)</span>
             </p>
@@ -132,19 +123,19 @@
               <div class="zuweisung-actions">
                 <form method="post" action="/zuweisungen/<%= z.id %>/link" class="inline-form">
                   <%- include('partials/csrf') %>
-                  <select name="category_id">
-                    <option value="">– keine Verknüpfung –</option>
+                  <select name="category_id" aria-label="Vorhandenen Aufgabenbereich verknüpfen">
+                    <option value=""><%= z.category_id ? '– Verknüpfung aufheben –' : '– vorhandenen Aufgabenbereich wählen –' %></option>
                     <% categories.forEach(cat => { %>
                       <option value="<%= cat.id %>" <%= z.category_id === cat.id ? 'selected' : '' %>><%= cat.title %></option>
                     <% }) %>
                   </select>
-                  <button type="submit" class="btn"><%= z.category_id ? 'Änderung vorschlagen' : 'Vorschlagen' %></button>
+                  <button type="submit" class="btn"><%= z.category_id ? 'Änderung vorschlagen' : 'Verknüpfung vorschlagen' %></button>
                 </form>
                 <% if (!z.category_id) { %>
                   <form method="post" action="/zuweisungen/<%= z.id %>/uebernehmen" class="inline-form">
                     <%- include('partials/csrf') %>
-                    <input type="text" name="title" placeholder="Titel für neuen Aufgabenbereich (optional)">
-                    <button type="submit" class="btn btn-start">Übernehmen</button>
+                    <input type="text" name="title" placeholder="Titel (optional)" aria-label="Titel des neuen Aufgabenbereichs">
+                    <button type="submit" class="btn btn-start">Als neuen Aufgabenbereich anlegen</button>
                   </form>
                 <% } %>
               </div>
@@ -248,12 +239,9 @@
           <a class="card-link" href="/categories/<%= cat.id %>">
             <h2><%= cat.title %></h2>
             <% if (cat.ziel.stunden !== null) { %>
-              <div class="progress">
-                <div class="progress-bar" style="width: <%= cat.fortschritt %>%"></div>
-              </div>
-              <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> von <%= cat.ziel.stunden.toFixed(2) %> Zeitstunden erfasst</p>
+              <%- include('partials/fortschritt', { erfasst: cat.erfassteStunden, ziel: cat.ziel.stunden }) %>
             <% } else { %>
-              <p class="progress-label"><%= cat.erfassteStunden.toFixed(2) %> Zeitstunden erfasst</p>
+              <p class="progress-label"><%= zahl(cat.erfassteStunden) %> Zeitstunden erfasst</p>
               <p class="hint" style="margin: 0;">
                 <%= cat.ziel.quelle === 'kein-faktor' ? 'Ziel noch offen (Faktor fehlt)' : 'Noch kein Ziel hinterlegt' %>
               </p>
@@ -278,7 +266,6 @@
     </div>
   </main>
   <%- include('partials/footer') %>
-  <script src="/public/js/timer.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/theme.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/forms.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/tabs.js?v=<%= assetVersion %>"></script>

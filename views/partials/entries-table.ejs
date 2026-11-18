@@ -16,7 +16,7 @@
           <input type="date" name="bis_datum" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(0,10) %>" title="Ende (Datum)" data-submit-on-change>
           <input type="time" name="bis" form="entry-edit-<%= e.id %>" value="<%= e.end_time.slice(11,16) %>" title="Ende (Uhrzeit)" data-submit-on-change required>
         </td>
-        <td data-label="Dauer"><%= (e.duration_minutes/60).toFixed(2) %> h</td>
+        <td data-label="Dauer"><%= zahl(e.duration_minutes/60) %> h</td>
         <td data-label="Beschreibung"><input type="text" name="beschreibung" form="entry-edit-<%= e.id %>" value="<%= e.beschreibung %>" data-submit-on-change required></td>
         <td data-label="Status"><%= e.synced ? 'Synchronisiert' : 'Entwurf' %></td>
         <td class="entries-row-actions">

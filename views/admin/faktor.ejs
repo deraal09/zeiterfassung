@@ -59,7 +59,7 @@
                 <td data-label="Schuljahr"><strong><%= f.schuljahr %></strong><%= f.schuljahr === schuljahr ? ' (gewählt)' : '' %></td>
                 <td data-label="Zeitstunden/Woche"><%= f.zeitstunden_pro_woche %></td>
                 <td data-label="Schulwochen"><%= f.schulwochen %></td>
-                <td data-label="Faktor"><%= f.faktor.toFixed(2) %> h</td>
+                <td data-label="Faktor"><%= zahl(f.faktor) %> h</td>
                 <td data-label="Zuweisungen"><%= f.zuweisungen %></td>
                 <td class="meta" data-label="Zuletzt geändert"><%= f.updated_at %><%= f.updated_by ? ` · ${f.updated_by}` : '' %></td>
               </tr>

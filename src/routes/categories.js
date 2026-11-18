@@ -6,6 +6,7 @@ const { csrfSchutzNachUpload } = require('../middleware/csrf');
 const { nowLocalString, diffMinutes, baueZeitraum, MAX_DAUER_MINUTEN } = require('../util/time');
 const { zielZeitstunden, fortschrittProzent } = require('../util/stunden');
 const { parseCsv } = require('../util/csv');
+const { zahl: zahlDe } = require('../util/zahl');
 const { encrypt, decrypt, UNLESBAR } = require('../util/crypto');
 const { auffangUnterprojekt, resolveUnterprojektId } = require('../util/unterprojekte');
 
@@ -222,6 +223,7 @@ router.post('/categories/:id/start', requireAuth, (req, res) => {
     "INSERT INTO time_entries (category_id, user_id, unterprojekt_id, beschreibung, start_time, source) VALUES (?,?,?,?,?,'timer')"
   ).run(cat.id, userId, unterprojektId, encrypt(beschreibung), nowLocalString());
 
+  req.flash('Zeiterfassung gestartet.');
   res.redirect(`/categories/${cat.id}`);
 });
 
@@ -300,6 +302,8 @@ router.post('/entries/:id/stop', requireAuth, (req, res) => {
     entry.id
   );
 
+  const erfasst = duration < 1 ? 'weniger als 1 Minute' : duration < 60 ? `${duration} Min.` : `${zahlDe(duration / 60)} h`;
+  req.flash(`Zeiterfassung gestoppt – ${erfasst} erfasst.`);
   res.redirect(`/categories/${entry.category_id}`);
 });
 
@@ -365,6 +369,7 @@ router.post('/entries/:id/delete', requireAuth, (req, res) => {
 
   const categoryId = entry.category_id;
   db.prepare('DELETE FROM time_entries WHERE id=?').run(entry.id);
+  req.flash('Eintrag gelöscht.');
   res.redirect(`/categories/${categoryId}`);
 });
 
@@ -384,6 +389,7 @@ router.post('/categories/:id/entries', requireAuth, (req, res) => {
   const user = db.prepare('SELECT auto_sync FROM users WHERE id=?').get(userId);
   insertManualEntry(cat, userId, { beschreibung, zeitraum, unterprojektId: unterprojekt_id }, !!user.auto_sync);
 
+  req.flash('Zeit nachgetragen.');
   res.redirect(`/categories/${cat.id}?formular=nachtragen`);
 });
 

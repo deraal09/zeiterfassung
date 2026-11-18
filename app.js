@@ -8,6 +8,8 @@ const config = require('./src/config');
 const { initDb } = require('./src/db');
 const { csrfMiddleware } = require('./src/middleware/csrf');
 const { adminKontext } = require('./src/middleware/admin-kontext');
+const { flashMiddleware } = require('./src/middleware/flash');
+const { laufenderTimer } = require('./src/middleware/laufender-timer');
 const { berechne: berechneAssetVersion } = require('./src/util/asset-version');
 const { nonceMiddleware, helmetMiddleware } = require('./src/middleware/security');
 
@@ -22,8 +24,7 @@ app.set('trust proxy', 1);
 // fuer alle Ansichten.
 app.locals.assetVersion = berechneAssetVersion();
 app.locals.appVersion = require('./package.json').version;
-app.locals.zahl = (wert) =>
-  (Math.round(Number(wert) * 100) / 100).toLocaleString('de-DE', { maximumFractionDigits: 2 });
+app.locals.zahl = require('./src/util/zahl').zahl;
 
 // Vor allem anderen, damit auch Fehlerseiten und statische Dateien die
 // Sicherheits-Header tragen.
@@ -67,6 +68,8 @@ app.use((req, res, next) => {
 // Nach der Session (braucht req.session) und nach express.urlencoded (liest
 // das Token aus req.body) - siehe middleware/csrf.js.
 app.use(csrfMiddleware);
+app.use(flashMiddleware);
+app.use(laufenderTimer);
 app.use(adminKontext);
 
 app.use('/', require('./src/routes/auth'));

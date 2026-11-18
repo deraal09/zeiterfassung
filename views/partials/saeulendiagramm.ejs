@@ -16,13 +16,13 @@
           <div class="balken-saeule-feld" style="height: <%= auswertung.plotHoehePx %>px;">
             <% if (variante === 'stapel') { %>
               <div class="balken-saeule stapel"
-                   title="<%= b.title %> – Synchronisiert: <%= b.synced.toFixed(2) %> h, Entwurf: <%= b.entwurf.toFixed(2) %> h, Gesamt: <%= b.summe.toFixed(2) %> h">
+                   title="<%= b.title %> – Synchronisiert: <%= zahl(b.synced) %> h, Entwurf: <%= zahl(b.entwurf) %> h, Gesamt: <%= zahl(b.summe) %> h">
                 <div class="segment segment-synced<%= b.obenAbgerundet === 'synced' ? ' oben' : '' %>" style="height: <%= b.syncedPx %>px; background: var(--chart-series-1, #2a78d6);"></div>
                 <div class="segment segment-entwurf<%= b.obenAbgerundet === 'entwurf' ? ' oben' : '' %>" style="height: <%= b.entwurfPx %>px; background: var(--chart-series-2, #eb6834);"></div>
               </div>
             <% } else { %>
               <div class="balken-saeule gruppiert"
-                   title="<%= b.title %> – Synchronisiert: <%= b.synced.toFixed(2) %> h, Entwurf: <%= b.entwurf.toFixed(2) %> h">
+                   title="<%= b.title %> – Synchronisiert: <%= zahl(b.synced) %> h, Entwurf: <%= zahl(b.entwurf) %> h">
                 <div class="segment segment-synced" style="height: <%= b.syncedPx %>px; background: var(--chart-series-1, #2a78d6);"></div>
                 <div class="segment segment-entwurf" style="height: <%= b.entwurfPx %>px; background: var(--chart-series-2, #eb6834);"></div>
               </div>

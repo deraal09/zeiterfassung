@@ -14,7 +14,7 @@
       <% auswertung.balken.forEach(b => { %>
         <% const sichtbar = b.segmente.filter(s => s.stunden > 0); %>
         <% const titelText = b.title + ' – ' + (sichtbar.length
-             ? sichtbar.map(s => `${s.label}: ${s.stunden.toFixed(2)} h`).join(', ') + `, Gesamt: ${b.summe.toFixed(2)} h`
+             ? sichtbar.map(s => `${s.label}: ${zahl(s.stunden)} h`).join(', ') + `, Gesamt: ${zahl(b.summe)} h`
              : 'keine Zeit erfasst'); %>
         <div class="balken-gruppe">
           <div class="balken-saeule-feld" style="height: <%= auswertung.plotHoehePx %>px;">

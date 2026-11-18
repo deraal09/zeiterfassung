@@ -219,6 +219,14 @@ erfasst und an die Schulleitung übermittelt werden können.
   Skripte frisch vom Server – ein harter Reload auch in der installierten App. Auf dem Smartphone
   klappt die Navigation hinter ein ☰-Menü. Anmelde- und Ersteinrichtungsseite
   nutzen dasselbe Layout wie alle anderen Seiten.
+- **Bedienkomfort** – ein laufender Timer steht als Leiste („Läuft: … 00:12:31 · Stopp“)
+  unter der Kopfzeile auf jeder Seite. Aktionen der Lehrkraft (Start/Stopp,
+  Zeit nachtragen, Verknüpfung vorschlagen/lösen, Aufgabenbereich anlegen,
+  archivieren, löschen, synchronisieren) bestätigen sich mit einer
+  einmaligen grünen Meldung. Zahlen erscheinen überall in deutscher
+  Schreibweise (10,5 statt 10.50). Fortschrittsbalken nennen den Prozentwert
+  und werden ab 100 % grün. Tastaturfokus ist sichtbar, und wer „weniger
+  Bewegung“ eingestellt hat, bekommt keine Animationen.
 - **Responsives Design (Smartphone)** – Navigation und Register-Buttons
   brechen auf schmalen Bildschirmen um, statt seitlich abgeschnitten zu
   werden. Jede Datentabelle der App (Erfasste Tätigkeiten, Unterthemen,

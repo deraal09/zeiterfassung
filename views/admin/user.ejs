@@ -200,13 +200,13 @@
               <td data-label="Schuljahr"><%= cat.schuljahr %></td>
               <td data-label="Benötigt">
                 <% if (cat.ziel.stunden !== null) { %>
-                  <%= cat.ziel.stunden.toFixed(2) %> h
+                  <%= zahl(cat.ziel.stunden) %> h
                 <% } else { %>
                   <span class="meta"><%= cat.ziel.quelle === 'kein-faktor' ? 'Faktor fehlt' : '–' %></span>
                 <% } %>
               </td>
-              <td data-label="Synchronisiert"><%= cat.syncedHours.toFixed(2) %> h</td>
-              <td data-label="Offen (ungemeldet)"><%= cat.unsyncedHours.toFixed(2) %> h</td>
+              <td data-label="Synchronisiert"><%= zahl(cat.syncedHours) %> h</td>
+              <td data-label="Offen (ungemeldet)"><%= zahl(cat.unsyncedHours) %> h</td>
               <td data-label="Aktion">
                 <form method="post" action="/admin/categories/<%= cat.id %>/archive" class="inline-form">
                   <%- include('../partials/csrf') %>

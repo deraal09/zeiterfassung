@@ -1,0 +1,10 @@
+<%# Fortschrittsbalken mit Beschriftung: erfasst, ziel (beides in Stunden). %>
+<%# Ab 100 % wird der Balken gruen, darueber steht "Ziel ueberschritten". %>
+<% const pz = ziel > 0 ? (erfasst / ziel) * 100 : 0; const voll = pz >= 100; %>
+<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<%= Math.min(100, Math.round(pz)) %>"
+     aria-label="<%= zahl(erfasst) %> von <%= zahl(ziel) %> Zeitstunden erfasst">
+  <div class="progress-bar<%= voll ? ' progress-bar-voll' : '' %>" style="width: <%= Math.min(100, pz) %>%"></div>
+</div>
+<p class="progress-label">
+  <%= zahl(erfasst) %> von <%= zahl(ziel) %> Zeitstunden erfasst (<%= Math.round(pz) %> %)<%= pz > 100 ? ' – Ziel überschritten' : (voll ? ' – Ziel erreicht' : '') %>
+</p>

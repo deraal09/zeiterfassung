@@ -437,6 +437,7 @@ test('Lehrkraft loest ihre Verknuepfung ueber die Route - nur die eigene', async
       req.session = { csrfToken: 'tok', user: { id: Number(req.get('x-user')), isAdmin: false } };
       next();
     });
+    app.use(ladeSrc('middleware/flash').flashMiddleware);
     app.use('/', ladeSrc('routes/dashboard'));
     const server = await new Promise((resolve) => {
       const s = app.listen(0, '127.0.0.1', () => resolve(s));

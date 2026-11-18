@@ -10,13 +10,10 @@
     <p><a href="/">&larr; Zur Übersicht</a></p>
     <h1><%= category.title %> <span class="meta">Schuljahr <%= category.schuljahr %></span></h1>
     <% if (ziel.stunden !== null) { %>
-      <p class="meta">Benötigt: <%= ziel.stunden.toFixed(2) %> Zeitstunden</p>
-      <div class="progress">
-        <div class="progress-bar" style="width: <%= fortschritt %>%"></div>
-      </div>
-      <p class="progress-label"><%= erfassteStunden.toFixed(2) %> von <%= ziel.stunden.toFixed(2) %> Zeitstunden erfasst</p>
+      <p class="meta">Benötigt: <%= zahl(ziel.stunden) %> Zeitstunden</p>
+      <%- include('partials/fortschritt', { erfasst: erfassteStunden, ziel: ziel.stunden }) %>
     <% } else { %>
-      <p class="progress-label"><%= erfassteStunden.toFixed(2) %> Zeitstunden erfasst</p>
+      <p class="progress-label"><%= zahl(erfassteStunden) %> Zeitstunden erfasst</p>
       <p class="hint">
         <% if (ziel.quelle === 'kein-faktor') { %>
           Das Ziel steht noch nicht fest: Für das Schuljahr dieser Zuweisung hat die Schulleitung
@@ -27,17 +24,18 @@
       </p>
     <% } %>
 
-    <form method="post" action="/categories/<%= category.id %>/sichtbarkeit" class="inline-form">
-      <%- include('partials/csrf') %>
-      <label class="checkbox">
-        <input type="checkbox" name="sichtbar" data-submit-on-change <%= category.visible_for_admin || hatZuweisung ? 'checked' : '' %> <%= hatZuweisung ? 'disabled' : '' %>>
-        Für Admin sichtbar machen
-      </label>
-    </form>
     <% if (hatZuweisung) { %>
-      <p class="hint" style="margin-top: 4px;">
-        Dieser Aufgabenbereich ist bereits mit zugewiesenen Ausgleichsstunden verknüpft und dadurch automatisch für den Admin sichtbar.
+      <p class="badge-zeile">
+        <span class="badge badge-ok" title="Dieser Aufgabenbereich ist mit zugewiesenen Ausgleichsstunden verknüpft und dadurch automatisch für den Admin sichtbar.">✓ Für Admin sichtbar (verknüpft)</span>
       </p>
+    <% } else { %>
+      <form method="post" action="/categories/<%= category.id %>/sichtbarkeit" class="inline-form">
+        <%- include('partials/csrf') %>
+        <label class="checkbox">
+          <input type="checkbox" name="sichtbar" data-submit-on-change <%= category.visible_for_admin ? 'checked' : '' %>>
+          Für Admin sichtbar machen
+        </label>
+      </form>
     <% } %>
 
     <% if (!hatZuweisung) { %>
@@ -73,16 +71,10 @@
 
       <section class="panel tab-panel" id="tab-erfassen" data-tab-panel <%= activeTab === 'erfassen' ? '' : 'hidden' %>>
         <% if (running) { %>
-          <div class="timer-banner">
-            <div>
-              <strong>Läuft:</strong> <%= running.beschreibung %><% if (running.unterprojekt_title) { %> <span class="meta">(<%= running.unterprojekt_title %>)</span><% } %>
-              <span class="live-timer" data-start="<%= running.start_time %>">00:00:00</span>
-            </div>
-            <form method="post" action="/entries/<%= running.id %>/stop">
-              <%- include('partials/csrf') %>
-              <button type="submit" class="btn btn-stop">Stopp</button>
-            </form>
-          </div>
+          <p class="hint">
+            Die Zeiterfassung läuft: <strong><%= running.beschreibung %></strong><% if (running.unterprojekt_title) { %> <span class="meta">(<%= running.unterprojekt_title %>)</span><% } %>.
+            Mit „Stopp“ in der Leiste oben beenden.
+          </p>
         <% } else { %>
           <form method="post" action="/categories/<%= category.id %>/start" class="inline-form">
             <%- include('partials/csrf') %>
@@ -188,7 +180,7 @@
                     </form>
                   </td>
                   <td class="meta" data-label="Stunden">
-                    <%= up.stunden.toFixed(2) %> h<% if (up.ist_auffang) { %> · nimmt Zeiten ohne eigene Zuordnung auf<% } %>
+                    <%= zahl(up.stunden) %> h<% if (up.ist_auffang) { %> · nimmt Zeiten ohne eigene Zuordnung auf<% } %>
                   </td>
                   <td data-label="Aktion">
                     <form method="post" action="/unterprojekte/<%= up.id %>/delete" class="inline-form"
@@ -247,7 +239,7 @@
       <% gruppen.forEach(g => { %>
         <% if (g.title) { %>
           <details class="unterprojekt-details" data-merken="<%= category.id %>:<%= g.title %>">
-            <summary><%= g.title %> <span class="meta"><%= g.stunden.toFixed(2) %> h</span></summary>
+            <summary><%= g.title %> <span class="meta"><%= zahl(g.stunden) %> h</span></summary>
             <%- include('partials/entries-table', { entries: g.entries, filter, unterprojekte }) %>
           </details>
         <% } else { %>
@@ -257,7 +249,6 @@
     </section>
   </main>
   <%- include('partials/footer') %>
-  <script src="/public/js/timer.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/theme.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/forms.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/tabs.js?v=<%= assetVersion %>"></script>

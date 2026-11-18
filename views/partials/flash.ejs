@@ -1,0 +1,4 @@
+<%# Einmalige Rueckmeldung nach einer Aktion (siehe middleware/flash.js). %>
+<% if (typeof flash !== 'undefined' && flash) { %>
+  <div class="container flash-wrap"><p class="alert alert-success" role="status"><%= flash %></p></div>
+<% } %>

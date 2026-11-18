@@ -29,6 +29,8 @@
     </div>
   </div>
 </header>
+<%- include('timer-leiste') %>
+<%- include('flash') %>
 <% if (user && user.isAdmin && typeof poolBadge !== 'undefined' && poolBadge) { %>
   <%# Gesamtpool des gewaehlten Schuljahres - auf jeder Seite oben rechts. %>
   <div class="pool-leiste">
@@ -47,3 +49,4 @@
   </div>
 <% } %>
 <script src="/public/js/nav.js?v=<%= assetVersion %>"></script>
+<% if (typeof laufenderTimer !== 'undefined' && laufenderTimer) { %><script src="/public/js/timer.js?v=<%= assetVersion %>"></script><% } %>
