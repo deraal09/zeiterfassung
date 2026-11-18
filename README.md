@@ -227,6 +227,15 @@ erfasst und an die Schulleitung übermittelt werden können.
   Schreibweise (10,5 statt 10.50). Fortschrittsbalken nennen den Prozentwert
   und werden ab 100 % grün. Tastaturfokus ist sichtbar, und wer „weniger
   Bewegung“ eingestellt hat, bekommt keine Animationen.
+- **Lehrkräfteliste mit Suche (Admin)** – Suchfeld (Name oder Benutzername,
+  Groß-/Kleinschreibung und Umlaute egal, mehrere Wörter möglich),
+  Sortierung (Name, meiste Ausgleichsstunden, nicht verknüpfte zuerst) und
+  zwei Filter („nur mit nicht verknüpften Zuweisungen“, „nur mit
+  Ausgleichsstunden“). Die Anzeige „3 von 7 Lehrkräften“ aktualisiert sich
+  sofort, alles läuft im Browser ohne Neuladen.
+- **Beschriftete Datumsfilter** – „Erfasste Tätigkeiten“ hat die Felder
+  „Von“, „Bis“, „Beschreibung enthält“ und „Sortierung“ mit sichtbaren
+  Beschriftungen; auf dem Smartphone stehen Von und Bis nebeneinander.
 - **Responsives Design (Smartphone)** – Navigation und Register-Buttons
   brechen auf schmalen Bildschirmen um, statt seitlich abgeschnitten zu
   werden. Jede Datentabelle der App (Erfasste Tätigkeiten, Unterthemen,

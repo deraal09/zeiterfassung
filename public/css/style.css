@@ -370,7 +370,7 @@ main { overflow-wrap: break-word; }
 .assign-form .row { display: flex; gap: 10px; }
 .assign-form .row input { flex: 1; }
 
-input[type=text], input[type=password], input[type=number], input[type=date], input[type=time], input[type=email], select, textarea {
+input[type=text], input[type=search], input[type=password], input[type=number], input[type=date], input[type=time], input[type=email], select, textarea {
   padding: 0.5rem 0.7rem;
   border: 1px solid var(--color-border-strong);
   border-radius: 4px;
@@ -1100,4 +1100,39 @@ input[type=text], input[type=password], input[type=number], input[type=date], in
     animation: none !important;
     transition: none !important;
   }
+}
+
+
+/* Filterleisten (Lehrkraefte, Erfasste Taetigkeiten): beschriftete Felder in
+   einem Raster. Von/Bis stehen auch auf dem Smartphone nebeneinander. */
+.filter-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 12px;
+  align-items: end;
+  margin: 12px 0;
+}
+.filter-feld {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  min-width: 0;
+}
+.filter-feld input,
+.filter-feld select { width: 100%; min-width: 0; color: var(--color-text); }
+.filter-breit { grid-column: span 2; }
+.filter-aktionen { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-haken { align-self: center; margin: 0; }
+.lehrkraefte-filter { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.card[hidden] { display: none; }
+@media (max-width: 640px) {
+  .filter-form { grid-template-columns: 1fr 1fr; }
+  .filter-breit,
+  .filter-voll-mobil,
+  .filter-haken,
+  .filter-aktionen,
+  .lehrkraefte-filter .filter-feld { grid-column: 1 / -1; }
+  .filter-aktionen .btn { flex: 1 1 auto; text-align: center; }
 }

@@ -60,3 +60,39 @@ test('laufender Timer: nur fuer angemeldete Personen und nur bei GET', () => {
   assert.equal(lauf(null), null, 'ohne Anmeldung kein Timer');
   assert.equal(lauf({ id: 1 }, 'POST'), null, 'bei POST wird nichts geladen');
 });
+
+test('Lehrkraefte-Ansicht: Kacheln tragen die Daten fuer Suche und Sortierung', async () => {
+  frischeUmgebung();
+  const ejs = require('ejs');
+  const path = require('path');
+  const { zahl } = ladeSrc('util/zahl');
+  const html = await ejs.renderFile(
+    path.join(__dirname, '..', 'views', 'admin', 'lehrkraefte.ejs'),
+    {
+      schuljahr: '2026/27',
+      error: null,
+      users: [
+        { id: 1, display_name: 'Anna Müller', username: 'amueller', summe_ausgleichsstunden: 8, offene_zuweisungen: 2 },
+        { id: 2, display_name: 'Bernd Koch', username: 'koch', summe_ausgleichsstunden: 0, offene_zuweisungen: 0 },
+      ],
+      zahl,
+      assetVersion: 'test',
+      cspNonce: 'n',
+      user: { isAdmin: true, displayName: 'Admin' },
+      appVersion: '1',
+      csrfToken: 't',
+      adminSchuljahr: '2026/27',
+      adminSchuljahre: ['2026/27'],
+      poolBadge: null,
+      laufenderTimer: null,
+      flash: null,
+    },
+    { views: [path.join(__dirname, '..', 'views')] }
+  );
+  assert.match(html, /data-lehrkraefte-filter/);
+  assert.match(html, /data-name="anna müller amueller"/);
+  assert.match(html, /data-stunden="8"/);
+  assert.match(html, /data-offen="2"/);
+  assert.match(html, /2 von 2 Lehrkräften/);
+  assert.match(html, /lehrkraefte-filter\.js\?v=test/);
+});

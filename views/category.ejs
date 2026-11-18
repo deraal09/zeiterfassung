@@ -216,18 +216,28 @@
       <h2>Erfasste Tätigkeiten</h2>
       <p class="hint">Änderungen an Datum, Uhrzeit oder Beschreibung werden sofort gespeichert, sobald das Feld verlassen wird – ein Speichern-Button ist nicht nötig.</p>
 
-      <form method="get" action="/categories/<%= category.id %>" class="entry-form">
-        <input type="date" name="von" value="<%= filter.von %>" title="Von Datum">
-        <input type="date" name="bis" value="<%= filter.bis %>" title="Bis Datum">
-        <input type="text" name="suche" value="<%= filter.suche %>" placeholder="Beschreibung durchsuchen">
-        <select name="sort" title="Sortierung" data-submit-on-change>
-          <option value="desc" <%= filter.sort === 'desc' ? 'selected' : '' %>>Neueste zuerst</option>
-          <option value="asc" <%= filter.sort === 'asc' ? 'selected' : '' %>>Älteste zuerst</option>
-        </select>
-        <button type="submit" class="btn">Filtern</button>
-        <% if (filter.von || filter.bis || filter.suche) { %>
-          <a class="btn" href="/categories/<%= category.id %>?sort=<%= filter.sort %>">Zurücksetzen</a>
-        <% } %>
+      <form method="get" action="/categories/<%= category.id %>" class="filter-form">
+        <label class="filter-feld">Von
+          <input type="date" name="von" value="<%= filter.von %>">
+        </label>
+        <label class="filter-feld">Bis
+          <input type="date" name="bis" value="<%= filter.bis %>">
+        </label>
+        <label class="filter-feld filter-breit">Beschreibung enthält
+          <input type="text" name="suche" value="<%= filter.suche %>" placeholder="Suchbegriff">
+        </label>
+        <label class="filter-feld filter-voll-mobil">Sortierung
+          <select name="sort" data-submit-on-change>
+            <option value="desc" <%= filter.sort === 'desc' ? 'selected' : '' %>>Neueste zuerst</option>
+            <option value="asc" <%= filter.sort === 'asc' ? 'selected' : '' %>>Älteste zuerst</option>
+          </select>
+        </label>
+        <div class="filter-aktionen">
+          <button type="submit" class="btn">Filtern</button>
+          <% if (filter.von || filter.bis || filter.suche) { %>
+            <a class="btn" href="/categories/<%= category.id %>?sort=<%= filter.sort %>">Zurücksetzen</a>
+          <% } %>
+        </div>
       </form>
 
       <% gruppen.forEach(g => { g.entries.forEach(e => { %>

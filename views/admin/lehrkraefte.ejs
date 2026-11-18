@@ -18,10 +18,36 @@
 
     <% if (users.length === 0) { %>
       <p class="empty-state">Noch keine Lehrkräfte erfasst.</p>
+    <% } else { %>
+      <form class="filter-form lehrkraefte-filter" data-lehrkraefte-filter role="search">
+        <label class="filter-feld filter-breit">Suche
+          <input type="search" data-filter-suche placeholder="Name oder Benutzername" autocomplete="off">
+        </label>
+        <label class="filter-feld">Sortierung
+          <select data-filter-sort>
+            <option value="name">Name A–Z</option>
+            <option value="stunden">Meiste Ausgleichsstunden</option>
+            <option value="offen">Nicht verknüpfte zuerst</option>
+          </select>
+        </label>
+        <label class="checkbox filter-haken">
+          <input type="checkbox" data-filter-offen> Nur mit nicht verknüpften Zuweisungen
+        </label>
+        <label class="checkbox filter-haken">
+          <input type="checkbox" data-filter-stunden> Nur mit Ausgleichsstunden
+        </label>
+      </form>
+      <p class="hint" data-filter-anzahl role="status" aria-live="polite"><%= users.length %> von <%= users.length %> Lehrkräften</p>
+      <p class="empty-state" data-filter-leer hidden>Keine Lehrkraft passt zu dieser Suche.</p>
     <% } %>
-    <div class="card-grid">
-      <% users.forEach(u => { %>
-        <a class="card" href="/admin/users/<%= u.id %>?schuljahr=<%= encodeURIComponent(schuljahr) %>">
+    <div class="card-grid" data-lehrkraefte-liste>
+      <% users.forEach((u, i) => { %>
+        <a class="card" href="/admin/users/<%= u.id %>?schuljahr=<%= encodeURIComponent(schuljahr) %>"
+           data-name="<%= (u.display_name + ' ' + u.username).toLowerCase() %>"
+           data-anzeigename="<%= u.display_name.toLowerCase() %>"
+           data-stunden="<%= u.summe_ausgleichsstunden %>"
+           data-offen="<%= u.offene_zuweisungen %>"
+           data-reihenfolge="<%= i %>">
           <h2><%= u.display_name %></h2>
           <p class="meta"><%= u.username %></p>
           <p class="progress-label"><strong><%= zahl(u.summe_ausgleichsstunden) %></strong> Ausgleichsstunden in <%= schuljahr %></p>
@@ -36,6 +62,7 @@
   </main>
   <%- include('../partials/footer') %>
   <script src="/public/js/forms.js?v=<%= assetVersion %>"></script>
+  <script src="/public/js/lehrkraefte-filter.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/theme.js?v=<%= assetVersion %>"></script>
   <script src="/public/js/pwa.js?v=<%= assetVersion %>"></script>
 </body>
